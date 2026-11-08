@@ -42,6 +42,7 @@ Comment sparingly. No comment or doc comment that paraphrases the code, a functi
 ## Commits and pull requests
 
 - Never create a commit without an explicit request. A formatting instruction or a plan step is not permission.
+- Commit message: Conventional Commits in English, `type(scope): description` in the lowercase imperative with no trailing period (`fix(agents): keep the scrollbar from hiding Git actions`); types `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. The release flow keeps `Add X.Y.Z changelog` and `Release X.Y.Z`.
 - Pull request: user-visible change, commands run, database or Tauri capability changes, screenshots for UI.
 
 ## Communication
