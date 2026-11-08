@@ -1,0 +1,15 @@
+[package]
+name = "soreno-terminal-grid"
+version = "0.1.0"
+description = "Moteur de terminal de Soreno : émulation et trames de grille, sans Tauri"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+name = "soreno_terminal_grid"
+
+[dependencies]
+alacritty_terminal = "0.26"
+memchr = "2"
+serde = { version = "1", features = ["derive"] }

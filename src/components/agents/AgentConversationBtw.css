@@ -1,0 +1,94 @@
+.agent-conversation-btw-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 2px 4px 2px 12px;
+  color: var(--text-meta);
+}
+
+.agent-conversation-btw-header > svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.agent-conversation-btw-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.agent-conversation-btw-turn {
+  display: grid;
+  gap: 4px;
+}
+
+.agent-conversation-btw-question {
+  margin: 0;
+  color: var(--text-soft);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.agent-conversation-btw-status {
+  margin: 0;
+  color: var(--text-meta);
+}
+
+.agent-conversation-btw-status.is-error,
+.agent-conversation-btw-status.is-interrupted {
+  color: var(--danger-text);
+}
+
+.agent-conversation-btw-topics {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-conversation-btw-topics button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  border-radius: 6px;
+  padding: 2px 8px;
+  color: var(--text);
+  text-align: left;
+}
+
+.agent-conversation-btw-topics button:hover {
+  background: var(--surface-hover);
+}
+
+.agent-conversation-btw-topics button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.agent-conversation-btw-topics button > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-conversation-btw-count {
+  flex: none;
+  color: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-conversation-btw-follow-up {
+  flex: none;
+  padding: 0 12px 10px;
+}
+
+.agent-conversation-btw-follow-up .app-input {
+  width: 100%;
+}

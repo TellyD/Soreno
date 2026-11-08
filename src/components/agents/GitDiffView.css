@@ -1,0 +1,387 @@
+.git-diff-view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--editor-bg);
+}
+.git-diff-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  border-bottom: 1px solid var(--border-muted);
+  padding: 6px 10px;
+  background: var(--editor-bg);
+  box-sizing: border-box;
+}
+.git-diff-path {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font:
+    12px "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  white-space: nowrap;
+}
+.git-diff-path > span {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-meta);
+  text-overflow: ellipsis;
+}
+.git-diff-path > strong {
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-heading);
+  text-overflow: ellipsis;
+}
+.git-diff-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+.git-diff-menu-positioner {
+  z-index: 20;
+  outline: none;
+}
+.git-diff-menu {
+  --menu-item-columns: minmax(0, 1fr) auto;
+  min-width: 170px;
+}
+.git-diff-menu-separator {
+  height: 1px;
+  margin: 4px;
+  background: var(--border-muted);
+}
+.git-diff-editor-shell {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.git-diff-editor {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.git-diff-minimap {
+  position: relative;
+  width: 20px;
+  flex: 0 0 20px;
+  overflow: hidden;
+  border-left: 1px solid var(--border-muted);
+  background: var(--surface-muted);
+  box-sizing: border-box;
+  cursor: pointer;
+  touch-action: none;
+}
+.git-diff-minimap:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.git-diff-minimap-marker {
+  position: absolute;
+  min-height: 2px;
+  pointer-events: none;
+}
+.git-diff-minimap-marker.is-deleted {
+  right: 50%;
+  left: 3px;
+  background: var(--danger-text);
+}
+.git-diff-minimap-marker.is-added {
+  right: 3px;
+  left: 50%;
+  background: #5b7d3e;
+}
+[data-theme="dark"] .git-diff-minimap-marker.is-added {
+  background: #a1c181;
+}
+.git-diff-minimap-viewport {
+  position: absolute;
+  right: 1px;
+  left: 1px;
+  min-height: 10px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.git-diff-editor > .cm-editor,
+.git-diff-editor > .cm-mergeView {
+  height: 100%;
+}
+.git-diff-editor .cm-editor {
+  min-width: 0;
+  color: var(--editor-text);
+  background: var(--editor-bg);
+}
+.git-diff-editor .cm-editor.cm-focused,
+.git-diff-editor .cm-content:focus-visible {
+  outline: none;
+}
+.git-diff-editor .cm-scroller {
+  overflow: auto;
+  font:
+    13px/1.6 "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+}
+.git-diff-editor .cm-content {
+  padding-block: 8px;
+  caret-color: transparent;
+}
+.git-diff-editor .cm-line {
+  padding-inline: 14px;
+}
+/* Highlight padding below overflows on purpose; stop it at its own line. */
+.git-diff-editor .cm-line,
+.git-diff-editor .cm-deletedLine {
+  overflow-y: clip;
+}
+.git-diff-editor .cm-editor.cm-merge-b .cm-changedLine {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+.git-diff-editor .cm-editor.cm-merge-a .cm-changedLine,
+.git-diff-editor .cm-editor .cm-deletedChunk {
+  background: color-mix(in srgb, var(--danger-text) 14%, transparent);
+}
+.git-diff-view
+  .git-diff-editor
+  .cm-editor.cm-merge-b
+  .cm-content
+  .cm-changedText {
+  padding-block: 0.25em;
+  background: color-mix(in srgb, var(--success) 24%, transparent);
+}
+.git-diff-view
+  .git-diff-editor
+  .cm-editor.cm-merge-a
+  .cm-content
+  .cm-changedText,
+.git-diff-view
+  .git-diff-editor
+  .cm-editor
+  .cm-content
+  .cm-deletedChunk
+  .cm-deletedText {
+  padding-block: 0.25em;
+  background: color-mix(in srgb, var(--danger-text) 24%, transparent);
+}
+.git-diff-view
+  .git-diff-editor
+  .cm-editor
+  .cm-content
+  .cm-line.cm-wholeLineChange
+  .cm-changedText,
+.git-diff-view
+  .git-diff-editor
+  .cm-editor
+  .cm-content
+  .cm-deletedChunk:not(:has(+ .cm-changedLine))
+  .cm-deletedText {
+  background: none;
+}
+.git-diff-editor .cm-editor .cm-deletedChunk {
+  padding-inline: 14px;
+}
+.git-diff-editor .cm-gutters {
+  border-right: 1px solid var(--border-muted);
+  color: var(--text-faint);
+  background: var(--editor-bg);
+}
+.git-diff-editor .cm-lineNumbers .cm-gutterElement {
+  min-width: 4ch;
+  padding-inline: 12px 14px;
+}
+.git-diff-editor .cm-editor .cm-changeGutter {
+  order: -1;
+  width: 4px;
+  padding: 0;
+}
+.git-diff-editor .cm-editor.cm-merge-b .cm-changedLineGutter {
+  background: var(--success);
+}
+.git-diff-editor .cm-editor.cm-merge-a .cm-changedLineGutter,
+.git-diff-editor .cm-editor .cm-deletedLineGutter {
+  background: var(--danger-text);
+}
+.git-diff-editor .cm-editor .git-diff-comment-gutter {
+  width: 22px;
+}
+.git-diff-editor .git-diff-comment-gutter .cm-gutterElement {
+  display: flex;
+  justify-content: center;
+  padding-top: 1px;
+}
+.git-diff-comment-marker {
+  display: flex;
+}
+.git-diff-comment-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--control-radius, 5px);
+  color: var(--text-heading);
+  background: var(--surface-active);
+  cursor: pointer;
+}
+.git-diff-editor .cm-tooltip.git-diff-comment-tooltip {
+  display: flex;
+  justify-content: center;
+  width: 22px;
+  padding-top: 1px;
+  border: 0;
+  background: transparent;
+}
+.git-diff-comment-send.app-icon-button {
+  --app-icon-button-size: 18px;
+  --app-icon-button-icon-size: var(--icon-size-sm);
+  --app-icon-button-hover-color: var(--text-heading);
+  --app-icon-button-hover-bg: var(--surface-active);
+
+  color: var(--text-heading);
+  background: var(--surface-active);
+}
+.git-diff-editor .cm-editor .cm-collapsedLines {
+  border-block: 1px solid var(--border-muted);
+  padding: 4px 14px;
+  color: var(--text-meta);
+  background: var(--surface-control);
+  font:
+    11px/1.6 "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+}
+.git-diff-editor .cm-editor .cm-collapsedLines:hover {
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+.git-diff-editor .cm-mergeView {
+  overflow: auto;
+}
+.git-diff-editor .cm-mergeViewEditors {
+  min-height: 100%;
+}
+.git-diff-editor .cm-mergeViewEditor {
+  min-width: 0;
+}
+.git-diff-editor .cm-merge-revert {
+  display: none;
+}
+.git-conflict-comparison {
+  flex: 0 0 auto;
+  margin: 0;
+  border-bottom: 1px solid var(--border-muted);
+  padding: 6px 10px;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-size: 11px;
+}
+.git-diff-unavailable {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  gap: 6px;
+  min-height: 0;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.git-diff-unavailable p {
+  margin: 0;
+}
+.git-image-comparison {
+  display: grid;
+  flex: 1;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  min-height: 0;
+  padding: 12px;
+}
+.git-image-side {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+}
+.git-image-side > figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 12px;
+  font-size: 12px;
+}
+.git-image-side > figcaption > strong {
+  color: var(--text-heading);
+}
+.git-image-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  color: var(--text-meta);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.git-image-delta {
+  color: var(--text-muted);
+}
+.git-image-stage {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  padding: 12px;
+  container-type: size;
+}
+.git-image-frame {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+.git-image-frame.is-measured {
+  width: min(100cqw, var(--frame-width), 100cqh * var(--frame-aspect));
+  height: auto;
+  aspect-ratio: var(--frame-aspect);
+}
+.git-image-frame > img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  /* Checkerboard reveals transparent pixels and the image bounds. */
+  background: repeating-conic-gradient(
+      var(--surface-active) 0 25%,
+      var(--editor-bg) 0 50%
+    )
+    0 0 / 16px 16px;
+}
+.git-image-stage > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}

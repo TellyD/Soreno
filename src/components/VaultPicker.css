@@ -1,0 +1,102 @@
+.vault-picker {
+  position: relative;
+}
+
+.status-vault-button {
+  --icon-size: var(--icon-size-xs);
+  max-width: 220px;
+  height: 24px;
+  padding: 0 5px;
+  line-height: 1;
+}
+
+.status-vault-button span {
+  overflow: hidden;
+  line-height: 1;
+  text-overflow: ellipsis;
+}
+
+.status-vault-button svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.status-vault-button svg:first-child {
+  transform: translateY(-1px);
+}
+
+.vault-picker-menu {
+  position: absolute;
+  z-index: 10;
+  bottom: calc(100% + 18px);
+  left: 0;
+  width: 244px;
+  --menu-surface-color: var(--text-soft);
+  --menu-surface-padding: 6px;
+  --menu-item-icon-size: var(--icon-size-xs);
+  --menu-item-columns: 18px minmax(0, 1fr) 16px;
+  --menu-item-gap: 7px;
+  --menu-item-height: 30px;
+  --menu-item-label-line-height: 1;
+  --menu-item-line-height: 1;
+  --menu-item-padding: 0 7px;
+  --menu-item-selected-bg: var(--surface-selected);
+}
+
+.vault-picker-list {
+  display: grid;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-bottom: 5px;
+}
+
+.vault-picker-list .app-menu-item svg,
+.vault-picker-actions .app-menu-item svg {
+  place-self: center;
+}
+
+.vault-picker-list .app-menu-item svg:first-child,
+.vault-picker-actions .app-menu-item svg:first-child {
+  transform: translateY(-1px);
+}
+
+.vault-picker-list .app-menu-item svg:last-child {
+  color: var(--primary);
+}
+
+.vault-picker-actions {
+  display: grid;
+  border-top: 1px solid var(--border-muted);
+  padding-top: 5px;
+}
+
+.vault-picker-actions .app-menu-item {
+  --menu-item-columns: minmax(0, 1fr);
+}
+
+.vault-picker-form {
+  display: grid;
+  gap: 8px;
+}
+
+.vault-picker-form-header {
+  --app-icon-button-icon-size: var(--icon-size-xs);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-heading);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.vault-picker-form-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vault-picker-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}

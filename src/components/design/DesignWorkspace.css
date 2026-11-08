@@ -1,0 +1,238 @@
+.design-workspace {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Floating over the whiteboard: borders and opaque fills instead of shadows. */
+.design-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+}
+
+.design-toolbar .app-button-secondary {
+  --app-button-bg: var(--surface);
+}
+
+.design-toolbar .app-icon-button {
+  --app-icon-button-size: var(--control-height-small);
+
+  border-color: var(--border-muted);
+  background: var(--surface);
+}
+
+.design-switcher {
+  min-width: 0;
+  max-width: 22rem;
+}
+
+.design-switcher-name,
+.design-switcher-project {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.design-switcher-project,
+.design-switcher-detail {
+  color: var(--text-meta);
+}
+
+.design-switcher-detail {
+  margin-left: 8px;
+}
+
+.design-switcher-menu {
+  min-width: 240px;
+  max-width: min(360px, var(--available-width));
+  max-height: min(420px, var(--available-height));
+  overflow-y: auto;
+}
+
+/* Leading and trailing slots may hold a non-SVG icon (provider logos are spans). */
+.design-switcher-menu .app-menu-item:has(> :not(.app-menu-item-label) + .app-menu-item-label) {
+  --menu-item-columns: 16px minmax(0, 1fr);
+}
+
+.design-switcher-menu .app-menu-item:has(> .app-menu-item-label + *) {
+  --menu-item-columns: minmax(0, 1fr) 16px;
+}
+
+.design-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: var(--control-height-small);
+  border: 1px solid var(--border-muted);
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--text-muted);
+  background: var(--surface);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.design-agent .app-loading-spinner {
+  color: var(--primary-hover);
+  stroke-width: 2.75;
+}
+
+.design-prompt {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  z-index: 2;
+  width: min(720px, calc(100% - 32px));
+  transform: translateX(-50%);
+}
+
+/* The chip keeps the height it has with its remove button, and room on the right without it. */
+.design-prompt .design-prompt-target {
+  box-sizing: border-box;
+  min-height: 30px;
+}
+
+.design-prompt .design-prompt-target:not(:has(.app-icon-button)) {
+  padding-right: 8px;
+}
+
+.design-prompt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.design-prompt-status:empty {
+  margin: 0;
+}
+
+.design-prompt-logs {
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  color: var(--primary);
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.design-prompt-logs:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.design-logs {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 70%);
+  border-left: 1px solid var(--border-muted);
+  background: var(--surface);
+}
+
+.design-logs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 6px 8px 6px 14px;
+}
+
+.design-logs-header h2 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* A read-only field of a form dialog: its caption reads like the dialog's labels. */
+.design-dialog-label {
+  margin-top: 6px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.design-dialog-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--control-height-medium);
+  color: var(--text-strong);
+  font-size: 13px;
+}
+
+.agent-form-dialog .design-dialog-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.design-dialog-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-meta);
+}
+
+/* Multiline twin of the house Input, which has no textarea variant. */
+.design-dialog-textarea {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  padding: 7px 9px;
+  color: var(--text-strong);
+  background: var(--surface-control);
+  font: inherit;
+  font-size: var(--control-font-size);
+  line-height: 1.5;
+}
+
+.design-dialog-textarea::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.design-dialog-textarea:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.design-dialog-textarea:focus-visible {
+  border-color: var(--focus-ring);
+  outline-color: color-mix(in srgb, var(--focus-ring) 18%, transparent);
+}
+
+.design-dialog-textarea[aria-invalid="true"] {
+  border-color: var(--danger-border);
+}
+
+.design-dialog-textarea:disabled {
+  opacity: 0.42;
+}

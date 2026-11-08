@@ -1,0 +1,161 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  RELEASES_REPO: ${{ github.repository }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate release tag
+        run: node -e "const c=JSON.parse(require('node:fs').readFileSync('src-tauri/tauri.conf.json','utf8')); if (process.env.GITHUB_REF_NAME !== 'v'+c.version) { console.error('Tag must be v'+c.version); process.exit(1) }"
+
+      # Created once before the matrix: parallel tauri-action jobs race on release creation.
+      - name: Create draft release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$RELEASES_REPO" > /dev/null 2>&1; then
+            changelog="docs/changelog/${GITHUB_REF_NAME#v}.en.md"
+            if [ -f "$changelog" ]; then
+              # The release title already names the version: drop the file's `#` title.
+              awk 'NR == 1 && /^# / { next } started || NF { started = 1; print }' "$changelog" > release-notes.md
+            else
+              echo "::warning::$changelog is missing; the release uses a placeholder."
+              echo "Changelog coming soon." > release-notes.md
+            fi
+            gh release create "$GITHUB_REF_NAME" --repo "$RELEASES_REPO" --draft --target main \
+              --title "Soreno $GITHUB_REF_NAME" --notes-file release-notes.md
+          fi
+          api_url="$(gh release view "$GITHUB_REF_NAME" --repo "$RELEASES_REPO" --json apiUrl --jq .apiUrl)"
+          echo "id=${api_url##*/}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: --config src-tauri/tauri.release.conf.json --bundles nsis
+          - platform: macos-latest
+            args: --config src-tauri/tauri.release.conf.json --target aarch64-apple-darwin --bundles app,dmg
+          - platform: macos-latest
+            args: --config src-tauri/tauri.release.conf.json --target x86_64-apple-darwin --bundles app,dmg
+          # The oldest supported runner: its glibc and WebKitGTK set the minimum users need.
+          - platform: ubuntu-22.04
+            args: --config src-tauri/tauri.release.conf.json --bundles appimage,deb,rpm
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Check Apple signing credentials
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              exit 1
+            fi
+          done
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ startsWith(matrix.platform, 'macos-') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # latest.json is assembled in finalize-release: tauri-action merges it without locking.
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ runner.os == 'macOS' && secrets.APPLE_CERTIFICATE || '' }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+          APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
+          APPLE_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          uploadUpdaterJson: false
+          args: ${{ matrix.args }}
+
+  finalize-release:
+    needs: [create-release, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload updater manifest and publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          assets="$(gh api --paginate "repos/$RELEASES_REPO/releases/$RELEASE_ID/assets" --jq '.[] | {name, id}' | jq -s .)"
+          asset_id() {
+            jq -r --arg name "$1" '.[] | select(.name == $name) | .id' <<< "$assets"
+          }
+          platform() {
+            local key="$1" bundle="$2" file="$3" id sig_id signature url
+            id="$(asset_id "$file")"
+            sig_id="$(asset_id "$file.sig")"
+            if [ -z "$id" ] || [ -z "$sig_id" ]; then
+              echo "Missing $file or $file.sig in release" >&2
+              exit 1
+            fi
+            signature="$(gh api -H 'Accept: application/octet-stream' "repos/$RELEASES_REPO/releases/assets/$sig_id")"
+            url="https://api.github.com/repos/$RELEASES_REPO/releases/assets/$id"
+            jq -n --arg key "$key" --arg bundle "$bundle" --arg signature "$signature" --arg url "$url" \
+              '{($key): {signature: $signature, url: $url}, ($key + "-" + $bundle): {signature: $signature, url: $url}}'
+          }
+          platform darwin-aarch64 app "Soreno_${version}_aarch64.app.tar.gz" > darwin-aarch64.json
+          platform darwin-x86_64 app "Soreno_${version}_x64.app.tar.gz" > darwin-x86_64.json
+          platform windows-x86_64 nsis "Soreno_${version}_x64-setup.exe" > windows-x86_64.json
+          # Bundle keys only: each Linux install updates with its own format (pkexec for .deb/.rpm).
+          {
+            platform linux-x86_64 appimage "Soreno_${version}_amd64.AppImage"
+            platform linux-x86_64 deb "Soreno_${version}_amd64.deb"
+            platform linux-x86_64 rpm "Soreno-${version}-1.x86_64.rpm"
+          } | jq -s 'add | del(."linux-x86_64")' > linux-x86_64.json
+          notes="$(gh api "repos/$RELEASES_REPO/releases/$RELEASE_ID" --jq .body)"
+          jq -s --arg version "$version" --arg notes "$notes" --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{version: $version, notes: $notes, pub_date: $pub_date, platforms: add}' \
+            darwin-aarch64.json darwin-x86_64.json windows-x86_64.json linux-x86_64.json > latest.json
+          gh release upload "$GITHUB_REF_NAME" latest.json --repo "$RELEASES_REPO" --clobber
+          gh release edit "$GITHUB_REF_NAME" --repo "$RELEASES_REPO" --draft=false --latest

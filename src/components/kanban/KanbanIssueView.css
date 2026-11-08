@@ -1,0 +1,666 @@
+.kanban-issue-view {
+  container: kanban-issue / inline-size;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.kanban-issue-view:focus,
+.kanban-issue-attach:focus {
+  outline: none;
+}
+
+/* Hosts the absolutely placed issue view in the agents' side panel. */
+.kanban-issue-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.kanban-issue-panel .git-panel-heading > p {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.kanban-issue-attach {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+/* Only the list scrolls: the create button and the search stay in reach. */
+.kanban-issue-attach-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  padding: 12px 10px;
+}
+
+.kanban-issue-attach-body > .app-input {
+  align-self: stretch;
+  margin-top: 8px;
+}
+
+.kanban-issue-attach-body > .kanban-issue-children {
+  align-self: stretch;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.kanban-issue-child:focus-visible,
+.kanban-issue-property-button:focus-visible,
+.kanban-issue-title-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.kanban-issue-body {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.kanban-issue-main {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 36px 40px 56px;
+}
+
+.kanban-issue-title {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 20px;
+  font-weight: 720;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.kanban-issue-title-button {
+  max-width: 100%;
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  color: inherit;
+  background: transparent;
+  cursor: text;
+  font: inherit;
+  text-align: left;
+}
+
+.kanban-issue-title-button:hover {
+  background: var(--surface-hover);
+}
+
+.kanban-issue-title-input.app-input {
+  --app-input-height: auto;
+  --app-input-padding-x: 6px;
+  --app-input-font-size: 20px;
+
+  width: calc(100% + 14px);
+  margin: -3px -7px;
+  padding-block: 1px;
+}
+
+.kanban-issue-title-input .app-input-element {
+  color: var(--text-heading);
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.kanban-issue-muted {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.kanban-issue-description {
+  min-width: 0;
+}
+
+.kanban-issue-description .markdown-editor .cm-content {
+  min-height: 48px;
+}
+
+.kanban-issue-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 14px;
+}
+
+.kanban-issue-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kanban-markdown {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.kanban-markdown p,
+.kanban-markdown blockquote,
+.kanban-markdown ul,
+.kanban-markdown ol,
+.kanban-markdown pre {
+  margin: 0 0 10px;
+}
+
+.kanban-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.kanban-markdown h3 {
+  margin: 16px 0 6px;
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.kanban-markdown h3:first-child {
+  margin-top: 0;
+}
+
+.kanban-markdown ul,
+.kanban-markdown ol {
+  display: grid;
+  gap: 4px;
+  padding-left: 20px;
+}
+
+.kanban-markdown ul {
+  list-style: disc;
+}
+
+.kanban-markdown ol {
+  list-style: decimal;
+}
+
+.kanban-markdown blockquote {
+  border-left: 3px solid var(--border-muted);
+  padding-left: 10px;
+  color: var(--text-soft);
+}
+
+.kanban-markdown hr {
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--border-muted);
+}
+
+.kanban-markdown code {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: var(--surface-control);
+  font-size: 0.9em;
+}
+
+.kanban-markdown pre {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--surface-control);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.kanban-markdown pre code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.kanban-markdown a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.kanban-markdown a:hover {
+  color: var(--primary-hover);
+}
+
+.kanban-markdown a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.kanban-issue-children {
+  display: grid;
+  margin: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 7px;
+  padding: 4px;
+  list-style: none;
+}
+
+.kanban-issue-child {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 32px;
+  border-radius: 5px;
+  padding: 5px 8px;
+  color: var(--text-strong);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.kanban-issue-child:hover {
+  background: var(--surface-hover);
+}
+
+.kanban-issue-child-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-issue-activity {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kanban-issue-event {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.kanban-issue-comment {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.kanban-issue-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.kanban-issue-comment-header > span[aria-hidden="true"],
+.kanban-issue-property > span[aria-hidden="true"] {
+  display: inline-flex;
+  flex: none;
+}
+
+.kanban-issue-comment-author {
+  overflow: hidden;
+  color: var(--text-heading);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-issue-comment-delete {
+  margin-left: auto;
+}
+
+.kanban-issue-comment-agent-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.kanban-issue-comment-agent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kanban-issue-comment-agent > .app-button {
+  flex: none;
+}
+
+.kanban-issue-comment-agent-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-meta);
+  font-size: 12px;
+}
+
+.kanban-issue-comment-agent-status > svg {
+  flex: none;
+}
+
+.kanban-issue-comment-agent-status > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-issue-comment-agent-status[data-status="failed"] {
+  color: var(--danger-text);
+}
+
+.kanban-issue-composer {
+  display: grid;
+  gap: 8px;
+}
+
+.kanban-issue-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  max-height: 240px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  padding: 8px 10px;
+  color: var(--text);
+  background: var(--surface-control);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.kanban-issue-composer textarea::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.kanban-issue-composer textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.kanban-issue-composer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.kanban-issue-sidebar {
+  position: sticky;
+  top: 0;
+  display: grid;
+  flex: none;
+  align-content: start;
+  gap: 22px;
+  /* Keeps the main column usable when the stored width exceeds the board's room. */
+  width: min(var(--kanban-issue-sidebar-width, 240px), 45%);
+  min-height: 100%;
+  border-left: 1px solid var(--border-muted);
+  padding: 24px 16px;
+}
+
+.kanban-issue-sidebar-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  z-index: 2;
+  width: 5px;
+  outline: 0;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.kanban-issue-sidebar-resizer::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  transform: translateX(-50%);
+  background: transparent;
+  content: "";
+  transition:
+    background 120ms ease,
+    width 120ms ease;
+}
+
+.kanban-issue-sidebar-resizer:hover::before,
+.kanban-issue-sidebar-resizer:focus-visible::before {
+  width: 2px;
+  background: var(--resizer-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kanban-issue-sidebar-resizer::before {
+    transition: none;
+  }
+}
+
+.kanban-issue-sidebar-section {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kanban-issue-sidebar-label {
+  margin: 0 0 4px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+/* The negative margin offsets border + padding so contents align with section labels. */
+.kanban-issue-property,
+.kanban-issue-property-select.app-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  margin-left: -9px;
+  padding: 3px 8px;
+  color: var(--text-strong);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.kanban-issue-property-select.app-select {
+  height: 28px;
+}
+
+.kanban-issue-property-button {
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.kanban-issue-property-button:hover {
+  background: var(--surface-hover);
+}
+
+.kanban-issue-project-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kanban-issue-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kanban-issue-label-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.kanban-issue-menu-positioner {
+  z-index: 70;
+}
+
+.kanban-issue-labels-menu {
+  --menu-item-columns: 8px minmax(0, 1fr) auto;
+
+  min-width: 200px;
+  max-width: calc(100vw - 16px);
+  max-height: var(--available-height);
+  overflow-y: auto;
+}
+
+.kanban-issue-labels-input {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+/* The highlight stays on the first label while the new label input has the focus. */
+.kanban-issue-labels-menu .app-menu-item[data-highlighted]:focus {
+  background: var(--menu-hover-bg);
+}
+
+.kanban-issue-labels-menu .app-menu-item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.kanban-issue-agent {
+  border-top: 1px solid var(--border-muted);
+  padding-top: 18px;
+}
+
+/* Same row geometry as the selects above so checkbox, icons and labels share one column. */
+.kanban-issue-agent-option {
+  color: var(--text-soft);
+  cursor: pointer;
+  user-select: none;
+}
+
+.kanban-issue-agent-option .app-checkbox {
+  --app-checkbox-size: 14px;
+  --app-checkbox-icon-size: 10px;
+}
+
+.kanban-issue-agent-detail {
+  margin-top: -4px;
+  padding-left: 30px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.kanban-issue-agent-detail > svg {
+  flex: none;
+}
+
+.kanban-issue-agent-form {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Below the last session's row, separate the new-agent form from it. */
+.kanban-issue-agent-form:not(.kanban-issue-sidebar-label + *) {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-muted);
+}
+
+.kanban-issue-agent-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.kanban-issue-agent-activity {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 60%;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container kanban-issue (max-width: 720px) {
+  /* The main column's children join the body, so the properties come right under the title. */
+  .kanban-issue-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    /* The body scrolls: rows keep their content's height instead of sharing the visible one. */
+    grid-auto-rows: max-content;
+    gap: 18px;
+    padding: 24px 20px 32px;
+  }
+
+  .kanban-issue-main {
+    display: contents;
+  }
+
+  .kanban-issue-title {
+    order: -2;
+  }
+
+  .kanban-issue-sidebar {
+    order: -1;
+    position: static;
+    width: auto;
+    min-height: 0;
+    border-block: 1px solid var(--border-muted);
+    border-left: 0;
+    padding: 16px 0;
+  }
+
+  .kanban-issue-sidebar-resizer {
+    display: none;
+  }
+}

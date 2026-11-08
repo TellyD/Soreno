@@ -1,0 +1,50 @@
+.task-linked-note-editor {
+  z-index: 25;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  grid-area: 1 / 2;
+  align-self: stretch;
+  justify-self: end;
+  width: min(
+    720px,
+    max(360px, calc(100% - var(--sidebar-width, 280px) - 48px))
+  );
+  max-width: 100%;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  background: var(--editor-bg);
+  animation: task-linked-note-editor-slide-in 180ms ease-out;
+}
+
+.task-linked-note-editor[data-closing="true"] {
+  animation: task-linked-note-editor-slide-out 180ms ease-in forwards;
+}
+
+@keyframes task-linked-note-editor-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes task-linked-note-editor-slide-out {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-linked-note-editor,
+  .task-linked-note-editor[data-closing="true"] {
+    /* Keep the completion event without visible motion. */
+    animation-duration: 1ms;
+  }
+}

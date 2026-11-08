@@ -1,0 +1,86 @@
+name: Build macOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: Skip the frontend and Rust tests
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    name: Build signed macOS artifacts
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test frontend
+        if: ${{ !inputs.skip_tests }}
+        run: npm test
+
+      - name: Test Rust
+        if: ${{ !inputs.skip_tests }}
+        working-directory: src-tauri
+        run: cargo test
+
+      - name: Build macOS artifacts
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              exit 1
+            fi
+          done
+          APPLE_SIGNING_IDENTITY="$(node -p "require('./src-tauri/tauri.release.conf.json').bundle.macOS.signingIdentity")"
+          export APPLE_SIGNING_IDENTITY
+          npm run build:mac
+          ditto -c -k --sequesterRsrc --keepParent \
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/Soreno.app \
+            "$RUNNER_TEMP/Soreno-macOS-universal.zip"
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Verify Apple signature and notarization
+        run: |
+          app="src-tauri/target/universal-apple-darwin/release/bundle/macos/Soreno.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+          xcrun stapler validate "$app"
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v6
+        with:
+          name: Soreno-macOS-dmg
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Upload portable macOS archive
+        uses: actions/upload-artifact@v6
+        with:
+          name: Soreno-macOS-portable
+          path: ${{ runner.temp }}/Soreno-macOS-universal.zip
+          if-no-files-found: error

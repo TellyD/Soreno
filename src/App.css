@@ -1,0 +1,516 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --color-card: var(--card-bg);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-text);
+  --color-secondary: var(--surface-panel);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-hover);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--surface-active);
+  --color-accent-foreground: var(--text);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--focus-ring);
+  --color-destructive: var(--danger-action);
+  --color-destructive-foreground: var(--danger-action-text);
+  --radius-sm: calc(var(--control-radius) - 2px);
+  --radius-md: var(--control-radius);
+  --radius-lg: calc(var(--control-radius) + 2px);
+}
+
+:root {
+  font-family:
+    "Inter Variable",
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--app-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  --app-bg: #f7f7f4;
+  --app-shell-bg: #fbfbfa;
+  --surface: #ffffff;
+  --surface-muted: #fbfbfa;
+  --surface-panel: #f4f3f0;
+  --surface-control: #f8f8f6;
+  --surface-hover: #f1f1ee;
+  --surface-active: #ecebea;
+  --card-bg: color-mix(in srgb, var(--surface) 72%, var(--surface-active));
+  --card-bg-hover: color-mix(
+    in srgb,
+    var(--surface) 64%,
+    var(--surface-active)
+  );
+  --surface-selected: #dce8ff;
+  --menu-hover-bg: var(--surface-hover);
+  --surface-selected-muted: #eef3ff;
+  /* Row highlight without accent color: selection, list hovers. */
+  --surface-highlight: #f3f3f1;
+  --border-subtle: #ecebe8;
+  --border-muted: #e8e7e3;
+  --border: #d9d8d3;
+  --border-strong: #deddd8;
+  --text-strong: #1f2620;
+  --text-heading: #383a35;
+  --text: #363832;
+  --text-soft: #4d5048;
+  --text-muted: #777f8e;
+  --text-preview: #59636f;
+  --text-meta: #8a8d85;
+  --text-faint: #8a8d85;
+  --text-disabled: #a6aaa2;
+  --primary: #2563eb;
+  --primary-hover: #1d55d7;
+  --primary-text: #ffffff;
+  --primary-soft: #eef3ff;
+  --success: #22c55e;
+  --success-text: #ffffff;
+  --focus-ring: #2f5ec4;
+  --selection-bg: rgba(99, 132, 232, 0.28);
+  --resizer-hover: #9bb4ff;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(138, 141, 133, 0.34);
+  --scrollbar-thumb-hover: rgba(138, 141, 133, 0.56);
+  --badge-bg: #e58b2c;
+  --danger-text: #893434;
+  --danger-border: #edc3bd;
+  --danger-bg: #fff4f2;
+  --danger-menu-hover-bg: #fff4f2;
+  --danger-menu-hover-text: var(--danger-text);
+  --danger-action: #c24135;
+  --danger-action-hover: #a9342b;
+  --danger-action-text: #ffffff;
+  --warning-text: #7a4a12;
+  --warning-border: #efd3a6;
+  --warning-bg: #fff8ec;
+  --warning-accent: #c7791c;
+  --button-secondary-bg: #ffffff;
+  --button-secondary-bg-hover: #f8f8f6;
+  --button-secondary-bg-active: #ecebea;
+  --button-secondary-border: #d6d8dc;
+  --button-secondary-border-hover: #b9bec7;
+  --button-secondary-text: #32363d;
+  --button-primary-bg: #2563eb;
+  --button-primary-bg-hover: #1d55d7;
+  --button-primary-bg-active: #1748ba;
+  --button-primary-text: #ffffff;
+  --button-danger-bg: #c24135;
+  --button-danger-bg-hover: #a9342b;
+  --button-danger-bg-active: #8f2b23;
+  --button-danger-text: #ffffff;
+  --button-disabled-bg: #f2f3f4;
+  --button-disabled-border: #d8dbe0;
+  --button-disabled-text: #858b96;
+  --icon-size-xs: 13px;
+  --icon-size-sm: 14px;
+  --icon-size-md: 15px;
+  --icon-size-lg: 16px;
+  --icon-size-xl: 18px;
+  --icon-size-2xl: 21px;
+  --control-height-small: 30px;
+  --control-height-medium: 34px;
+  --control-height-large: 38px;
+  --control-radius: 6px;
+  --control-font-size: 12px;
+  --overlay-bg: rgba(32, 34, 31, 0.38);
+  --count-badge-bg: #eef0f3;
+  --count-badge-border: #dde1e6;
+  --editor-bg: #ffffff;
+  --editor-text: #333630;
+  --cm-heading-1: #242721;
+  --cm-heading-2: #2a2d27;
+  --cm-heading-3: #30332e;
+  --cm-strong: #22251f;
+  --cm-link: #2f5ec4;
+  --cm-code-text: #2b3130;
+  --cm-code-bg: #f0f1ee;
+  --cm-syntax-keyword: #7950a3;
+  --cm-syntax-string: #3d6b3a;
+  --cm-syntax-number: #98541e;
+  --cm-syntax-comment: #686e65;
+  --cm-syntax-function: #32699a;
+  --cm-syntax-type: #376d72;
+  --cm-quote-text: #5f655c;
+  --cm-muted: #92958d;
+  --terminal-bg: #ffffff;
+  --terminal-text: #363832;
+}
+
+:root[data-theme="dark"] {
+  --app-bg: #282c34;
+  --app-shell-bg: #282c34;
+  --surface: #282c34;
+  --surface-muted: #282c34;
+  --surface-panel: #282c34;
+  --surface-control: #2c313a;
+  --surface-hover: #2c313a;
+  --surface-active: #3e4451;
+  --card-bg: color-mix(in srgb, var(--surface) 72%, var(--surface-active));
+  --card-bg-hover: color-mix(
+    in srgb,
+    var(--surface) 64%,
+    var(--surface-active)
+  );
+  --surface-selected: #2f4566;
+  --menu-hover-bg: #3a414f;
+  --surface-selected-muted: #3a314a;
+  --surface-highlight: #343944;
+  --border-subtle: #313640;
+  --border-muted: #3e4451;
+  --border: #4b5263;
+  --border-strong: #5c6370;
+  --text-strong: #e6efff;
+  --text-heading: #d7dae0;
+  --text: #abb2bf;
+  --text-soft: #c8ccd4;
+  --text-muted: #8d96a8;
+  --text-preview: #c8ccd4;
+  --text-meta: #757d8e;
+  --text-faint: #757d8e;
+  --text-disabled: #5c6370;
+  --primary: #61afef;
+  --primary-hover: #7bc0ff;
+  --primary-text: #1b2028;
+  --primary-soft: #2f4566;
+  --success: #57c878;
+  --success-text: #1b2028;
+  --focus-ring: #61afef;
+  --selection-bg: rgba(97, 175, 239, 0.42);
+  --resizer-hover: #61afef;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(141, 150, 168, 0.36);
+  --scrollbar-thumb-hover: rgba(141, 150, 168, 0.6);
+  --badge-bg: #d19a66;
+  --danger-text: #e2727b;
+  --danger-border: #7f3f47;
+  --danger-bg: #3a252c;
+  --danger-menu-hover-bg: #5a303b;
+  --danger-menu-hover-text: #ffa5ad;
+  --danger-action: #e06c75;
+  --danger-action-hover: #f17a83;
+  --danger-action-text: #1b2028;
+  --warning-text: #e5b77a;
+  --warning-border: #6f5431;
+  --warning-bg: #352e25;
+  --warning-accent: #d19a66;
+  --button-secondary-bg: #282c34;
+  --button-secondary-bg-hover: #323844;
+  --button-secondary-bg-active: #3a414f;
+  --button-secondary-border: #4b5263;
+  --button-secondary-border-hover: #687185;
+  --button-secondary-text: #dce1ea;
+  --button-primary-bg: #2d70b6;
+  --button-primary-bg-hover: #3179c4;
+  --button-primary-bg-active: #2869ad;
+  --button-primary-text: #ffffff;
+  --button-danger-bg: #b94b56;
+  --button-danger-bg-hover: #c85a64;
+  --button-danger-bg-active: #a6404b;
+  --button-danger-text: #ffffff;
+  --button-disabled-bg: #2c313a;
+  --button-disabled-border: #414958;
+  --button-disabled-text: #858e9e;
+  --overlay-bg: rgba(17, 20, 26, 0.64);
+  --count-badge-bg: rgba(255, 255, 255, 0.08);
+  --count-badge-border: rgba(255, 255, 255, 0.08);
+  --editor-bg: #282c34;
+  --editor-text: #abb2bf;
+  --cm-heading-1: #e6efff;
+  --cm-heading-2: #e6efff;
+  --cm-heading-3: #d7dae0;
+  --cm-strong: #e6efff;
+  --cm-link: #61afef;
+  --cm-code-text: #abb2bf;
+  --cm-code-bg: #2c313a;
+  --cm-syntax-keyword: #c7a0df;
+  --cm-syntax-string: #a3c78c;
+  --cm-syntax-number: #e0ac79;
+  --cm-syntax-comment: #a0a79c;
+  --cm-syntax-function: #82b9e6;
+  --cm-syntax-type: #8ec6c9;
+  --cm-quote-text: #abb2bf;
+  --cm-muted: #5c6370;
+}
+
+:root[data-terminal-theme="dark"] {
+  --terminal-bg: #282c34;
+  --terminal-text: #d7dae0;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 42px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: var(--scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html,
+body,
+#root {
+  min-width: 920px;
+  min-height: 620px;
+  height: 100%;
+  margin: 0;
+  background: var(--app-shell-bg);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+:where(button:not([data-slot])) {
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+/*
+ * Let lucide-react's `size` prop drive icon dimensions by default.
+ * Set `--icon-size` only on containers that intentionally enforce one size.
+ * Keep specificity low so UI primitives retain their own icon sizing.
+ */
+:where(
+    .app-title-bar,
+    .vault-sidebar,
+    .note-browser,
+    .editor-toolbar,
+    .status-bar,
+    .settings-modal,
+    .confirmation-dialog,
+    .task-board
+  )
+  svg {
+  width: var(--icon-size, auto);
+  height: var(--icon-size, auto);
+  flex: 0 0 auto;
+}
+
+:where(button, input, textarea, select, a, [tabindex]):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--focus-ring) 28%, transparent);
+  outline-offset: 1px;
+}
+
+button:disabled:not(.app-button) {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-rows: 34px minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--app-shell-bg);
+}
+
+.app-shell-loading {
+  grid-template-rows: 34px minmax(0, 1fr);
+}
+
+.app-loading {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.app-loading-spinner {
+  display: inline-flex;
+  color: var(--primary);
+  transform-origin: center;
+  animation: app-loading-spin 900ms linear infinite normal;
+}
+
+@keyframes app-loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-loading-spinner {
+    animation: none;
+  }
+}
+
+.workspace-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-stage > .workspace {
+  grid-area: 1 / 2;
+}
+
+.vault-sidebar,
+.note-browser,
+.editor-pane {
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.section-title button,
+.browser-actions button,
+.editor-back-button,
+.toolbar-actions button,
+.status-bar > button,
+.status-segment > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  color: var(--text-faint);
+}
+
+.section-title button:hover,
+.browser-actions button:hover,
+.editor-back-button:hover,
+.toolbar-actions button:hover,
+.status-bar > button:hover,
+.status-segment > button:hover {
+  color: var(--text-heading);
+  background: var(--surface-active);
+}
+
+.browser-toolbar,
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 50px;
+  min-width: 0;
+  border-bottom: 1px solid var(--border-muted);
+  padding: 0 14px;
+  background: var(--surface);
+}
+
+.browser-toolbar {
+  display: grid;
+  align-content: start;
+  align-items: stretch;
+  gap: 0;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  min-height: 50px;
+  padding: 0 14px 0 16px;
+}
+
+.browser-toolbar-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 49px;
+  min-width: 0;
+  gap: 10px;
+}
+
+.browser-title,
+.browser-actions,
+.editor-title,
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+}
+
+.browser-actions {
+  justify-content: flex-end;
+}
+
+.browser-title h1,
+.editor-title h2 {
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 14px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 120px;
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.browser-title svg,
+.editor-title svg {
+  --icon-size: var(--icon-size-md);
+}
+
+@media (max-width: 920px) {
+  html,
+  body,
+  #root {
+    min-width: 0;
+  }
+}

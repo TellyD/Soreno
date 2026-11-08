@@ -1,0 +1,770 @@
+.markdown-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--editor-text);
+  background: var(--editor-bg);
+}
+
+.markdown-editor-content {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.markdown-toolbar-host {
+  display: contents;
+}
+
+.markdown-toolbar-overlay {
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex: 0 0 auto;
+  padding-bottom: 24px;
+  margin-bottom: -24px;
+  pointer-events: none;
+}
+
+.markdown-toolbar-overlay::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 24px;
+  background: linear-gradient(to bottom, var(--editor-bg), transparent);
+  pointer-events: none;
+}
+
+.markdown-editor .cm-editor {
+  height: 100%;
+  color: var(--editor-text);
+  background: var(--editor-bg);
+}
+
+.markdown-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.markdown-editor .cm-scroller {
+  overflow: auto;
+  flex-direction: column;
+  font-family: inherit;
+  line-height: 1.58;
+}
+.markdown-editor .cm-content {
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  padding: 38px clamp(22px, 6%, 76px) 96px;
+  font-family: inherit;
+  font-size: 15px;
+  caret-color: var(--focus-ring);
+}
+.markdown-editor .cm-line {
+  padding: 0;
+  unicode-bidi: plaintext;
+}
+.markdown-editor .cm-content ::selection,
+.markdown-editor .cm-content::selection {
+  background: var(--selection-bg);
+  color: var(--editor-text);
+}
+.markdown-editor .cm-cursor {
+  border-inline-start-color: var(--focus-ring);
+}
+.markdown-editor .cm-placeholder {
+  color: var(--text-meta);
+}
+.markdown-editor-preview .cm-content {
+  padding-top: 24px;
+}
+.markdown-editor-source .cm-content {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+}
+
+.markdown-editor.markdown-editor-inline {
+  flex: none;
+  overflow: visible;
+  background: transparent;
+}
+.markdown-editor-inline .cm-editor {
+  height: auto;
+  background: transparent;
+}
+.markdown-editor-inline .cm-scroller {
+  overflow: visible;
+}
+.markdown-editor.markdown-editor-inline .cm-content {
+  padding: 0;
+  font-size: 14px;
+}
+/* Flush with the text, and above it rather than over its first line. */
+.markdown-editor-inline .markdown-toolbar-overlay {
+  background: var(--editor-bg);
+  margin-bottom: 0;
+  /* The 24px the notes' content leaves above its text, under the row's own 6px. */
+  padding-bottom: 24px;
+}
+.markdown-editor-inline .markdown-toolbar-overlay::after {
+  display: none;
+}
+.markdown-editor-inline .markdown-toolbar-row {
+  padding: 0 0 6px;
+}
+
+.markdown-editor-preview .cm-md-heading {
+  color: var(--cm-heading-3);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.markdown-editor-preview .cm-md-block-gap {
+  padding-top: 6px;
+}
+.markdown-editor-preview .cm-md-heading.cm-md-block-gap {
+  padding-top: 12px;
+}
+.markdown-editor-preview .cm-md-h1 {
+  font-size: 2rem;
+  color: var(--cm-heading-1);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.markdown-editor-preview .cm-md-h2 {
+  font-size: 1.55rem;
+  color: var(--cm-heading-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.markdown-editor-preview .cm-md-h3 {
+  font-size: 1.24rem;
+}
+.markdown-editor-preview .cm-md-h4 {
+  font-size: 1.1rem;
+}
+.markdown-editor-preview .cm-md-h5,
+.markdown-editor-preview .cm-md-h6 {
+  font-size: 1rem;
+}
+.markdown-editor-preview .cm-md-strong {
+  color: var(--cm-strong);
+  font-weight: 750;
+}
+.markdown-editor-preview .cm-md-emphasis {
+  font-style: italic;
+}
+.markdown-editor-preview .cm-md-strike {
+  text-decoration: line-through;
+}
+.markdown-editor-preview .cm-md-link {
+  color: var(--cm-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: text;
+}
+.markdown-editor-preview .cm-md-quote {
+  border-inline-start: 2px solid var(--border);
+  padding-inline-start: 12px;
+  color: var(--cm-quote-text);
+}
+.markdown-editor-preview .cm-md-list {
+  color: var(--editor-text);
+}
+.markdown-editor-preview .cm-md-bullet-line {
+  --md-list-hang: calc(var(--md-list-indent) + 1.5em);
+  padding-inline-start: var(--md-list-hang);
+  text-indent: calc(-1 * var(--md-list-hang));
+}
+.markdown-editor-preview .cm-md-bullet {
+  display: inline-block;
+  box-sizing: border-box;
+  width: var(--md-list-hang);
+  padding-inline-end: 0.6em;
+  text-align: end;
+  text-indent: 0;
+}
+.markdown-editor-preview .cm-md-ordered-line {
+  --md-list-hang: calc(
+    var(--md-list-indent) + var(--md-list-marker) * 1ch + 0.6em
+  );
+}
+.markdown-editor-preview .cm-md-task-line {
+  --md-list-hang: calc(var(--md-list-indent) + 2em);
+}
+/* The checkbox fills the hang like a bullet; 16px is its width below. */
+.markdown-editor-preview .cm-md-task-line .cm-md-task {
+  margin: 0 0.6em 0 calc(var(--md-list-hang) - 16px - 0.6em);
+}
+.markdown-editor-preview .cm-md-inline-code,
+.markdown-editor-preview .cm-md-code-block {
+  color: var(--cm-code-text);
+  background: var(--cm-code-bg);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92em;
+}
+.markdown-editor-preview .cm-md-inline-code {
+  border-radius: 3px;
+}
+.markdown-editor-preview .cm-md-code-block {
+  padding-inline: 12px;
+}
+.markdown-editor-preview .cm-md-code-start {
+  position: relative;
+  min-height: 28px;
+  padding-top: 4px;
+  padding-inline-end: 42px;
+  border-start-start-radius: 6px;
+  border-start-end-radius: 6px;
+}
+.markdown-editor-preview .cm-md-code-start:has(.cm-md-code-language) {
+  padding-top: 32px;
+  padding-inline-end: 12px;
+}
+.markdown-editor-preview .cm-md-code-end {
+  padding-bottom: 4px;
+  border-end-start-radius: 6px;
+  border-end-end-radius: 6px;
+}
+.markdown-editor .cm-md-code-copy {
+  position: absolute;
+  inset-inline-end: 3px;
+  top: 3px;
+  display: inline-flex;
+  font-family: inherit;
+}
+.markdown-editor .cm-md-code-language {
+  position: absolute;
+  inset-inline-start: 5px;
+  top: 3px;
+  max-width: calc(100% - 41px);
+  font-family: inherit;
+}
+.markdown-editor .cm-md-code-language .app-select {
+  --app-select-height: 24px;
+  --app-select-padding-x: 7px;
+  --app-select-gap: 5px;
+  --app-select-font-size: 11px;
+  width: 136px;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  font-size: var(--app-select-font-size);
+  font-weight: 500;
+}
+.markdown-editor .cm-md-code-language .app-select:hover:not(:disabled) {
+  color: var(--text-heading);
+  background: transparent;
+}
+.markdown-editor .cm-md-code-copy-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.markdown-editor-preview .cm-md-rule {
+  border-bottom: 1px solid var(--border-muted);
+}
+.markdown-editor-preview .cm-md-rule-preview {
+  position: relative;
+  border-bottom: 0;
+}
+.markdown-editor-preview .cm-md-rule-preview::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  border-top: 1px solid var(--border-muted);
+  pointer-events: none;
+}
+.markdown-editor .cm-md-task,
+.markdown-toolbar-settings input[type="checkbox"] {
+  appearance: none;
+  position: relative;
+  width: 16px;
+  height: 16px;
+  margin: 0 6px 0 0;
+  vertical-align: -3px;
+  border: 1px solid var(--text-meta);
+  border-radius: 4px;
+  background: var(--editor-bg);
+  cursor: pointer;
+}
+.markdown-editor .cm-md-task:hover,
+.markdown-toolbar-settings input[type="checkbox"]:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.markdown-editor .cm-md-task:checked,
+.markdown-toolbar-settings input[type="checkbox"]:checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.markdown-editor .cm-md-task:checked:hover,
+.markdown-toolbar-settings input[type="checkbox"]:checked:hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+}
+.markdown-editor .cm-md-task:checked::after,
+.markdown-toolbar-settings input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--primary-text);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.markdown-editor .cm-md-task:disabled,
+.markdown-toolbar-settings input[type="checkbox"]:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+@media (forced-colors: active) {
+  .markdown-editor .cm-md-task,
+  .markdown-toolbar-settings input[type="checkbox"] {
+    appearance: auto;
+  }
+  .markdown-editor .cm-md-task::after,
+  .markdown-toolbar-settings input[type="checkbox"]::after {
+    display: none;
+  }
+}
+.markdown-editor .cm-md-widget {
+  max-width: 100%;
+  overflow-x: auto;
+  cursor: text;
+}
+.markdown-editor .cm-md-widget:focus-visible,
+.markdown-editor .cm-md-task:focus-visible,
+.markdown-toolbar-settings input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.markdown-editor .cm-md-widget img {
+  display: block;
+  max-width: min(100%, 720px);
+  height: auto;
+}
+.markdown-editor .cm-md-image {
+  position: relative;
+  width: fit-content;
+  max-width: min(100%, 720px);
+  overflow: visible;
+  cursor: pointer;
+}
+.markdown-editor .cm-md-image-resized {
+  max-width: 100%;
+}
+.markdown-editor .cm-md-image-resized img {
+  width: 100%;
+  max-width: 100%;
+}
+.markdown-editor .cm-md-image-selected,
+.markdown-editor .cm-md-image-select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.markdown-editor .cm-md-image-resize {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--editor-bg);
+  border-radius: 2px;
+  background: var(--focus-ring);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.markdown-editor .cm-md-image-resize:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.markdown-editor .cm-content:has(.cm-md-image-selected),
+.markdown-editor
+  .cm-content:has(.cm-md-image-gap-before, .cm-md-image-gap-after) {
+  caret-color: transparent;
+}
+.markdown-editor .cm-focused .cm-md-image-gap-before::after,
+.markdown-editor .cm-focused .cm-md-image-gap-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 20px;
+  border-top: 2px solid var(--focus-ring);
+  animation: cm-md-image-gap-blink 1.2s steps(1) infinite;
+  pointer-events: none;
+}
+.markdown-editor .cm-focused .cm-md-image-gap-before::after {
+  top: -6px;
+}
+.markdown-editor .cm-focused .cm-md-image-gap-after::after {
+  bottom: -6px;
+}
+@keyframes cm-md-image-gap-blink {
+  50% {
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .markdown-editor .cm-focused .cm-md-image-gap-before::after,
+  .markdown-editor .cm-focused .cm-md-image-gap-after::after {
+    animation: none;
+  }
+}
+.markdown-editor .cm-md-widget table {
+  border-collapse: collapse;
+  font: inherit;
+}
+.markdown-editor .cm-md-widget th,
+.markdown-editor .cm-md-widget td {
+  min-width: 60px;
+  border: 1px solid var(--border-strong);
+  padding: 6px 10px;
+}
+.markdown-editor .cm-md-widget th {
+  font-weight: 650;
+  background: var(--surface-muted);
+}
+.markdown-editor .cm-md-table th,
+.markdown-editor .cm-md-table td {
+  position: relative;
+  padding: 0;
+}
+.markdown-editor .cm-md-table-cell-preview {
+  position: relative;
+  display: block;
+  min-width: 8ch;
+  min-height: calc(1lh + 12px);
+  padding: 6px 10px;
+  white-space: pre;
+  pointer-events: none;
+}
+.markdown-editor .cm-md-table-cell-preview a[href] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.markdown-editor .cm-md-table-cell {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  caret-color: var(--focus-ring);
+}
+.markdown-editor .cm-md-table :is(th, td):hover {
+  background: var(--primary-soft);
+}
+.markdown-editor .cm-md-table-cell:focus {
+  opacity: 1;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  background: var(--primary-soft);
+}
+.markdown-editor .cm-md-table-cell:focus + .cm-md-table-cell-preview {
+  visibility: hidden;
+}
+.markdown-editor .cm-md-table {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: start;
+  gap: 2px;
+}
+.markdown-editor .cm-md-table-actions {
+  display: contents;
+}
+.markdown-editor .cm-md-table-add {
+  opacity: 0;
+}
+.markdown-editor .cm-md-table:is(:hover, :focus-within) .cm-md-table-add {
+  opacity: 1;
+}
+.markdown-editor .cm-md-table-add-row {
+  --app-icon-button-width: auto;
+  --app-icon-button-height: 18px;
+  grid-area: 2 / 1;
+}
+.markdown-editor .cm-md-table-add-column {
+  --app-icon-button-width: 18px;
+  --app-icon-button-height: auto;
+  grid-area: 1 / 2;
+}
+
+.markdown-toolbar-row {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 12px clamp(22px, 6%, 76px) 6px;
+  background: var(--editor-bg);
+}
+.markdown-toolbar-separator {
+  flex: 0 0 1px;
+  height: 16px;
+  margin-inline: 4px;
+  background: var(--border-muted);
+}
+.markdown-toolbar:empty + .markdown-toolbar-separator {
+  display: none;
+}
+.markdown-toolbar {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  user-select: none;
+  align-items: center;
+  gap: 2px;
+  min-height: 32px;
+}
+.markdown-toolbar:has(.markdown-toolbar-style) {
+  margin-inline-start: -9px;
+}
+.markdown-toolbar::-webkit-scrollbar {
+  display: none;
+}
+.markdown-toolbar :is(.app-select, .app-icon-button) {
+  outline-offset: -2px;
+}
+.markdown-toolbar[data-dragging],
+.markdown-toolbar[data-dragging] button {
+  cursor: grabbing;
+}
+.markdown-toolbar-row .app-icon-button {
+  --app-icon-button-size: 32px;
+  --app-icon-button-icon-size: 16px;
+  --app-icon-button-hover-bg: var(--surface-hover);
+  color: var(--text-soft);
+}
+.markdown-toolbar .app-icon-button[aria-pressed="true"] {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+.markdown-toolbar .markdown-toolbar-style {
+  --app-select-height: 32px;
+  --app-select-padding-x: 8px;
+  --app-select-icon-size: 16px;
+  flex: 0 0 auto;
+  width: 132px;
+  border-color: transparent;
+  background: transparent;
+  font-weight: 500;
+}
+.markdown-toolbar .markdown-toolbar-style:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+.markdown-toolbar-settings-overlay {
+  z-index: 60;
+}
+.markdown-toolbar-settings {
+  display: flex;
+  flex-direction: column;
+  width: min(600px, 100%);
+  max-height: calc(100dvh - 56px);
+}
+.markdown-toolbar-settings header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 0;
+}
+.markdown-toolbar-settings h2 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 760;
+}
+.markdown-toolbar-settings p {
+  margin: 8px 18px 24px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.markdown-toolbar-settings header + p {
+  margin-top: 0;
+}
+.markdown-toolbar-settings-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 28px;
+  align-items: start;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 18px 24px;
+}
+.markdown-toolbar-settings-column {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  min-width: 0;
+}
+.markdown-toolbar-settings fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+.markdown-toolbar-settings-options {
+  display: grid;
+  gap: 2px;
+}
+.markdown-toolbar-settings label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.markdown-toolbar-settings label:hover {
+  background: var(--surface-hover);
+}
+.markdown-toolbar-settings label:has(:checked) {
+  color: var(--text-heading);
+}
+.markdown-toolbar-settings label:has(:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.markdown-toolbar-settings input[type="checkbox"] {
+  order: 1;
+  flex-shrink: 0;
+  margin: 0 0 0 auto;
+}
+.markdown-toolbar-settings label span {
+  flex: 1;
+}
+.markdown-toolbar-settings label svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.markdown-toolbar-settings footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--border-muted);
+  padding: 10px 18px;
+}
+.markdown-toolbar-reset {
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.markdown-toolbar-reset:hover {
+  color: var(--text-heading);
+}
+@media (max-width: 600px) {
+  .markdown-toolbar-settings-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* `.cm-editor` outranks CodeMirror's injected autocomplete theme. */
+.markdown-editor .cm-editor .cm-tooltip {
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-soft);
+}
+.markdown-editor .cm-editor .cm-tooltip.cm-tooltip-autocomplete {
+  padding: 5px;
+}
+.markdown-editor .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul {
+  min-width: 220px;
+  max-height: 320px;
+  font-family: inherit;
+  font-size: 12px;
+}
+.markdown-editor .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  border-radius: 5px;
+  padding: 0 7px;
+  line-height: normal;
+}
+.markdown-editor
+  .cm-editor
+  .cm-tooltip.cm-tooltip-autocomplete
+  > ul
+  > li:hover:not([aria-selected]) {
+  background: var(--menu-hover-bg);
+}
+.markdown-editor
+  .cm-editor
+  .cm-tooltip.cm-tooltip-autocomplete
+  > ul
+  > li[aria-selected] {
+  color: var(--text-strong);
+  background: var(--surface-selected);
+}
+.markdown-editor
+  .cm-editor
+  .cm-tooltip.cm-tooltip-autocomplete
+  > ul
+  > completion-section {
+  display: block;
+  height: 1px;
+  margin: 5px -5px;
+  border: 0;
+  padding: 0;
+  background: var(--border-muted);
+  opacity: 1;
+}
+.markdown-editor
+  .cm-editor
+  .cm-tooltip.cm-tooltip-autocomplete
+  > ul
+  > completion-section:first-child {
+  display: none;
+}
+.markdown-editor .cm-completion-action-icon {
+  display: flex;
+  color: var(--text-muted);
+}
+.markdown-editor .cm-completion-action-icon svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  stroke-width: 1.8;
+}
+.markdown-editor .cm-completionLabel {
+  color: inherit;
+}
+.markdown-editor .cm-completionDetail {
+  margin-left: auto;
+  padding-left: 16px;
+  color: var(--text-meta);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  font-style: normal;
+}

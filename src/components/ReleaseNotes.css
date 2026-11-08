@@ -1,0 +1,140 @@
+.release-notes-trigger {
+  min-height: 20px;
+  border-radius: 4px;
+  padding: 0 5px;
+  color: inherit;
+  font-size: inherit;
+  line-height: 1;
+}
+
+.release-notes-trigger:hover {
+  color: var(--text-heading);
+  background: var(--surface-active);
+}
+
+.release-notes-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.release-notes-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(640px, calc(100vw - 48px));
+  max-height: calc(100dvh - 48px);
+}
+
+.release-notes-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 12px;
+  align-items: center;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border-muted);
+  padding: 0 18px;
+}
+
+.release-notes-header h2 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 760;
+}
+
+.release-notes-body {
+  display: grid;
+  gap: 24px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px 20px;
+  scrollbar-gutter: stable;
+}
+
+.release-notes-body:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.release-notes-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.release-notes-content {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.release-notes-content p,
+.release-notes-content ul,
+.release-notes-content ol {
+  margin: 0 0 10px;
+}
+
+.release-notes-content > :last-child {
+  margin-bottom: 0;
+}
+
+.release-notes-content h3 {
+  margin: 14px 0 6px;
+  color: var(--text-heading);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.release-notes-content h3[data-level="1"] {
+  margin-bottom: 10px;
+  font-size: 17px;
+  font-weight: 760;
+}
+
+.release-notes-content h3[data-level="2"] {
+  margin-top: 18px;
+  font-size: 14.5px;
+}
+
+.release-notes-content h3:first-child {
+  margin-top: 0;
+}
+
+.release-notes-content ul,
+.release-notes-content ol {
+  display: grid;
+  gap: 4px;
+  padding-left: 20px;
+}
+
+.release-notes-content ul {
+  list-style: disc;
+}
+
+.release-notes-content ol {
+  list-style: decimal;
+}
+
+.release-notes-content code {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: var(--surface-control);
+  font-size: 0.9em;
+}
+
+.release-notes-content a {
+  color: var(--primary);
+}
+
+.release-notes-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 56px;
+  border-top: 1px solid var(--border-muted);
+  padding: 0 18px;
+}

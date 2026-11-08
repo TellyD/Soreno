@@ -1,0 +1,434 @@
+.automations-board {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.automations-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border-muted);
+  padding: 6px 14px 6px 16px;
+}
+
+.automations-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.automations-title h1 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 14px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.automations-actions {
+  margin-left: auto;
+}
+
+.automations-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.automations-list {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+.automations-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.automations-list li {
+  position: relative;
+}
+
+.automations-row {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, 1.5fr) minmax(120px, 1.1fr) minmax(120px, 1fr)
+    minmax(110px, 0.9fr) minmax(180px, 1.5fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 16px;
+  color: var(--text-soft);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.automations-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.automations-row.is-head {
+  min-height: 34px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: default;
+}
+
+.automations-row:not(.is-head):hover {
+  background: var(--surface-hover);
+}
+
+.automations-row[aria-current="true"],
+.automations-row[aria-current="true"]:hover {
+  background: var(--surface-highlight);
+}
+
+.automations-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.automations-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.automations-row.is-paused .automations-name {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Same pill as `CountBadge`, the list's other muted label. */
+.automations-paused {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 18px;
+  border: 1px solid var(--count-badge-border);
+  border-radius: 999px;
+  padding: 0 7px;
+  color: var(--text-muted);
+  background: var(--count-badge-bg);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.automations-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.automations-where {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.automations-where svg,
+.automations-property svg {
+  flex: none;
+  color: var(--text-faint);
+}
+
+.automations-muted,
+.automations-row.is-paused .automations-column-schedule {
+  color: var(--text-faint);
+}
+
+.automations-last.is-skipped {
+  color: var(--warning-text);
+}
+
+.automations-last.is-failed,
+.automations-last.is-missingAgent {
+  color: var(--danger-text);
+}
+
+.automations-last.is-never,
+.automations-last.is-disconnected {
+  color: var(--text-faint);
+}
+
+/* Over the end of its row, which is a button of its own. */
+.automations-connect {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  border: 0;
+  border-radius: 5px;
+  padding: 2px 6px;
+  color: var(--primary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.automations-connect:hover {
+  background: var(--surface-hover);
+}
+
+.automations-connect:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.automations-detail {
+  display: grid;
+  flex: none;
+  align-content: start;
+  gap: 22px;
+  width: 360px;
+  border-left: 1px solid var(--border-muted);
+  padding: 18px 16px 24px;
+  overflow-y: auto;
+}
+
+.automations-detail-form,
+.automations-detail-form fieldset {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.automations-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.automations-detail-head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-heading);
+  font-size: 16px;
+  font-weight: 720;
+  line-height: 1.3;
+}
+
+.automations-section {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.automations-label {
+  margin: 0 0 2px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.automations-property {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 28px;
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.automations-prompt-field {
+  position: relative;
+}
+
+/* Opens below the field, over the schedule, which stays reachable once it closes. */
+.automations-skills {
+  --menu-item-columns: auto minmax(0, 1fr);
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  z-index: 2;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.automations-skill-detail {
+  margin-left: 8px;
+  color: var(--text-meta);
+}
+
+.automations-prompt {
+  display: block;
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  padding: 8px 9px;
+  color: var(--text-strong);
+  background: var(--surface-control);
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.automations-prompt::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.automations-prompt:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.automations-hint {
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+/* Equal columns would all take the longest label's width and overflow the panel. */
+.automations-frequency {
+  grid-auto-columns: auto;
+  max-width: 100%;
+}
+
+.automations-time-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.automations-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-faint);
+}
+
+.automations-time .app-select {
+  width: 58px;
+}
+
+.app-select-popup.automations-time-popup {
+  width: max-content;
+  min-width: var(--anchor-width);
+}
+
+.automations-weekday {
+  width: 128px;
+}
+
+.automations-active {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.automations-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.automations-form-actions,
+.automations-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.automations-run-actions {
+  justify-content: flex-start;
+}
+
+.automations-runs {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 6px 8px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.automations-runs dt {
+  color: var(--text);
+}
+
+.automations-runs dd {
+  margin: 0;
+  color: var(--text-strong);
+}
+
+.automations-danger {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+
+.automations-delete {
+  --app-button-border: transparent;
+  --app-button-text: var(--danger-text);
+  --app-button-bg-hover: var(--surface-hover);
+}
+
+@media (max-width: 1100px) {
+  .automations-row {
+    grid-template-columns:
+      minmax(150px, 1.4fr) minmax(110px, 1fr) minmax(110px, 1fr)
+      minmax(160px, 1.4fr);
+  }
+
+  .automations-column-next {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .automations-body {
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .automations-list {
+    flex: none;
+    overflow: visible;
+  }
+
+  .automations-detail {
+    width: auto;
+    border-top: 1px solid var(--border-muted);
+    border-left: 0;
+  }
+}

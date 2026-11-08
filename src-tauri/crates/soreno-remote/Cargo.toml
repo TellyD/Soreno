@@ -1,0 +1,23 @@
+[package]
+name = "soreno-remote"
+version = "0.1.0"
+description = "Accès mobile de Soreno : relie les sessions dtach d’un serveur Linux au relais Soreno, chiffrées de bout en bout jusqu’au téléphone"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "soreno-remote"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+base64 = "0.22.1"
+httparse = "1"
+libc = "0.2"
+sha2 = "0.10"
+soreno-mobile-protocol = { path = "../soreno-mobile-protocol" }
+tungstenite = "0.30"

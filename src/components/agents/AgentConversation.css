@@ -1,0 +1,257 @@
+.agent-conversation {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.agent-conversation[hidden] {
+  display: none;
+}
+
+.agent-conversation-file-drop {
+  position: absolute;
+  z-index: 3;
+  inset: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--focus-ring);
+  border-radius: var(--control-radius);
+  color: var(--text-heading);
+  background: color-mix(in srgb, var(--surface) 82%, var(--focus-ring));
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.agent-conversation-history {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 20px 12px;
+  scrollbar-gutter: stable both-edges;
+}
+
+/* One reading column: replies keep a comfortable line length in a wide pane. */
+.agent-conversation-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 54rem;
+  min-height: 100%;
+  margin-inline: auto;
+}
+
+.agent-conversation-column > .app-empty-state {
+  margin-block: auto;
+}
+
+.agent-conversation-activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.agent-conversation-activity.is-hidden {
+  visibility: hidden;
+}
+
+.agent-conversation-activity-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  /* Centered in the 14px icon slot of the transcript rows above. */
+  margin-inline: 3.5px;
+  border-radius: 999px;
+  background: var(--primary);
+  animation: agent-conversation-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes agent-conversation-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-conversation-activity-dot {
+    animation: none;
+  }
+}
+
+.agent-conversation-elapsed {
+  color: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-conversation-stopped {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: var(--text-meta);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Without a transcript above it, the panel sits in the middle of the view. */
+.agent-conversation-stopped:first-child {
+  margin-block: auto;
+}
+
+.agent-conversation-stopped:not(:first-child) {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 14px;
+}
+
+.agent-conversation-stopped p {
+  margin: 0;
+}
+
+.agent-conversation-stopped.is-error {
+  color: var(--danger-text);
+}
+
+.agent-conversation-stopped .agent-conversation-tool-output {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  text-align: left;
+}
+
+/* In a short window the dock panels and the request body shrink first: their items set min-height: 0. */
+.agent-conversation-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  width: min(54rem, calc(100% - 40px));
+  margin-inline: auto;
+  padding-bottom: 16px;
+}
+
+/* A collapsible dock panel (todos, running agents): a summary line, a list once opened. */
+.agent-conversation-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  font-size: 12.5px;
+}
+
+/* Open, only the list gives way; the header plus borders always stays visible. */
+.agent-conversation-panel.is-open {
+  flex-shrink: 1;
+  min-height: 34px;
+  overflow: hidden;
+}
+
+.agent-conversation-panel-toggle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  border-radius: 10px;
+  padding: 4px 12px;
+  color: var(--text-meta);
+  text-align: left;
+}
+
+.agent-conversation-panel-toggle:hover {
+  background: var(--surface-hover);
+}
+
+.agent-conversation-panel-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.agent-conversation-panel-toggle > svg {
+  flex: none;
+}
+
+.agent-conversation-panel-toggle > svg:first-child {
+  transition: transform 120ms ease;
+}
+
+.agent-conversation-panel-toggle[aria-expanded="true"] > svg:first-child {
+  transform: rotate(90deg);
+}
+
+.agent-conversation-panel-title {
+  flex: none;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.agent-conversation-panel-progress {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-conversation-panel-current {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A long list scrolls here so the composer stays on screen. */
+.agent-conversation-panel-list {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  max-height: 30vh;
+  overflow: auto;
+  padding: 4px 12px 10px;
+}
+
+.agent-conversation-panel-list:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.agent-conversation-queue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-conversation-queue li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px dashed var(--border-muted);
+  border-radius: 6px;
+  padding: 2px 2px 2px 9px;
+  color: var(--text-meta);
+  font-size: 12px;
+}
+
+.agent-conversation-queue span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

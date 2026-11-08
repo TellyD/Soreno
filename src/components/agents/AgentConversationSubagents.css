@@ -1,0 +1,63 @@
+/* A `task` call's agents hang under it, one quiet line each. */
+.agent-conversation-subagents {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 2px 7px;
+  border-left: 1px solid var(--border-muted);
+  padding: 0 0 0 14px;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+.agent-conversation-panel-list .agent-conversation-subagents {
+  margin: 0;
+  border-left: 0;
+  padding: 0;
+}
+
+.agent-conversation-subagents li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 26px;
+  color: var(--text-meta);
+}
+
+.agent-conversation-subagents li > svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.agent-conversation-subagents li.is-completed > svg {
+  color: var(--success);
+}
+
+.agent-conversation-subagents li.is-failed > svg {
+  color: var(--danger-text);
+}
+
+.agent-conversation-subagent-name {
+  flex: none;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.agent-conversation-subagent-type {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.agent-conversation-subagent-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-conversation-subagent-meta {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

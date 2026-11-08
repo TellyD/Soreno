@@ -1,0 +1,116 @@
+.git-diff-comment {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  border-top: 1px solid var(--border-muted);
+  padding: 8px 10px 10px;
+  background: var(--surface);
+}
+
+.git-diff-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-meta);
+  font-size: 12px;
+}
+
+.git-diff-comment-header strong {
+  overflow: hidden;
+  color: var(--text-heading);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-diff-comment-header > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.git-diff-comment textarea {
+  display: block;
+  width: 100%;
+  min-height: 60px;
+  max-height: 200px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  /* The form's only field, focused on open: the caret is enough. */
+  outline: none;
+  padding: 6px 9px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.git-diff-comment textarea::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.git-diff-comment-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.git-diff-comment-footer > .app-button {
+  flex: none;
+  margin-left: auto;
+}
+
+.git-diff-comment-footer .git-diff-comment-select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 280px;
+}
+
+/* The trigger stays compact; its menu needs room for session names. */
+.git-diff-comment-select-popup {
+  min-width: 220px;
+  max-width: min(320px, var(--available-width));
+}
+
+.git-diff-comment-select-popup .app-select-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-diff-comment-target,
+.git-diff-comment-sent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-meta);
+  font-size: 12px;
+}
+
+.git-diff-comment-sent {
+  flex: 0 1 auto;
+}
+
+.git-diff-comment-sent > svg {
+  flex: none;
+}
+
+.git-diff-comment-sent-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-diff-comment-sent[data-status="failed"] {
+  color: var(--danger-text);
+}
+
+.git-diff-comment-hint {
+  color: var(--text-meta);
+  font-size: 12px;
+}

@@ -1,0 +1,62 @@
+.app-checkbox {
+  --app-checkbox-size: 16px;
+  --app-checkbox-icon-size: 11px;
+
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 var(--app-checkbox-size);
+  place-items: center;
+  width: var(--app-checkbox-size);
+  height: var(--app-checkbox-size);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--button-primary-text);
+  background: var(--surface-control);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.app-checkbox[data-checked] {
+  border-color: var(--button-primary-bg);
+  background: var(--button-primary-bg);
+}
+
+.app-checkbox:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.app-checkbox[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.app-checkbox-indicator {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition:
+    opacity 120ms ease,
+    scale 120ms ease;
+}
+
+.app-checkbox-indicator:is([data-starting-style], [data-ending-style]) {
+  opacity: 0;
+  scale: 0.6;
+}
+
+.app-checkbox-indicator > svg {
+  display: block;
+  width: var(--app-checkbox-icon-size);
+  height: var(--app-checkbox-icon-size);
+  stroke-width: 2.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-checkbox,
+  .app-checkbox-indicator {
+    transition: none;
+  }
+}

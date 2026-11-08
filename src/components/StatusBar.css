@@ -1,0 +1,52 @@
+.status-bar {
+  --icon-size: var(--icon-size-xs);
+  --app-icon-button-icon-size: var(--icon-size-xs);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  border-top: 1px solid var(--border-muted);
+  padding: 5px 10px;
+  color: var(--text-faint);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.status-bar > span,
+.status-bar > button,
+.status-bar > .status-segment,
+.status-segment > button {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.status-bar
+  > :is(span, .status-segment):not(.status-spacer)
+  + :is(span, .status-segment):not(.status-spacer) {
+  border-left: 1px solid var(--border);
+  padding-left: 12px;
+}
+
+.app-update-status {
+  flex: 0 0 auto;
+}
+
+.app-update-status .app-button {
+  --app-button-height: 24px;
+}
+
+.status-spacer {
+  flex: 1;
+}
+
+.status-connection {
+  display: flex;
+  min-width: 0;
+}
+
+.status-connection:empty {
+  display: none;
+}

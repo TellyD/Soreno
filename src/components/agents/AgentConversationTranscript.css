@@ -1,0 +1,433 @@
+/* A long command must not widen its reply past the column: rows truncate instead. */
+.agent-conversation-message {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+/* The steps of one run read as one reply. */
+.agent-conversation-message.is-agent + .agent-conversation-message.is-agent {
+  margin-top: -12px;
+}
+
+.agent-conversation-message.is-agent {
+  gap: 4px;
+}
+
+/* The user's turns stand out; the agent's replies read as the page itself. */
+.agent-conversation-user-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agent-conversation-user-text {
+  min-width: 0;
+  max-width: min(100%, 40rem);
+  margin: 0;
+  border-radius: 12px;
+  padding: 9px 13px;
+  color: var(--text-strong);
+  background: var(--surface-active);
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.agent-conversation-skill {
+  color: color-mix(in srgb, var(--primary) 50%, var(--text));
+  font-weight: 600;
+}
+
+.agent-conversation-prose {
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.agent-conversation-prose p,
+.agent-conversation-prose blockquote,
+.agent-conversation-prose ul,
+.agent-conversation-prose ol,
+.agent-conversation-prose pre {
+  margin: 0 0 12px;
+}
+
+.agent-conversation-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.agent-conversation-prose blockquote {
+  border-left: 3px solid var(--border-muted);
+  padding-left: 12px;
+  color: var(--text-soft);
+}
+
+.agent-conversation-prose hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--border-muted);
+}
+
+.agent-conversation-prose h3 {
+  margin: 18px 0 6px;
+  color: var(--text-heading);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.agent-conversation-prose h3[data-level="1"] {
+  font-size: 16px;
+}
+
+.agent-conversation-prose h3:first-child {
+  margin-top: 0;
+}
+
+.agent-conversation-prose ul,
+.agent-conversation-prose ol {
+  display: grid;
+  gap: 4px;
+  padding-left: 20px;
+}
+
+.agent-conversation-prose ul {
+  list-style: disc;
+}
+
+.agent-conversation-prose ol {
+  list-style: decimal;
+}
+
+.agent-conversation-prose a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.agent-conversation-prose a:hover {
+  color: var(--primary-hover);
+}
+
+.agent-conversation-prose code {
+  color: color-mix(in srgb, var(--primary) 50%, var(--text));
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.agent-conversation-prose pre {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--surface-muted);
+  line-height: 1.5;
+}
+
+.agent-conversation-prose pre code {
+  color: var(--cm-code-text);
+  font-size: 0.88em;
+  white-space: pre;
+}
+
+.agent-conversation-notice {
+  margin: 0;
+  color: var(--text-meta);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.agent-conversation-notice.is-error {
+  color: var(--danger-text);
+}
+
+.agent-conversation-notice-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-conversation-command-output {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  border-left: 2px solid var(--border-muted);
+  padding: 2px 0 2px 12px;
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Reasoning and tool calls are single quiet lines until opened. */
+.agent-conversation-thinking,
+.agent-conversation-tool {
+  min-width: 0;
+  font-size: 12.5px;
+}
+
+/* An integer line box keeps text and icons on the same pixel rounding wherever the row lands. */
+.agent-conversation-thinking > summary,
+.agent-conversation-tool > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 28px;
+  margin-inline: -8px;
+  border-radius: var(--control-radius);
+  padding: 3px 8px;
+  color: var(--text-meta);
+  line-height: 22px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.agent-conversation-thinking > summary::-webkit-details-marker,
+.agent-conversation-tool > summary::-webkit-details-marker {
+  display: none;
+}
+
+.agent-conversation-thinking > summary:hover,
+.agent-conversation-tool > summary:hover {
+  background: var(--surface-hover);
+}
+
+.agent-conversation-thinking > summary:focus-visible,
+.agent-conversation-tool > summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.agent-conversation-thinking > summary svg {
+  position: relative;
+  top: -1px;
+  transition: transform 120ms ease;
+}
+
+.agent-conversation-thinking[open] > summary svg {
+  transform: rotate(90deg);
+}
+
+.agent-conversation-thinking > p {
+  margin: 4px 0 0;
+  border-left: 2px solid var(--border-muted);
+  padding-left: 12px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.agent-conversation-tool-icon {
+  position: relative;
+  top: -1px;
+  display: inline-flex;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.agent-conversation-tool-name {
+  flex: none;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.agent-conversation-tool-subject {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-conversation-tool-changes {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-conversation-tool-status {
+  flex: none;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.agent-conversation-tool.is-error .agent-conversation-tool-status,
+.agent-conversation-tool.is-error .agent-conversation-tool-icon {
+  color: var(--danger-text);
+}
+
+.agent-conversation-tool.is-awaiting .agent-conversation-tool-status,
+.agent-conversation-tool.is-awaiting .agent-conversation-tool-icon {
+  color: var(--warning-text);
+  font-weight: 600;
+}
+
+.agent-conversation-tool-intent {
+  margin: 4px 0 6px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.agent-conversation-tool-output,
+.agent-conversation-diff {
+  max-height: 320px;
+  margin: 4px 0 0;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.agent-conversation-tool-output {
+  padding: 8px 10px;
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.agent-conversation-more {
+  color: var(--text-meta);
+}
+
+.agent-conversation-diff-path {
+  position: sticky;
+  left: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 5px 10px;
+  color: var(--text-soft);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11.5px;
+}
+
+.agent-conversation-diff pre {
+  margin: 0;
+  padding: 6px 0;
+  color: var(--text);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* Tints span the scrolled width, not only the visible one. */
+.agent-conversation-diff pre > span {
+  display: block;
+  width: fit-content;
+  min-width: 100%;
+  padding-right: 10px;
+  white-space: pre;
+}
+
+/* The same tints as the Git panel's diff. */
+.agent-conversation-diff .is-added {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.agent-conversation-diff .is-removed {
+  background: color-mix(in srgb, var(--danger-text) 14%, transparent);
+}
+
+.agent-conversation-diff .is-gap {
+  color: var(--text-meta);
+}
+
+.agent-conversation-diff-gutter {
+  display: inline-block;
+  width: 4ch;
+  margin-right: 6px;
+  color: var(--text-faint);
+  text-align: right;
+  user-select: none;
+}
+
+.agent-conversation-diff-sign {
+  display: inline-block;
+  width: 2ch;
+  color: var(--text-meta);
+  user-select: none;
+}
+
+.agent-conversation-images {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.agent-conversation-images img {
+  max-width: 100%;
+  max-height: 12rem;
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  object-fit: contain;
+  background: var(--surface-control);
+}
+
+/* The cap lives on the trigger: a percentage max-width on the img is ignored when sizing it. */
+.agent-conversation-images .agent-image-preview-trigger {
+  max-width: min(100%, 16rem);
+  border-radius: 10px;
+}
+
+.agent-conversation-files {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-conversation-files li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 16rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 3px 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.agent-conversation-files span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Shown on hover or keyboard focus: the transcript stays readable. */
+.agent-conversation-actions {
+  display: flex;
+  gap: 2px;
+  margin-top: -4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.agent-conversation-user-row .agent-conversation-actions {
+  flex: none;
+  margin-top: 0;
+}
+
+.agent-conversation-message:hover .agent-conversation-actions,
+.agent-conversation-actions:focus-within {
+  opacity: 1;
+}

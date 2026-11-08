@@ -1,0 +1,58 @@
+.project-group-changes-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  padding: 1px 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.project-group-changes-summary strong {
+  color: var(--text-soft);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.project-group-member .git-change-group-toggle {
+  color: var(--text-heading);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+}
+.project-group-member .git-change-group-toggle:disabled > svg {
+  visibility: hidden;
+}
+.project-group-member-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin: 0;
+  /* Header padding (2px) + chevron (12px) + toggle gap (5px): aligns with the title. */
+  padding: 0 2px 4px 19px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.project-group-member-ref {
+  display: flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.project-group-member-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-soft);
+}
+.project-group-member-branch > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-group-member-agents {
+  color: var(--text-soft);
+}

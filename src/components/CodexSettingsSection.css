@@ -1,0 +1,161 @@
+.codex-settings-card {
+  --codex-settings-control-height: 32px;
+  overflow: hidden;
+  border: 1px solid var(--border-muted);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.codex-settings-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 13px 16px;
+}
+
+.codex-settings-card-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.codex-settings-card-title strong {
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.codex-settings-card-title span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.codex-settings-card-body {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* ---- Labelled field ---- */
+.codex-settings-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.codex-settings-field > label,
+.codex-settings-field-label {
+  color: var(--text-meta);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.codex-settings-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--codex-settings-control-height);
+}
+
+.codex-settings-field-row .app-button-small {
+  --app-button-height: var(--codex-settings-control-height);
+  height: var(--codex-settings-control-height);
+}
+
+/* ---- Status pill ---- */
+.codex-settings-status {
+  --icon-size: var(--icon-size-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: var(--codex-settings-control-height);
+  min-height: var(--codex-settings-control-height);
+  max-width: min(100%, 260px);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--text-muted);
+  background: var(--surface-control);
+  font-size: 12px;
+  font-weight: 640;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.codex-settings-status span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.codex-settings-status.available {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+  color: var(--success);
+}
+
+.codex-settings-status.missing {
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+
+/* ---- Card configuration ---- */
+.codex-settings-config-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.codex-settings-commit-preview {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text-meta);
+  background: var(--surface-control);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.codex-settings-commit-preview svg {
+  margin-top: 2px;
+}
+
+.codex-settings-commit-preview strong {
+  color: var(--text-heading);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.codex-settings-commit-preview p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+.settings-inline-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 820px) {
+  .codex-settings-status {
+    justify-content: flex-start;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .codex-settings-config-grid {
+    grid-template-columns: 1fr;
+  }
+}

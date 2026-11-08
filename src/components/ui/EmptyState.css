@@ -1,0 +1,146 @@
+.app-empty-state {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  padding: clamp(16px, 5%, 64px);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.app-empty-state.is-fill {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  align-items: safe center;
+}
+.app-empty-state-content {
+  min-width: 0;
+  max-width: 390px;
+}
+.app-empty-state-centered .app-empty-state-content,
+.app-empty-state-centered .app-empty-state-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.app-empty-state-centered .app-empty-state-body {
+  width: 100%;
+  min-width: 0;
+}
+.app-empty-state-icon {
+  --icon-size: 22px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  color: var(--primary);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.app-empty-state-icon svg {
+  width: var(--icon-size, auto);
+  height: var(--icon-size, auto);
+}
+.app-empty-state-title {
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-heading);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.app-empty-state-description {
+  max-width: 360px;
+  margin: 8px 0 0;
+  line-height: 1.55;
+  text-wrap: balance;
+}
+.app-empty-state-body > .app-empty-state-description:first-child {
+  margin-top: 0;
+}
+.app-empty-state-details {
+  width: 100%;
+  margin-top: 18px;
+}
+.app-empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.app-empty-state-compact {
+  padding: 16px 12px;
+  font-size: 12px;
+}
+.app-empty-state-compact .app-empty-state-content {
+  max-width: 280px;
+}
+.app-empty-state-compact .app-empty-state-icon {
+  --icon-size: 18px;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+}
+.app-empty-state-compact .app-empty-state-title {
+  font-size: 13px;
+}
+.app-empty-state-compact .app-empty-state-description {
+  margin-top: 5px;
+  line-height: 1.45;
+}
+.app-empty-state-compact
+  .app-empty-state-body
+  > .app-empty-state-description:first-child {
+  margin-top: 0;
+}
+.app-empty-state-compact .app-empty-state-details,
+.app-empty-state-compact .app-empty-state-actions {
+  margin-top: 12px;
+}
+.app-empty-state-inline {
+  place-items: stretch;
+  padding: 8px 0;
+  text-align: left;
+}
+.app-empty-state-inline .app-empty-state-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  max-width: none;
+}
+.app-empty-state-inline
+  .app-empty-state-content:not(:has(.app-empty-state-icon)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.app-empty-state-inline .app-empty-state-icon {
+  --icon-size: 18px;
+  width: auto;
+  height: auto;
+  margin: 1px 0 0;
+  border-radius: 0;
+  color: var(--text-muted);
+  background: transparent;
+}
+.app-empty-state-inline .app-empty-state-title {
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 550;
+}
+.app-empty-state-inline .app-empty-state-description {
+  max-width: none;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-wrap: initial;
+}
+.app-empty-state-inline .app-empty-state-actions {
+  justify-content: flex-start;
+}

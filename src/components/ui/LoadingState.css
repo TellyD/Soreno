@@ -1,0 +1,17 @@
+.app-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.app-loading-state-spinner {
+  display: block;
+  flex: 0 0 auto;
+}
+.app-loading-state-label {
+  line-height: 1;
+}

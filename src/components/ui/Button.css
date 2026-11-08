@@ -1,0 +1,118 @@
+.app-button {
+  --app-button-height: var(--control-height-medium);
+  --app-button-min-width: 82px;
+  --app-button-radius: var(--control-radius);
+  --app-button-padding-x: 13px;
+  --app-button-font-size: var(--control-font-size);
+  --app-button-gap: 6px;
+  --app-button-icon-size: var(--icon-size-sm);
+  --app-button-bg: transparent;
+  --app-button-bg-hover: transparent;
+  --app-button-bg-active: transparent;
+  --app-button-border: transparent;
+  --app-button-border-hover: transparent;
+  --app-button-text: currentColor;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--app-button-gap);
+  min-width: var(--app-button-min-width);
+  height: var(--app-button-height);
+  border: 1px solid var(--app-button-border);
+  border-radius: var(--app-button-radius);
+  padding: 0 var(--app-button-padding-x);
+  color: var(--app-button-text);
+  background: var(--app-button-bg);
+  font-size: var(--app-button-font-size);
+  font-weight: 620;
+  white-space: nowrap;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease,
+    outline-color 120ms ease;
+}
+
+.app-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--focus-ring) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.app-button:hover:not(:disabled) {
+  border-color: var(--app-button-border-hover);
+  background: var(--app-button-bg-hover);
+}
+
+.app-button:active:not(:disabled) {
+  border-color: var(--app-button-border-hover);
+  background: var(--app-button-bg-active);
+}
+
+.app-button:disabled {
+  border-color: var(--button-disabled-border);
+  color: var(--button-disabled-text);
+  background: var(--button-disabled-bg);
+  cursor: not-allowed;
+}
+
+.app-button-small {
+  --app-button-height: var(--control-height-small);
+  --app-button-min-width: 72px;
+  --app-button-radius: calc(var(--control-radius) - 1px);
+  --app-button-padding-x: 9px;
+  --app-button-icon-size: var(--icon-size-xs);
+}
+
+.app-button-medium {
+  --app-button-height: var(--control-height-medium);
+}
+
+.app-button-large {
+  --app-button-height: var(--control-height-large);
+  --app-button-min-width: 96px;
+  --app-button-radius: var(--control-radius);
+  --app-button-padding-x: 15px;
+  --app-button-font-size: 13px;
+  --app-button-icon-size: var(--icon-size-md);
+}
+
+.app-button-secondary {
+  --app-button-bg: var(--button-secondary-bg);
+  --app-button-bg-hover: var(--button-secondary-bg-hover);
+  --app-button-bg-active: var(--button-secondary-bg-active);
+  --app-button-border: var(--button-secondary-border);
+  --app-button-border-hover: var(--button-secondary-border-hover);
+  --app-button-text: var(--button-secondary-text);
+}
+
+.app-button-primary {
+  --app-button-bg: var(--button-primary-bg);
+  --app-button-bg-hover: var(--button-primary-bg-hover);
+  --app-button-bg-active: var(--button-primary-bg-active);
+  --app-button-border: var(--button-primary-bg);
+  --app-button-border-hover: var(--button-primary-bg-hover);
+  --app-button-text: var(--button-primary-text);
+}
+
+.app-button-danger {
+  --app-button-bg: var(--button-danger-bg);
+  --app-button-bg-hover: var(--button-danger-bg-hover);
+  --app-button-bg-active: var(--button-danger-bg-active);
+  --app-button-border: var(--button-danger-bg);
+  --app-button-border-hover: var(--button-danger-bg-hover);
+  --app-button-text: var(--button-danger-text);
+}
+
+.app-button-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-button-icon svg {
+  display: block;
+  width: var(--app-button-icon-size);
+  height: var(--app-button-icon-size);
+}

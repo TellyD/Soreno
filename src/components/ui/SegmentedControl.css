@@ -1,0 +1,83 @@
+.app-segmented-control {
+  --segmented-active-bg: var(--button-primary-bg);
+  --segmented-active-border: var(--button-primary-bg);
+  --segmented-ease: cubic-bezier(0.3, 0.7, 0.2, 1);
+
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(92px, 1fr);
+  gap: 3px;
+  min-height: var(--control-height-small, 30px);
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius, 6px);
+  padding: 3px;
+  background: var(--surface-control);
+}
+
+.app-segmented-control::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  z-index: -1;
+  width: var(--segmented-indicator-width, 0);
+  border-radius: var(--control-radius, 6px);
+  background: var(--segmented-active-bg);
+  outline: 1px solid var(--segmented-active-border);
+  outline-offset: -1px;
+  opacity: 0;
+  transform: translateX(var(--segmented-indicator-x, 0));
+}
+
+.app-segmented-control[data-indicator]::before {
+  opacity: 1;
+}
+
+.app-segmented-control[data-animated]::before {
+  transition:
+    transform 220ms var(--segmented-ease),
+    width 220ms var(--segmented-ease),
+    opacity 120ms ease;
+}
+
+.app-segmented-control-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  border-radius: var(--control-radius, 6px);
+  padding: 0 12px;
+  color: var(--text-soft);
+  font-size: 12px;
+  white-space: nowrap;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.app-segmented-control-item:hover:not(:disabled) {
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+
+.app-segmented-control-item.selected,
+.app-segmented-control-item.selected:hover:not(:disabled) {
+  color: var(--button-primary-text);
+  background: transparent;
+}
+
+.app-segmented-control-item:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--focus-ring) 28%, transparent);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-segmented-control[data-animated]::before,
+  .app-segmented-control-item {
+    transition: none;
+  }
+}

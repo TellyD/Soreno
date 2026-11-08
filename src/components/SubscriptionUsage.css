@@ -1,0 +1,219 @@
+.subscription-usage {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.subscription-usage > .subscription-usage-button {
+  --icon-size: var(--icon-size-xs);
+  gap: 12px;
+  height: 24px;
+  padding: 0 5px;
+  line-height: 1;
+}
+
+.subscription-usage > .subscription-usage-button:hover {
+  background: transparent;
+}
+
+.subscription-usage-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.subscription-usage .app-loading-spinner {
+  color: currentColor;
+}
+
+.codex-usage-logo,
+.claude-usage-logo {
+  flex: 0 0 auto;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  background-color: currentColor;
+}
+
+.codex-usage-logo {
+  -webkit-mask: url("/openai.svg") center / contain no-repeat;
+  mask: url("/openai.svg") center / contain no-repeat;
+}
+
+.claude-usage-logo {
+  -webkit-mask: url("/claude.svg") center / contain no-repeat;
+  mask: url("/claude.svg") center / contain no-repeat;
+}
+
+.subscription-usage-meter {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  /* Translucent so the track stays visible on hover and card backgrounds. */
+  background: color-mix(in srgb, var(--text-meta) 32%, transparent);
+}
+
+.subscription-usage-meter::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--usage-percent);
+  border-radius: inherit;
+  background: var(--success);
+}
+
+.subscription-usage-meter[data-level="high"]::before {
+  background: var(--warning-accent);
+}
+
+.subscription-usage-meter[data-level="critical"]::before {
+  background: var(--danger-text);
+}
+
+.subscription-usage-meter.compact {
+  width: 36px;
+  height: 3px;
+}
+
+.subscription-usage-percent {
+  font-variant-numeric: tabular-nums;
+}
+
+.subscription-usage-meter-pace {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: var(--usage-elapsed);
+  width: 2px;
+  border-radius: 1px;
+  background: var(--text-muted);
+  transform: translateX(-50%);
+}
+
+.subscription-usage-panel {
+  position: absolute;
+  z-index: 10;
+  bottom: calc(100% + 18px);
+  left: 0;
+  gap: 8px;
+  width: 340px;
+  max-height: min(560px, 70vh);
+  overflow-y: auto;
+  --menu-surface-padding: 12px;
+  color: var(--text-soft);
+  font-size: 12px;
+  white-space: normal;
+}
+
+.subscription-usage-card {
+  display: grid;
+  gap: 10px;
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  background: var(--card-bg);
+}
+
+.subscription-usage-card:has(> button:hover) {
+  background: var(--card-bg-hover);
+}
+
+.subscription-usage-card.selected {
+  outline: 1px solid var(--text-faint);
+  outline-offset: -1px;
+}
+
+.subscription-usage-card-header {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+
+.subscription-usage-card-logo {
+  --icon-size: var(--icon-size-md);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  color: var(--text-strong);
+  background: var(--surface-active);
+}
+
+.subscription-usage-card-identity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.subscription-usage-card-identity :is(strong, small) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subscription-usage-card-identity strong {
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.subscription-usage-card-identity small,
+.subscription-usage-card-status {
+  color: var(--text-meta);
+  font-size: 11px;
+}
+
+.subscription-usage-card-status {
+  align-self: start;
+  white-space: nowrap;
+}
+
+.subscription-usage-windows {
+  display: grid;
+  grid-template-columns:
+    minmax(28px, max-content) minmax(60px, 1fr)
+    max-content minmax(52px, max-content);
+  align-items: center;
+  gap: 8px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.subscription-usage-window {
+  display: contents;
+}
+
+.subscription-usage-window > span:first-child {
+  overflow: hidden;
+  color: var(--text-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subscription-usage-window > span:nth-child(3) {
+  color: var(--text-strong);
+  text-align: right;
+}
+
+.subscription-usage-window > span:last-child {
+  color: var(--text-meta);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.subscription-usage-card-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}

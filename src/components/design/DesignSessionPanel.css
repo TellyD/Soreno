@@ -1,0 +1,53 @@
+.design-session-panel .kanban-issue-child {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.design-session-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.design-session-panel-title > p {
+  flex: none;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.design-session-panel-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.design-session-panel-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.design-session-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* The attach body grows by default; the summary leaves the room to the preview. */
+.design-session-panel .design-session-panel-summary {
+  flex: 0 0 auto;
+}
+
+/* The preview takes the rest of the panel, never less than a usable height. */
+.design-session-panel-preview {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 240px;
+  border-top: 1px solid var(--border-muted);
+}

@@ -1,0 +1,11 @@
+.image-preview-dialog {
+  cursor: zoom-out;
+}
+
+.image-preview-dialog img {
+  display: block;
+  /* Overlay padding and surface border. */
+  max-width: calc(100vw - 58px);
+  max-height: calc(100dvh - 58px);
+  object-fit: contain;
+}

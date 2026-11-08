@@ -1,0 +1,67 @@
+.appearance-customizer-popover {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  gap: 12px;
+  width: 340px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 12px;
+  color: var(--text-soft);
+  background: var(--surface);
+}
+
+.appearance-customizer-section {
+  display: grid;
+  gap: 8px;
+}
+
+.appearance-customizer-label {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.appearance-color-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.appearance-color-option {
+  --swatch-hover-border: var(--border-strong);
+  --swatch-selected-border: var(--text-heading);
+}
+
+.appearance-icon-search {
+  width: 100%;
+}
+
+/* Six rows; the padding and negative margin keep focus outlines inside the scroller. */
+.appearance-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 32px);
+  justify-content: space-between;
+  gap: 6px;
+  max-height: 228px;
+  margin: -3px;
+  padding: 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.appearance-icon-option {
+  --app-icon-button-icon-size: var(--icon-size-md);
+  --app-icon-button-selected-color: var(--text-heading);
+  --app-icon-button-selected-bg: var(--surface-active);
+  color: var(--text-muted);
+}
+
+.appearance-icon-grid .appearance-icon-option:hover,
+.appearance-icon-grid .appearance-icon-option[aria-pressed="true"] {
+  color: var(--text-heading);
+  border-color: var(--border);
+  background: var(--surface-active);
+}

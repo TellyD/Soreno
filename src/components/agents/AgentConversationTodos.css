@@ -1,0 +1,70 @@
+.agent-conversation-todos-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.agent-conversation-todos-header > .agent-conversation-panel-toggle {
+  flex: 1;
+  width: auto;
+}
+
+.agent-conversation-todos-header > .app-icon-button {
+  flex: none;
+  margin: 0 4px 0 2px;
+}
+
+.agent-conversation-todos .agent-conversation-panel-list p {
+  margin: 0 0 2px;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.agent-conversation-todos .agent-conversation-panel-list ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-conversation-todos .agent-conversation-panel-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.agent-conversation-todos .agent-conversation-panel-list li > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.agent-conversation-todos
+  .agent-conversation-panel-list
+  li.is-in_progress
+  > svg {
+  color: var(--primary);
+}
+
+.agent-conversation-todos .agent-conversation-panel-list li.is-completed > svg {
+  color: var(--success);
+}
+
+.agent-conversation-todos .agent-conversation-panel-list li.is-blocked > svg {
+  color: var(--warning-accent);
+}
+
+.agent-conversation-todos .agent-conversation-panel-list li.is-completed,
+.agent-conversation-todos .agent-conversation-panel-list li.is-abandoned {
+  color: var(--text-meta);
+}
+
+.agent-conversation-todos
+  .agent-conversation-panel-list
+  li.is-abandoned
+  > span {
+  text-decoration: line-through;
+}

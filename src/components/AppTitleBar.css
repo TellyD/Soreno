@@ -1,0 +1,98 @@
+.app-title-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-soft);
+  background: var(--surface);
+  user-select: none;
+}
+
+.app-title-bar-macos {
+  grid-template-columns: 78px minmax(0, 1fr);
+}
+
+.app-title-macos-controls-space {
+  align-self: stretch;
+}
+
+.app-title-bar-brand {
+  display: inline-grid;
+  grid-template-columns: 19px minmax(0, auto);
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+  height: 100%;
+  padding: 0 12px 0 16px;
+  color: var(--text-heading);
+  font-size: 12.5px;
+  font-weight: 680;
+  line-height: 1;
+}
+
+.app-title-icon {
+  display: inline-grid;
+  width: 19px;
+  height: 21px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  background: transparent;
+}
+
+.app-title-icon img {
+  display: block;
+}
+
+:root[data-theme="dark"] .app-title-icon img {
+  filter: invert(1);
+}
+
+.app-title-name {
+  display: inline-flex;
+  align-items: center;
+  height: 21px;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.app-title-drag-region {
+  align-self: stretch;
+  min-width: 0;
+}
+
+.app-title-window-controls {
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+}
+
+.app-title-window-controls button {
+  --icon-size: var(--icon-size-md);
+  display: inline-grid;
+  width: 44px;
+  height: 100%;
+  padding: 0;
+  place-items: center;
+  color: var(--text-faint);
+  line-height: 0;
+}
+
+.app-title-window-controls button:hover {
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+
+.app-title-window-controls .app-title-window-control-close:hover {
+  color: #ffffff;
+  background: #c94040;
+}
+
+.app-title-window-controls .app-title-window-control-close {
+  --icon-size: var(--icon-size-lg);
+}
+
+.app-title-window-controls .app-title-window-control-maximize {
+  --icon-size: var(--icon-size-xs);
+}

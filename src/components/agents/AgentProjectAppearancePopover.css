@@ -1,0 +1,13 @@
+.agent-project-image-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.agent-project-image-hint {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.4;
+}

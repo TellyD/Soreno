@@ -1,0 +1,413 @@
+.agent-form-dialog {
+  width: min(500px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 24px;
+}
+.agent-group-projects-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.agent-group-projects-header > span:last-child {
+  color: var(--text-meta);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.agent-group-projects {
+  display: grid;
+  gap: 2px;
+  max-height: min(280px, 40vh);
+  margin-top: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+}
+.agent-group-projects label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0;
+  border-radius: var(--control-radius);
+  padding: 7px 8px;
+  cursor: pointer;
+}
+.agent-group-projects label:hover {
+  background: var(--surface-hover);
+}
+.agent-group-projects label[data-selected] {
+  background: var(--surface-selected);
+}
+.agent-group-project-label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+.agent-group-project-label > svg {
+  color: var(--text-muted);
+}
+.agent-group-project-label > strong,
+.agent-group-project-label > small {
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-group-project-label > strong {
+  color: var(--text-heading);
+  font-weight: 550;
+  line-height: 1.4;
+}
+.agent-group-project-label > small {
+  color: var(--text-meta);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.agent-group-project-unavailable {
+  grid-column: 2;
+  margin-top: 2px;
+  color: var(--danger-text);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.agent-form-dialog h2 {
+  margin: 0 0 20px;
+  color: var(--text-heading);
+  font-size: 17px;
+}
+.agent-form-dialog fieldset {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  margin: 0;
+}
+.agent-form-dialog label {
+  margin-top: 6px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.agent-project-form-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.agent-form-dialog:has(.agent-ssh-browser) {
+  position: relative;
+}
+.agent-form-dialog:has(.agent-ssh-browser) h2 {
+  min-height: 28px;
+  padding-left: 34px;
+  line-height: 28px;
+}
+.agent-form-dialog:has(.agent-ssh-browser) footer,
+.agent-project-form-details:has(.agent-ssh-browser) > :not(.agent-ssh-fields),
+.agent-ssh-fields:has(.agent-ssh-browser)
+  > :not(.agent-ssh-browser):not(.agent-ssh-browser-actions) {
+  display: none;
+}
+.agent-ssh-fields:has(.agent-ssh-browser) {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+.agent-form-options {
+  min-width: 0;
+  margin-top: 10px;
+}
+.agent-form-options > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.agent-form-options > summary::-webkit-details-marker {
+  display: none;
+}
+.agent-form-options > summary::marker {
+  content: "";
+}
+.agent-form-options > summary:hover:not([aria-disabled="true"]) {
+  color: var(--text-heading);
+}
+.agent-form-options > summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.agent-form-options > summary[aria-disabled="true"] {
+  color: var(--text-disabled);
+  cursor: default;
+}
+.agent-form-options > summary > svg {
+  flex-shrink: 0;
+}
+.agent-form-options[open] > summary > svg {
+  transform: rotate(90deg);
+}
+.agent-form-options-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 10px;
+}
+.agent-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.agent-folder-row .app-input {
+  flex: 1;
+  min-width: 0;
+}
+.agent-folder-path {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-folder-row .agent-folder-path {
+  flex: 1;
+}
+.agent-form-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}
+.agent-form-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.agent-form-hint {
+  margin: 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+.agent-form-hint[data-tone="error"] {
+  color: var(--danger-text);
+}
+.agent-ssh-fields,
+.agent-linear-fields {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-muted);
+  padding-top: 14px;
+}
+.agent-ssh-fields > label,
+.agent-linear-fields > label,
+.agent-ssh-pair label {
+  margin-top: 4px;
+}
+.agent-ssh-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, 0.45fr);
+  gap: 12px;
+}
+.agent-ssh-pair > div {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.agent-ssh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.agent-ssh-actions .agent-folder-path {
+  flex: 1 1 180px;
+}
+.agent-ssh-keys,
+.agent-ssh-browser {
+  margin: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--control-radius);
+  padding: 9px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.agent-ssh-verified {
+  color: var(--text-heading);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.agent-ssh-guidance {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.agent-ssh-browser > code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.agent-ssh-keys {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface-control);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.agent-ssh-keys h3 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 14px;
+}
+.agent-ssh-keys > p {
+  margin: 0;
+}
+.agent-ssh-key {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.agent-ssh-key > code {
+  padding: 10px;
+  border-radius: var(--control-radius);
+  background: var(--surface);
+  color: var(--text-strong);
+  font-size: 13px;
+  user-select: text;
+}
+@media (max-width: 520px) {
+  .agent-ssh-pair {
+    grid-template-columns: 1fr;
+  }
+}
+.agent-ssh-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  height: min(460px, calc(100vh - 220px));
+  overflow: hidden;
+}
+.agent-ssh-browser-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agent-ssh-browser-header code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-ssh-browser-back {
+  position: absolute;
+  top: 24px;
+  left: 20px;
+}
+.agent-ssh-browser ul {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 2px;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  padding: 0;
+  list-style: none;
+}
+.agent-ssh-browser-actions {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  padding-top: 2px;
+}
+.agent-ssh-checkbox-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  border-radius: var(--control-radius);
+  padding: 5px 6px;
+  color: var(--text-soft);
+  font-size: 12px;
+  cursor: pointer;
+}
+.agent-ssh-checkbox-row:hover,
+.agent-ssh-checkbox-row[data-selected="true"] {
+  background: var(--surface-hover);
+}
+.agent-ssh-checkbox-row > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.agent-ssh-checkbox-row > .app-checkbox {
+  flex-shrink: 0;
+}
+.agent-ssh-folder-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border-radius: var(--control-radius);
+  padding: 5px 6px;
+  color: var(--text-soft);
+  font-size: 12px;
+  text-align: left;
+}
+.agent-ssh-folder-button:hover {
+  background: var(--surface-hover);
+}
+.agent-ssh-folder-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.agent-ssh-group-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+}
+.agent-ssh-group-option label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+}
+.agent-ssh-group-name {
+  flex: 1 1 220px;
+}
+.agent-ssh-group-option .app-input {
+  flex: 1 1 160px;
+}

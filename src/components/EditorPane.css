@@ -1,0 +1,102 @@
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  border-right: 0;
+  background: var(--editor-bg);
+}
+
+.editor-title {
+  flex: 1 1 auto;
+  color: var(--text-faint);
+}
+
+.editor-title .app-icon-button {
+  --app-icon-button-selected-bg: transparent;
+  margin-top: -2px;
+}
+
+.editor-title-kind-icon {
+  --icon-size: var(--icon-size-md);
+  color: var(--note-accent, var(--text-faint));
+  stroke-width: 1.9;
+}
+
+.editor-title h2 {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.toolbar-actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  color: var(--text-faint);
+}
+
+.kind-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: 28px;
+  color: var(--note-accent);
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 0 5px;
+  background: var(--border-muted);
+}
+
+.toolbar-actions .kind-picker-trigger {
+  --icon-size: var(--icon-size-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: 28px;
+  border: 1px solid var(--note-border);
+  border-radius: 5px;
+  padding: 0 8px;
+  color: var(--note-accent);
+  background: var(--note-surface);
+}
+
+.toolbar-actions .kind-picker-trigger svg {
+  color: var(--note-accent);
+}
+
+.toolbar-actions .kind-picker-trigger span {
+  max-width: 78px;
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-actions .kind-picker-trigger:hover:not(:disabled),
+.toolbar-actions .kind-picker-trigger[aria-expanded="true"] {
+  color: var(--note-accent);
+  background: var(--surface);
+}
+
+.kind-picker.disabled {
+  opacity: 0.5;
+}
+
+.kind-picker-menu {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 156px;
+  --menu-item-columns: 18px minmax(0, 1fr) 16px;
+  --menu-item-gap: 7px;
+  --menu-item-height: 30px;
+  --menu-item-padding: 0 7px;
+  --menu-item-color: var(--text-soft);
+  --menu-item-hover-color: var(--text-soft);
+  --menu-item-icon-color: var(--note-accent);
+}

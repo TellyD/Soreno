@@ -1,0 +1,332 @@
+.project-services-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.project-services-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.project-services-disconnected {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-muted);
+  color: var(--text-soft);
+  background: var(--surface-muted);
+}
+
+.project-services-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.project-services-list-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--border-muted);
+  background: var(--surface-muted);
+}
+
+.project-services-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border-muted);
+  padding: 6px 16px 6px 18px;
+}
+
+.project-services-header strong {
+  color: var(--text-heading);
+  font-size: 13px;
+}
+
+.project-services-bulk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  padding: 3px 0;
+  color: var(--text-soft);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.project-services-bulk:hover:not(:disabled) {
+  color: var(--text-heading);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.project-services-bulk:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.project-services-bulk:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.project-services-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.project-services-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-services-section + .project-services-section {
+  margin-top: 10px;
+}
+
+.project-services-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 2px 8px 4px 9px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.project-services-section-header > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-services-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 50px;
+  border-radius: var(--control-radius);
+  color: var(--text-soft);
+}
+
+.project-services-list li + li {
+  margin-top: 3px;
+}
+
+.project-services-list li:hover {
+  background: var(--surface-active);
+}
+
+.project-services-list li.is-selected {
+  color: var(--text-heading);
+  background: var(--surface-active);
+}
+
+.project-services-service-select {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 4px 7px 9px;
+  color: inherit;
+  text-align: left;
+}
+
+.project-services-service-select:focus-visible,
+.project-services-actions .app-icon-button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.project-services-service-title,
+.project-services-service-meta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.project-services-service-title {
+  gap: 8px;
+}
+
+.project-services-state-icon {
+  display: inline-flex;
+  flex: 0 0 13px;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-services-service-title .app-loading-spinner {
+  color: var(--primary-hover);
+}
+
+.project-services-service-name {
+  overflow: hidden;
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-services-service-meta {
+  gap: 10px;
+  padding-left: 21px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.project-services-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-services-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-meta);
+}
+
+.project-services-branch svg {
+  flex-shrink: 0;
+}
+
+.project-services-branch span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-services-port {
+  flex-shrink: 0;
+  color: var(--text-meta);
+  white-space: nowrap;
+}
+
+.project-services-actions {
+  gap: 2px;
+  padding-right: 6px;
+}
+
+.project-services-actions .app-icon-button {
+  --app-icon-button-icon-size: 15px;
+  --service-action-color: var(--text-soft);
+  color: var(--service-action-color);
+}
+
+.project-services-actions .project-services-toggle {
+  --service-action-color: var(--success);
+}
+
+.project-services-actions .project-services-toggle.is-running {
+  --service-action-color: var(--danger-text);
+}
+
+.project-services-actions .project-services-restart {
+  --service-action-color: var(--primary-hover);
+}
+
+.project-services-actions .app-icon-button:hover:not(:disabled) {
+  color: var(--service-action-color);
+  background: color-mix(in srgb, var(--service-action-color) 14%, transparent);
+}
+
+.project-services-logs {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  background: var(--terminal-bg);
+}
+
+.project-services-logs > .app-empty-state {
+  color: var(--terminal-text);
+  background: var(--terminal-bg);
+}
+
+.confirmation-dialog:has(.project-services-trust-copy) {
+  width: min(600px, calc(100vw - 48px));
+}
+
+.project-services-trust-copy,
+.project-services-trust-command {
+  display: grid;
+}
+
+.project-services-trust-copy {
+  gap: 14px;
+}
+
+.project-services-trust-command {
+  gap: 8px;
+  border-top: 1px solid var(--border-muted);
+  padding-top: 12px;
+}
+
+.project-services-trust-command strong {
+  color: var(--text-heading);
+  font-size: 12.5px;
+}
+
+.project-services-trust-detail {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+
+.project-services-trust-detail > span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.project-services-trust-command code {
+  color: var(--text-soft);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 520px) {
+  .project-services-trust-detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+}
+
+@media (max-width: 760px) {
+  .project-services-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(190px, 40%) minmax(220px, 1fr);
+  }
+
+  .project-services-list-pane {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-muted);
+  }
+}

@@ -1,0 +1,45 @@
+.app-color-swatch {
+  --swatch-size: 32px;
+  --swatch-dot-size: 22px;
+
+  display: inline-grid;
+  position: relative;
+  place-items: center;
+  width: var(--swatch-size);
+  height: var(--swatch-size);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  padding: 0;
+  background: transparent;
+}
+
+.app-color-swatch::before {
+  width: var(--swatch-dot-size);
+  height: var(--swatch-dot-size);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: inherit;
+  background: var(--swatch-color);
+  content: "";
+}
+
+.app-color-swatch-small {
+  --swatch-size: 20px;
+  --swatch-dot-size: 14px;
+}
+
+.app-color-swatch:hover:not(:disabled) {
+  border-color: var(
+    --swatch-hover-border,
+    color-mix(in srgb, var(--swatch-color) 60%, var(--text-strong))
+  );
+}
+
+.app-color-swatch[aria-pressed="true"],
+.app-color-swatch[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--swatch-selected-border, var(--text-strong));
+}
+
+.app-color-swatch:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--focus-ring) 28%, transparent);
+  outline-offset: 1px;
+}

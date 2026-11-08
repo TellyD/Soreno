@@ -1,0 +1,84 @@
+.app-menu-surface {
+  display: grid;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: var(--menu-surface-padding, 5px);
+  color: var(--menu-surface-color, var(--text-soft));
+  background: var(--surface);
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.app-menu-surface:is([data-starting-style], [data-ending-style]) {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+.app-menu-surface .app-menu-item {
+  display: grid;
+  grid-template-columns: var(--menu-item-columns, minmax(0, 1fr));
+  align-items: center;
+  justify-content: stretch;
+  gap: var(--menu-item-gap, 7px);
+  width: 100%;
+  height: auto;
+  min-height: var(--menu-item-height, 30px);
+  border-radius: 5px;
+  padding: var(--menu-item-padding, 0 7px);
+  color: var(--menu-item-color, var(--text-soft));
+  font-size: 12px;
+  line-height: var(--menu-item-line-height, normal);
+  text-align: left;
+}
+
+.app-menu-surface .app-menu-item + .app-menu-item {
+  margin-top: 2px;
+}
+
+.app-menu-surface .app-menu-item:hover:not(:disabled):not(.selected) {
+  color: var(--menu-item-hover-color, var(--text-strong));
+  background: var(--menu-item-hover-bg, var(--menu-hover-bg));
+}
+
+.app-menu-surface .app-menu-item.selected {
+  color: var(--menu-item-selected-color, var(--text-strong));
+  background: var(--menu-item-selected-bg, var(--surface-selected));
+}
+
+.app-menu-surface .app-menu-item.danger {
+  color: var(--danger-text);
+}
+
+.app-menu-surface .app-menu-item.danger:hover:not(:disabled):not(.selected) {
+  color: var(--danger-menu-hover-text);
+  background: var(--danger-menu-hover-bg);
+}
+
+.app-menu-surface .app-menu-item:disabled {
+  color: var(--menu-item-disabled-color, var(--text-disabled));
+  opacity: var(--menu-item-disabled-opacity, 1);
+}
+
+.app-menu-surface .app-menu-item svg {
+  display: block;
+  width: var(--menu-item-icon-size, var(--icon-size-sm));
+  height: var(--menu-item-icon-size, var(--icon-size-sm));
+  color: var(--menu-item-icon-color, currentColor);
+  stroke-width: var(--menu-item-icon-stroke, 1.8);
+}
+
+.app-menu-surface .app-menu-item-label {
+  min-width: 0;
+  overflow: hidden;
+  line-height: var(--menu-item-label-line-height, normal);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-menu-surface {
+    transition: none;
+  }
+}

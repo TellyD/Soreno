@@ -1,0 +1,65 @@
+.app-switch {
+  --app-switch-width: 36px;
+  --app-switch-height: 20px;
+  --app-switch-thumb-size: 14px;
+
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 var(--app-switch-width);
+  align-items: center;
+  width: var(--app-switch-width);
+  height: var(--app-switch-height);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 0 2px;
+  background: var(--surface-control);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.app-switch-small {
+  --app-switch-width: 28px;
+  --app-switch-height: 16px;
+  --app-switch-thumb-size: 10px;
+}
+
+.app-switch[data-checked] {
+  border-color: var(--button-primary-bg);
+  background: var(--button-primary-bg);
+}
+
+.app-switch:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.app-switch[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.app-switch-thumb {
+  width: var(--app-switch-thumb-size);
+  height: var(--app-switch-thumb-size);
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+}
+
+.app-switch-thumb[data-checked] {
+  background: var(--button-primary-text);
+  transform: translateX(
+    calc(var(--app-switch-width) - var(--app-switch-thumb-size) - 6px)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-switch,
+  .app-switch-thumb {
+    transition: none;
+  }
+}

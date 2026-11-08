@@ -1,0 +1,6 @@
+.note-passphrase-error {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: 11px;
+  line-height: 1.4;
+}

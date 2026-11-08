@@ -1,0 +1,97 @@
+[package]
+name = "soreno"
+version = "1.2.3"
+description = "Soreno - prise de notes locale (Tauri, React, SQLite)"
+authors = ["Soreno"]
+edition = "2021"
+license = "MIT"
+default-run = "soreno"
+homepage = "https://github.com/TellyD/Soreno"
+repository = "https://github.com/TellyD/Soreno"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "soreno_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[workspace]
+members = ["crates/soreno-terminal-grid", "crates/soreno-remote", "crates/soreno-mobile-protocol", "crates/soreno-relay"]
+default-members = [".", "crates/soreno-terminal-grid", "crates/soreno-remote", "crates/soreno-mobile-protocol", "crates/soreno-relay"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+soreno-terminal-grid = { path = "crates/soreno-terminal-grid" }
+# Already pulled by the clipboard plugin, which exposes no file list.
+arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }
+base64 = "0.22.1"
+portable-pty = "0.9"
+libc = "0.2"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+# libdbus is already linked by tao: the sync backend avoids a second zbus major version.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-window-state = "2"
+rusqlite = { version = "0.32.1", features = ["bundled"] }
+regex = "1"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+semver = "1"
+sha1 = "0.10"
+sha2 = "0.10"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+
+[target.'cfg(unix)'.dependencies]
+sysinfo = { version = "0.36", default-features = false, features = ["system"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Already pulled by the opener plugin.
+zbus = "5"
+# Already pulled by tao.
+gdk = "0.18.2"
+gdkwayland-sys = "0.18.2"
+gdkx11-sys = "0.18.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = ["Data_Xml_Dom", "Foundation", "UI_Notifications"] }
+windows-sys = { version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_Debug", "Win32_System_Diagnostics_ProcessSnapshotting", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_Threading"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSBundle", "NSDictionary", "NSError", "NSObject", "NSString"] }
+objc2-user-notifications = { version = "0.3", default-features = false, features = ["std", "bitflags", "block2", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationResponse", "UNNotificationSound", "UNNotificationTrigger", "UNUserNotificationCenter"] }
+
+# Binaire de release plus compact, ce qui pese legerement dans les scores
+# antivirus heuristiques. On NE met volontairement PAS `strip = true` : retirer
+# les symboles rend l'exe plus opaque et pousse ces moteurs (Trapmine, Acronis
+# Static ML) vers un score plus eleve, pas plus bas.
+# LTO fine plutot que complete : l'essentiel du gain de taille sans exploser le
+# temps de build depuis WSL.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# Terminal emulation parses multi-megabyte redraws: keep `tauri dev` representative.
+[profile.dev.package.soreno-terminal-grid]
+opt-level = 3
+
+[profile.dev.package.alacritty_terminal]
+opt-level = 3
+
+[profile.dev.package.vte]
+opt-level = 3
+
+[profile.dev.package.memchr]
+opt-level = 3

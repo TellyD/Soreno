@@ -1,0 +1,54 @@
+name: Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dtach:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          curl --fail --location --silent --show-error \
+            https://ziglang.org/download/0.14.1/zig-x86_64-linux-0.14.1.tar.xz \
+            --output /tmp/zig.tar.xz
+          echo '24aeeec8af16c381934a6cd7d95c807a8cb2cf7df9fa40d359aa884195c4716c  /tmp/zig.tar.xz' | sha256sum -c -
+          tar -xf /tmp/zig.tar.xz -C /tmp
+          ZIG=/tmp/zig-x86_64-linux-0.14.1/zig sh src-tauri/dtach/build.sh
+          git diff --exit-code -- src-tauri/dtach/bin
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx tsc
+      - run: npm test
+      - run: npm run test:scripts
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - working-directory: src-tauri
+        run: cargo test --workspace --locked

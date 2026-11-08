@@ -1,0 +1,93 @@
+.app-input {
+  --app-input-height: var(--control-height-medium);
+  --app-input-padding-x: 9px;
+  --app-input-gap: 7px;
+  --app-input-radius: var(--control-radius);
+  --app-input-font-size: var(--control-font-size);
+  --app-input-icon-size: var(--icon-size-md);
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-input-gap);
+  width: 100%;
+  min-width: 0;
+  height: var(--app-input-height);
+  border: 1px solid var(--border);
+  border-radius: var(--app-input-radius);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  padding: 0 var(--app-input-padding-x);
+  color: var(--text-faint);
+  background: var(--surface-control);
+  transition:
+    border-color 120ms ease,
+    outline-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.app-input-small {
+  --app-input-height: var(--control-height-small);
+  --app-input-padding-x: 8px;
+  --app-input-gap: 6px;
+  --app-input-icon-size: var(--icon-size-xs);
+}
+
+.app-input-medium {
+  --app-input-height: var(--control-height-medium);
+}
+
+.app-input-large {
+  --app-input-height: var(--control-height-large);
+  --app-input-padding-x: 11px;
+  --app-input-gap: 8px;
+  --app-input-radius: 6px;
+  --app-input-font-size: 13px;
+  --app-input-icon-size: var(--icon-size-lg);
+}
+
+.app-input:hover:not(.app-input-disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.app-input:focus-within {
+  border-color: var(--focus-ring);
+  outline-color: color-mix(in srgb, var(--focus-ring) 18%, transparent);
+}
+
+.app-input-disabled {
+  opacity: 0.42;
+}
+
+.app-input-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+}
+
+.app-input-icon svg {
+  display: block;
+  width: var(--app-input-icon-size);
+  height: var(--app-input-icon-size);
+}
+
+.app-input-element {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  outline: 0;
+  color: var(--text-soft);
+  background: transparent;
+  font: inherit;
+  font-size: var(--app-input-font-size);
+}
+
+.app-input-element::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}

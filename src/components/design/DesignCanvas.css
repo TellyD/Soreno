@@ -1,0 +1,223 @@
+.design-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Dots follow the pan; their spacing is set inline from the zoom. */
+.design-canvas-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: var(--app-bg);
+  background-image: radial-gradient(
+    circle,
+    var(--border-strong) 1px,
+    transparent 1.5px
+  );
+  touch-action: none;
+  user-select: none;
+}
+
+.design-canvas:not([data-pointer]) .design-canvas-viewport:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.design-canvas-viewport.is-grabbing {
+  cursor: grab;
+}
+
+.design-canvas-viewport.is-panning {
+  cursor: grabbing;
+}
+
+.design-canvas-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
+/* Board units; chrome around frames keeps its screen size through --design-inverse. */
+.design-canvas-frame {
+  position: absolute;
+  background: #ffffff;
+  outline: calc(1px * var(--design-inverse)) solid var(--border);
+}
+
+.design-canvas-frame.is-selected {
+  outline: calc(2px * var(--design-inverse)) solid var(--primary);
+}
+
+/* The agent reworks this frame; the selection outline wins. */
+.design-canvas-frame.is-busy:not(.is-selected) {
+  outline: calc(2px * var(--design-inverse)) dashed
+    color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+.design-canvas:not([data-pointer]) .design-canvas-frame:focus-visible {
+  outline: calc(2px * var(--design-inverse)) solid var(--focus-ring);
+  outline-offset: calc(2px * var(--design-inverse));
+}
+
+.design-canvas-frame > iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.design-canvas-frame-label {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: calc(100% * var(--design-scale));
+  padding-bottom: 4px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transform: scale(var(--design-inverse));
+  transform-origin: 0 100%;
+  cursor: move;
+}
+
+.design-canvas-frame.is-selected > .design-canvas-frame-label {
+  color: var(--primary);
+}
+
+.design-canvas-frame-label > .app-loading-spinner {
+  margin-right: 4px;
+  color: var(--primary);
+  vertical-align: -2px;
+}
+
+.design-canvas-handle {
+  --handle: calc(8px * var(--design-inverse));
+
+  position: absolute;
+  width: var(--handle);
+  height: var(--handle);
+  border: calc(1px * var(--design-inverse)) solid var(--primary);
+  background: var(--surface);
+}
+
+.design-canvas-handle.is-n,
+.design-canvas-handle.is-s {
+  left: calc(50% - var(--handle) / 2);
+  cursor: ns-resize;
+}
+
+.design-canvas-handle.is-e,
+.design-canvas-handle.is-w {
+  top: calc(50% - var(--handle) / 2);
+  cursor: ew-resize;
+}
+
+.design-canvas-handle:is(.is-n, .is-ne, .is-nw) {
+  top: calc(var(--handle) / -2);
+}
+
+.design-canvas-handle:is(.is-s, .is-se, .is-sw) {
+  bottom: calc(var(--handle) / -2);
+}
+
+.design-canvas-handle:is(.is-e, .is-ne, .is-se) {
+  right: calc(var(--handle) / -2);
+}
+
+.design-canvas-handle:is(.is-w, .is-nw, .is-sw) {
+  left: calc(var(--handle) / -2);
+}
+
+.design-canvas-handle:is(.is-nw, .is-se) {
+  cursor: nwse-resize;
+}
+
+.design-canvas-handle:is(.is-ne, .is-sw) {
+  cursor: nesw-resize;
+}
+
+.design-canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.design-canvas-empty > * {
+  pointer-events: auto;
+}
+
+/* Same height as the board toolbar on the left: one border, borderless controls inside. */
+.design-canvas-toolbar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  height: var(--control-height-small);
+  padding: 0 2px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+}
+
+.design-canvas-toolbar > .app-button {
+  --app-button-height: 24px;
+  --app-button-min-width: 48px;
+  --app-button-padding-x: 6px;
+  --app-button-border: transparent;
+  --app-button-border-hover: transparent;
+  --app-button-bg: transparent;
+  --app-button-bg-hover: var(--surface-active);
+  --app-button-bg-active: var(--surface-active);
+
+  font-variant-numeric: tabular-nums;
+}
+
+.design-canvas-toolbar-separator {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--border-muted);
+}
+
+.design-canvas-menu-positioner {
+  z-index: 100;
+}
+
+.design-canvas-menu {
+  --menu-item-columns: 16px minmax(0, 1fr);
+
+  min-width: 160px;
+}
+
+.design-canvas-menu-positioner .app-menu-item[data-highlighted] {
+  background: var(--menu-hover-bg);
+}
+
+/* Over every frame, whatever its z; screen-thin at any zoom. */
+.design-canvas-guide {
+  position: absolute;
+  z-index: 2147483647;
+  background: var(--primary);
+  pointer-events: none;
+}
+
+.design-canvas-guide.is-x {
+  width: calc(1px * var(--design-inverse));
+  transform: translateX(-50%);
+}
+
+.design-canvas-guide.is-y {
+  height: calc(1px * var(--design-inverse));
+  transform: translateY(-50%);
+}

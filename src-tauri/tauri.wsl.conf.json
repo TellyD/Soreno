@@ -1,0 +1,8 @@
+{
+  "build": {
+    "beforeDevCommand": null,
+    "beforeBuildCommand": null,
+    "devUrl": "http://127.0.0.1:1422",
+    "frontendDist": "../dist"
+  }
+}

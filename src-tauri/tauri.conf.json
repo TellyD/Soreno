@@ -1,0 +1,83 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Soreno",
+  "version": "1.2.3",
+  "identifier": "com.soreno.notes",
+  "build": {
+    "beforeDevCommand": "npm run build:remote && npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build:remote && npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Soreno",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 920,
+        "minHeight": 620,
+        "decorations": false,
+        "dragDropEnabled": false,
+        "shadow": true
+      }
+    ],
+    "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      },
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": {
+      "dtach/LICENSE": "dtach/LICENSE",
+      "dtach/SOURCE.md": "dtach/SOURCE.md",
+      "dtach/build.sh": "dtach/build.sh",
+      "dtach/soreno-history.patch": "dtach/soreno-history.patch",
+      "dtach/source/dtach-0.9.tar.gz": "dtach/source/dtach-0.9.tar.gz"
+    },
+    "publisher": "Soreno",
+    "homepage": "https://github.com/TellyD/Soreno",
+    "copyright": "Copyright © 2026 Soreno",
+    "category": "Productivity",
+    "shortDescription": "Prise de notes locale",
+    "longDescription": "Soreno est une application de prise de notes locale pour Windows, macOS et Linux. Les notes sont stockées dans des coffres SQLite sur le poste de l'utilisateur.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "linux": {
+      "rpm": {
+        "depends": [
+          "webkit2gtk4.1",
+          "gtk3"
+        ]
+      }
+    },
+    "macOS": {
+      "signingIdentity": "-"
+    },
+    "windows": {
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "nsis": {
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE1OTZGRjBGNUIyQTBEOTIKUldTU0RTcGJELytXRmFvV1M1dG1sTHlXb1hoYmlYbzVUTzd3dTNMZWMzOFBGQ2lJbDhNdFl1YloK",
+      "endpoints": [
+        "https://github.com/TellyD/Soreno/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

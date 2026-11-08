@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+// Test double for Pi/OMP's public extension lifecycle, not an installed coding agent.
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const args = process.argv.slice(2);
+(async () => {
+  const extensionIndex = args.findIndex(arg => arg === '-e' || arg === '--extension');
+  if (extensionIndex < 0) throw new Error('Missing Soreno bridge');
+  const resumeIndex = args.findIndex(arg => arg === '--session' || arg === '--resume');
+  const file = resumeIndex < 0 ? `${process.env.HOME}/history-${crypto.randomUUID()}.jsonl` : args[resumeIndex + 1];
+  let id;
+  if (resumeIndex < 0) {
+    id = crypto.randomUUID();
+    fs.writeFileSync(file, JSON.stringify({type:'session', id}) + '\n');
+  } else {
+    id = JSON.parse(fs.readFileSync(file, 'utf8').split('\n')[0]).id;
+  }
+  const source = fs.readFileSync(args[extensionIndex + 1], 'utf8');
+  const bridge = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+  const events = new Map();
+  bridge.default({on: (name, handler) => events.set(name, handler)});
+  const context = {hasUI:true, mode:'tui', sessionManager:{getSessionId:()=>id, getSessionFile:()=>file, getSessionName:()=> 'SSH fixture conversation'}, ui:{notify: console.error}, shutdown:()=>process.exit(1)};
+  events.get('session_start')?.({}, context);
+  console.log(`SORENO_AGENT_READY ${id} cwd=${process.cwd()}`);
+  setTimeout(() => { events.get('session_shutdown')?.({}, context); process.exit(0); }, 1200);
+})().catch(error => { console.error(error); process.exit(1); });

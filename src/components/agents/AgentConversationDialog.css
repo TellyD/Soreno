@@ -1,0 +1,196 @@
+.agent-conversation-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+  background: var(--surface-muted);
+  font-size: 13px;
+}
+
+/* An approval holds the agent back: it reads as the one thing to settle now. */
+.agent-conversation-dialog.is-approval {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.agent-conversation-dialog header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.agent-conversation-dialog h3 {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.agent-conversation-dialog-waiting {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-meta);
+  font-size: 12px;
+}
+
+/* Long requests scroll here so the title and the answer buttons stay on screen. */
+.agent-conversation-dialog-body {
+  display: grid;
+  gap: 10px;
+  max-height: 40vh;
+  overflow: auto;
+  /* Room for the options' hover background and 3px focus outlines, which overflow would clip. */
+  margin: -3px -10px;
+  padding: 3px 10px;
+}
+
+.agent-conversation-dialog-detail {
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text-strong);
+  background: var(--surface);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.agent-conversation-dialog-message {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.agent-conversation-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.agent-conversation-dialog-actions kbd {
+  font: inherit;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.agent-conversation-dialog-options {
+  display: grid;
+  gap: 6px;
+}
+
+.agent-conversation-dialog-option {
+  display: grid;
+  gap: 2px;
+  /* The text lines up with the title; only the hover background reaches past it. */
+  width: calc(100% + 14px);
+  margin-inline: -7px;
+  border: 0;
+  border-radius: var(--control-radius);
+  padding: 7px;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-conversation-dialog-option:hover {
+  background: var(--surface-hover);
+}
+
+.agent-conversation-dialog-option:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.agent-conversation-dialog-option small {
+  color: var(--text-meta);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.agent-conversation-dialog-option code {
+  color: color-mix(in srgb, var(--primary) 50%, var(--text));
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.agent-conversation-dialog-option.is-check {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+}
+
+.agent-conversation-dialog-option.is-check small {
+  grid-column: 2;
+}
+
+.agent-conversation-dialog-radio {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-control);
+}
+
+.agent-conversation-dialog-option[aria-pressed="true"]
+  .agent-conversation-dialog-radio {
+  border: 5px solid var(--button-primary-bg);
+  background: var(--button-primary-text);
+}
+
+.agent-conversation-dialog-recommended {
+  margin-left: 8px;
+  color: var(--text-meta);
+  font-size: 12px;
+}
+
+.agent-conversation-ask {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.agent-conversation-ask + .agent-conversation-ask {
+  margin-top: 10px;
+}
+
+.agent-conversation-ask legend {
+  margin-bottom: 6px;
+  padding: 0;
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.agent-conversation-dialog-editor {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--control-radius);
+  padding: 7px 9px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.agent-conversation-dialog-editor:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}

@@ -1,0 +1,89 @@
+.app-icon-button {
+  --app-icon-button-size: 28px;
+  --app-icon-button-icon-size: var(--icon-size-lg);
+
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--app-icon-button-width, var(--app-icon-button-size));
+  height: var(--app-icon-button-height, var(--app-icon-button-size));
+  border: 1px solid transparent;
+  border-radius: var(--control-radius, 5px);
+  padding: 0;
+  color: var(--text-faint);
+  background: transparent;
+  line-height: 0;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease,
+    outline-color 120ms ease;
+}
+
+.app-icon-button-small {
+  --app-icon-button-size: 24px;
+  --app-icon-button-icon-size: var(--icon-size-sm);
+}
+
+.app-icon-button-large {
+  --app-icon-button-size: 32px;
+  --app-icon-button-icon-size: var(--icon-size-xl);
+}
+
+.app-icon-button svg {
+  display: block;
+  width: var(--app-icon-button-icon-size, auto);
+  height: var(--app-icon-button-icon-size, auto);
+}
+
+.app-icon-button:hover:not(:disabled) {
+  color: var(--app-icon-button-hover-color, var(--text-heading));
+  background: var(--app-icon-button-hover-bg, var(--surface-active));
+}
+
+.app-icon-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--focus-ring) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.app-icon-button.selected,
+.app-icon-button.selected:hover:not(:disabled) {
+  color: var(--app-icon-button-selected-color, var(--primary));
+  background: var(--app-icon-button-selected-bg, var(--primary-soft));
+}
+
+.app-icon-button-danger:hover:not(:disabled) {
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+
+.app-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* :where keeps component-specific icon transitions in charge. */
+  :where(.app-icon-button) svg {
+    transition:
+      rotate 120ms ease,
+      scale 120ms ease;
+  }
+
+  .app-icon-button:active:not(:disabled) svg {
+    scale: 0.88;
+  }
+
+  .app-icon-button-feedback {
+    animation: app-icon-button-feedback 180ms ease-out;
+  }
+}
+
+@keyframes app-icon-button-feedback {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+}

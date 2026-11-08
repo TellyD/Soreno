@@ -1,0 +1,308 @@
+.agent-conversation-composer {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  min-width: 0;
+}
+
+/* The textarea, attachments and controls share one frame, like a single field. */
+.agent-conversation-input {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 16px;
+  padding: 14px 12px 10px 16px;
+  background: var(--surface-control);
+  cursor: text;
+}
+
+/* Opens above the field, where the transcript leaves room. */
+.agent-conversation-mentions {
+  --menu-item-columns: auto minmax(0, 1fr);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  left: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.agent-conversation-mention-detail {
+  margin-left: 8px;
+  color: var(--text-meta);
+}
+
+/* Three lines at rest: room to write a real instruction without scrolling. */
+.agent-conversation-input textarea {
+  display: block;
+  width: 100%;
+  min-height: 66px;
+  max-height: 260px;
+  resize: none;
+  border: 0;
+  outline: none;
+  padding: 0 4px 0 0;
+  color: var(--text-strong);
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.agent-conversation-input textarea::placeholder {
+  color: var(--text-meta);
+  opacity: 1;
+}
+
+.agent-conversation-input textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.agent-conversation-input textarea[readonly] {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.agent-conversation-draft {
+  position: relative;
+}
+
+.agent-conversation-draft textarea {
+  position: relative;
+}
+
+/* Same box and text layout as the textarea, so each glyph lands under its own. */
+/* shortcut: WebKit before Safari 18.2 ignores scrollbar-gutter: with classic scrollbars, an overflowing draft wraps differently under the chips; size the backdrop from clientWidth if users report it. */
+.agent-conversation-draft.has-chips textarea,
+.agent-conversation-draft-backdrop {
+  scrollbar-gutter: stable;
+}
+
+.agent-conversation-draft.has-chips textarea {
+  color: transparent;
+  caret-color: var(--text-strong);
+}
+
+.agent-conversation-draft-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  padding: 0 4px 0 0;
+  color: var(--text-strong);
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  pointer-events: none;
+}
+
+.agent-conversation-draft:has(textarea:disabled) .agent-conversation-draft-backdrop {
+  opacity: 0.52;
+}
+
+.agent-conversation-draft:has(textarea[readonly]) .agent-conversation-draft-backdrop {
+  opacity: 0.72;
+}
+
+/* The marker keeps its width in the text; the chip is laid over it. */
+.agent-conversation-draft-chip {
+  position: relative;
+  color: transparent;
+}
+
+/* The marker's width barely holds the icon and a 13px label; the 14px strut keeps it on the baseline. */
+.agent-conversation-draft-chip > span {
+  position: absolute;
+  inset: 0 -4px;
+  color: var(--text);
+  line-height: normal;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Tailwind's preflight makes svg a block: it would push the label off the chip. */
+.agent-conversation-draft-chip svg {
+  display: inline-block;
+  margin-right: 3px;
+  vertical-align: -1px;
+}
+
+.agent-conversation-draft-chip span span {
+  font-size: 13px;
+}
+
+/* A marker wrapped across lines cannot hold the one-piece chip: it shows as plain text. */
+.agent-conversation-draft-chip.is-split {
+  color: inherit;
+}
+
+.agent-conversation-draft-chip.is-split > span {
+  display: none;
+}
+
+.agent-conversation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-left: -6px;
+  cursor: default;
+}
+
+/* Settings of the next message, not fields: they stay quiet until pointed at. */
+.agent-conversation-controls > .app-select {
+  width: auto;
+  max-width: 15rem;
+  border-color: transparent;
+  color: var(--text-muted);
+  background: transparent;
+  font-weight: 500;
+}
+
+.agent-conversation-controls > .app-select:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+
+.agent-conversation-controls-end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* The trigger is narrower than a model name: the list keeps one name per line. */
+.agent-conversation-select-popup {
+  min-width: 220px;
+  max-width: min(340px, var(--available-width));
+}
+
+.agent-conversation-select-popup .app-select-option-label,
+.agent-conversation-select-popup .app-select-option-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-conversation-context,
+.agent-conversation-goal {
+  margin-right: 4px;
+  color: var(--text-meta);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.agent-conversation-separator {
+  width: 1px;
+  height: 12px;
+  flex: 0 0 auto;
+  margin-right: 4px;
+  background: var(--border-muted);
+}
+
+.agent-conversation-send {
+  --app-icon-button-size: 32px;
+  --app-icon-button-icon-size: 16px;
+  --app-icon-button-hover-color: var(--button-primary-text);
+  --app-icon-button-hover-bg: var(--button-primary-bg-hover);
+
+  margin-left: 4px;
+  border-radius: 999px;
+  color: var(--button-primary-text);
+  background: var(--button-primary-bg);
+}
+
+.agent-conversation-send:disabled {
+  color: var(--button-disabled-text);
+  background: var(--button-disabled-bg);
+}
+
+/* Stop reads as the opposite of sending: neutral, not the accent. */
+.agent-conversation-send.is-stop {
+  --app-icon-button-icon-size: 13px;
+  --app-icon-button-hover-color: var(--surface);
+  --app-icon-button-hover-bg: var(--text-strong);
+
+  color: var(--surface);
+  background: var(--text-heading);
+}
+
+.agent-conversation-send.is-stop svg {
+  fill: currentColor;
+}
+
+.agent-conversation-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-conversation-attachments li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 16rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 2px 2px 2px 6px;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  font-size: 12px;
+}
+
+.agent-conversation-attachments img {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.agent-conversation-attachments span,
+.agent-conversation-attachment-toggle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-conversation-attachment-toggle {
+  border-radius: 4px;
+  padding: 2px;
+  color: inherit;
+  font: inherit;
+}
+
+.agent-conversation-attachment-toggle:hover {
+  color: var(--text-strong);
+  background: var(--surface-hover);
+}
+
+.agent-conversation-attachment-toggle:focus-visible,
+.agent-conversation-attachment-preview pre:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.agent-conversation-attachment-preview pre {
+  max-height: 200px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--text);
+  background: var(--surface-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+}

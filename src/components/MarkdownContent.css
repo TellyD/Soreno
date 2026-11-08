@@ -1,0 +1,91 @@
+.markdown-content {
+  color: var(--text);
+}
+
+/* Bold stands out from body text, as in the note editor. */
+.markdown-content strong {
+  color: var(--text-strong);
+  font-weight: 650;
+}
+
+.markdown-table,
+.markdown-diagram {
+  max-width: 100%;
+  margin: 0 0 10px;
+  overflow-x: auto;
+}
+
+.markdown-table:focus-visible,
+.markdown-diagram:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.markdown-diagram {
+  padding-bottom: 10px;
+}
+
+.markdown-diagram svg {
+  display: block;
+  --pele-bg: var(--surface);
+  --pele-fg: var(--text-heading);
+  --pele-muted: var(--text-muted);
+  --pele-line: var(--text-muted);
+  --pele-surface: var(--surface-control);
+  --pele-surface-alt: var(--surface-panel);
+  --pele-border: var(--text-faint);
+  --pele-accent: var(--primary);
+  --pele-critical: var(--danger-action);
+  /* Pele writes some labels on series colors in --pele-bg: colors that contrast with --surface. */
+  --pele-series-1: var(--primary);
+  --pele-series-2: var(--warning-accent);
+  --pele-series-3: var(--cm-syntax-string);
+  --pele-series-4: var(--cm-syntax-keyword);
+  --pele-series-5: var(--danger-action);
+  --pele-series-6: var(--cm-syntax-type);
+  --pele-series-7: var(--cm-syntax-number);
+  --pele-series-8: var(--cm-syntax-function);
+}
+
+.markdown-diagram[data-pannable] {
+  cursor: grab;
+}
+
+.markdown-diagram[data-panning] {
+  cursor: grabbing;
+}
+
+.markdown-diagram-source {
+  position: relative;
+}
+
+.markdown-diagram-source > .app-loading-spinner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* Full width at least; columns keep their natural width (no "1,1 / Mio"), long text wraps past 28rem. */
+.markdown-table table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.markdown-table th,
+.markdown-table td {
+  border: 1px solid var(--border-muted);
+  max-width: 28rem;
+  padding: 4px 9px;
+  text-align: left;
+  vertical-align: top;
+  /* Words stay whole: a wide table scrolls instead. */
+  overflow-wrap: normal;
+}
+
+.markdown-table th {
+  color: var(--text-heading);
+  background: var(--surface-control);
+  font-weight: 650;
+}

@@ -1,0 +1,180 @@
+/* Top-aligned so the dialog does not move while the description grows. */
+.app-dialog-overlay.kanban-create-overlay {
+  align-items: start;
+  padding-top: max(28px, 12vh);
+}
+
+.kanban-create-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - max(28px, 12vh) - 28px);
+}
+
+.kanban-create-dialog form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.kanban-create-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px 12px 4px 16px;
+}
+
+.kanban-create-header h2 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-create-header .kanban-create-team {
+  flex: none;
+  color: var(--text-soft);
+  font-weight: 650;
+}
+
+.kanban-create-close {
+  flex: none;
+  margin-left: auto;
+}
+
+.kanban-create-body {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 16px 6px;
+}
+
+.kanban-create-dialog .app-input.kanban-create-title,
+.kanban-create-dialog .app-input.kanban-create-title:hover {
+  --app-input-height: auto;
+  --app-input-padding-x: 0;
+  --app-input-font-size: 18px;
+
+  border-color: transparent;
+  outline-color: transparent;
+  background: transparent;
+}
+
+.kanban-create-title .app-input-element {
+  color: var(--text-heading);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+/* Borderless: the caret alone marks focus in these two text fields. */
+.kanban-create-description .markdown-editor .cm-content {
+  min-height: 140px;
+}
+
+.kanban-create-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 14px;
+}
+
+.kanban-create-dialog .kanban-field-chip,
+.kanban-create-dialog .app-select.kanban-field-chip {
+  --app-select-height: 26px;
+  --app-select-padding-x: 8px;
+  --app-select-gap: 6px;
+  --app-select-radius: 6px;
+  --app-select-font-size: 12px;
+  --app-select-icon-size: 14px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-width: 0;
+  max-width: 220px;
+  height: 26px;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  padding: 0 8px;
+  color: var(--text-soft);
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.kanban-create-dialog .kanban-field-chip:hover:not(:disabled) {
+  border-color: var(--border);
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+
+.kanban-create-dialog .kanban-field-chip:focus-visible,
+.kanban-create-dialog .kanban-field-chip[data-popup-open] {
+  border-color: var(--focus-ring);
+  outline-color: color-mix(in srgb, var(--focus-ring) 18%, transparent);
+}
+
+.kanban-create-dialog .kanban-field-chip:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.kanban-create-fields .app-select-chevron {
+  display: none;
+}
+
+.kanban-field-chip-dots {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+
+.app-select-popup.kanban-field-popup {
+  width: max-content;
+  min-width: max(var(--anchor-width), 200px);
+  max-width: min(320px, var(--available-width));
+}
+
+.kanban-create-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  border-top: 1px solid var(--border-muted);
+  padding: 10px 16px;
+}
+
+.kanban-create-agent {
+  padding-top: 0;
+}
+
+.kanban-create-agent-toggle,
+.kanban-create-footer-start {
+  margin-right: auto;
+}
+
+.kanban-create-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 12px;
+  user-select: none;
+}
+
+.kanban-create-option:has(.app-checkbox[data-disabled]) {
+  color: var(--text-faint);
+  cursor: default;
+}

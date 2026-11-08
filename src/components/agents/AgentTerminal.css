@@ -1,0 +1,264 @@
+.agent-terminal-file-drop {
+  position: absolute;
+  z-index: 20;
+  inset: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px dashed #829bc0;
+  border-radius: var(--control-radius);
+  color: var(--terminal-text);
+  background: color-mix(in srgb, var(--terminal-bg) 76%, #829bc0);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  pointer-events: none;
+}
+:root[data-terminal-theme="dark"] .agent-terminal-file-drop {
+  color: #eef4ff;
+}
+
+.agent-terminal-context {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.agent-terminal-context:focus-visible {
+  outline: 1px solid #829bc0;
+  outline-offset: -1px;
+}
+
+.agent-terminal-menu-positioner {
+  z-index: 1500;
+  min-width: 170px;
+  max-width: var(--available-width);
+}
+.agent-terminal-menu-positioner .app-menu-surface {
+  max-height: var(--available-height);
+  overflow-y: auto;
+}
+.agent-terminal-menu-positioner .app-menu-item[data-highlighted] {
+  outline: 1px solid var(--border-strong);
+  background: var(--menu-hover-bg);
+}
+.agent-terminal-menu-positioner .app-menu-item[data-disabled] {
+  color: var(--text-disabled);
+  background: transparent;
+  cursor: default;
+}
+
+.agent-grid-host {
+  position: relative;
+  outline: none;
+  font-family:
+    Consolas, "SFMono-Regular", "Cascadia Code", "DejaVu Sans Mono", monospace;
+  font-size: 14px;
+  font-variant-ligatures: none;
+  background: var(--terminal-bg);
+  color: var(--terminal-text);
+}
+/* The focused textarea shows as the solid blinking cursor. */
+.agent-grid-host:focus-visible {
+  outline: 1px solid #829bc0;
+  outline-offset: -1px;
+}
+
+.agent-grid-screen {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+  cursor: text;
+  /* The engine owns the selection so it can span the scrollback. */
+  user-select: none;
+}
+.agent-grid-row {
+  height: var(--agent-grid-cell-height);
+  line-height: var(--agent-grid-cell-height);
+  white-space: pre;
+  overflow: hidden;
+}
+.agent-grid-span {
+  display: inline-block;
+  height: 100%;
+  vertical-align: top;
+  overflow: visible;
+  /* Cells are in logical order: RTL runs must not be reordered across them. */
+  direction: ltr;
+  unicode-bidi: bidi-override;
+}
+.agent-grid-span.is-glyph {
+  position: relative;
+  z-index: 1;
+}
+.agent-grid-span.is-bold {
+  font-weight: 700;
+}
+.agent-grid-span.is-italic {
+  font-style: italic;
+}
+.agent-grid-span.is-underline {
+  text-decoration-line: underline;
+}
+.agent-grid-span.is-strike {
+  text-decoration-line: line-through;
+}
+.agent-grid-span.is-underline.is-strike {
+  text-decoration-line: underline line-through;
+}
+.agent-grid-span.is-link {
+  cursor: pointer;
+}
+.agent-grid-span.is-link:hover {
+  text-decoration-line: underline;
+}
+/* Detected plain URLs: underlined by an overlay so hovering never rebuilds rows. */
+.agent-grid-screen.is-link-hover {
+  cursor: pointer;
+}
+.agent-grid-link-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.agent-grid-link-underline {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  border-bottom: 1px solid currentColor;
+}
+.agent-grid-selection-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.agent-grid-selection {
+  position: absolute;
+  z-index: 1;
+  background: var(--selection-bg);
+}
+
+.agent-grid-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--agent-grid-cell-width);
+  height: var(--agent-grid-cell-height);
+  line-height: var(--agent-grid-cell-height);
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+}
+.agent-grid-cursor[data-shape="hidden"] {
+  display: none;
+}
+.agent-grid-cursor[data-shape="block"] {
+  outline: 1px solid var(--agent-grid-cursor);
+  outline-offset: -1px;
+}
+.agent-grid-cursor[data-shape="block"].is-focused {
+  outline: none;
+  color: var(--terminal-bg);
+  background: var(--agent-grid-cursor);
+}
+.agent-grid-cursor[data-shape="underline"] {
+  border-bottom: 2px solid var(--agent-grid-cursor);
+}
+.agent-grid-cursor[data-shape="beam"] {
+  border-left: 2px solid var(--agent-grid-cursor);
+}
+.agent-grid-cursor.is-focused {
+  animation: agent-grid-cursor-blink 1.2s steps(1, end) infinite;
+}
+/* Switching to an identical animation restarts the blink visible, so the cursor stays solid while typing. */
+.agent-grid-cursor.is-focused.is-blink-restarted {
+  animation-name: agent-grid-cursor-blink-restarted;
+}
+@keyframes agent-grid-cursor-blink {
+  50% {
+    visibility: hidden;
+  }
+}
+@keyframes agent-grid-cursor-blink-restarted {
+  50% {
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-grid-cursor.is-focused,
+  .agent-grid-cursor.is-focused.is-blink-restarted {
+    animation: none;
+  }
+}
+
+/* Kept in the layout (not display:none) so it can hold focus and IME composition at the cursor. */
+.agent-grid-input {
+  position: absolute;
+  z-index: 1;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  resize: none;
+  font: inherit;
+  /* Collapsible white space makes WebKit type U+00A0 instead of a space. */
+  white-space: pre;
+  color: transparent;
+  background: transparent;
+  caret-color: transparent;
+}
+
+/* 14px, slider tinted from the terminal foreground. */
+.agent-grid-scrollbar {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+}
+.agent-grid-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: color-mix(in srgb, currentColor 20%, transparent);
+}
+.agent-grid-scrollbar-thumb:hover {
+  background: color-mix(in srgb, currentColor 40%, transparent);
+}
+.agent-grid-scrollbar-thumb.is-active {
+  background: color-mix(in srgb, currentColor 50%, transparent);
+}
+
+.agent-grid-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  white-space: pre;
+  line-height: normal;
+  pointer-events: none;
+}
+
+.agent-grid-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+}
