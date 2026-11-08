@@ -340,6 +340,8 @@ const en = {
     "The remote branch has advanced. Fetch and integrate its changes before pushing again.",
   operationGitDiverged:
     "The local branch and its upstream have diverged. Use Pull with rebase to integrate the remote changes.",
+  operationGitRebaseConflict:
+    "Pull with rebase hit a conflict and was cancelled: your branch is unchanged. Resolve it in a terminal with git rebase, or drop the conflicting local commits.",
   operationGitBranchNotMerged:
     "Git refused to delete this branch: some of its commits aren’t merged into the branch’s own upstream, or into the current branch if it has no upstream. Merge or push it first to keep that work.",
   operationGitUncertain:
@@ -896,6 +898,8 @@ const fr: typeof en = {
     "La branche distante a avancé. Récupérez et intégrez ses changements avant de pousser à nouveau.",
   operationGitDiverged:
     "La branche locale et sa branche amont ont divergé. Utilisez Pull avec rebase pour intégrer les changements distants.",
+  operationGitRebaseConflict:
+    "Le pull avec rebase a rencontré un conflit et a été annulé : votre branche est intacte. Résolvez-le dans un terminal avec git rebase, ou abandonnez les commits locaux en conflit.",
   operationGitBranchNotMerged:
     "Git a refusé de supprimer cette branche : certains de ses commits ne sont pas fusionnés dans sa propre branche amont, ou dans la branche courante si elle n’a pas d’amont. Fusionnez-la ou poussez-la d’abord pour conserver ce travail.",
   operationGitUncertain:

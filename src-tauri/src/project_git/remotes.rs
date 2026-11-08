@@ -920,7 +920,7 @@ fn rebase_onto(
         if restored {
             if conflicts == Ok(true) {
                 return Err(GitError::new(
-                    "conflict",
+                    "rebaseConflict",
                     "Le rebase a rencontré un conflit et a été automatiquement abandonné.",
                 ));
             }

@@ -33,6 +33,7 @@ const gitCodeMessages = {
   codex: "operationCodexFailed",
   nonFastForward: "operationGitNonFastForward",
   diverged: "operationGitDiverged",
+  rebaseConflict: "operationGitRebaseConflict",
   notMerged: "operationGitBranchNotMerged",
   uncertain: "operationGitUncertain",
   busy: "operationGitBusy",

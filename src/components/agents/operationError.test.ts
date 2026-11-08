@@ -55,6 +55,9 @@ it("localizes Git error codes", () => {
   expect(format("en-US", { message: "[Git/dirty]" })).toBe(
     "The working tree must be clean before this Git operation.",
   );
+  expect(format("fr-FR", { message: "[Git/rebaseConflict] x" })).toBe(
+    agentStringsForLocale("fr-FR").operationGitRebaseConflict,
+  );
 });
 
 it("explains a deletion blocked by a session automation", () => {

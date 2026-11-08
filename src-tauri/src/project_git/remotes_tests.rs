@@ -484,7 +484,7 @@ fn pull_aborts_a_conflicting_rebase_without_local_loss() {
     )
     .unwrap_err();
 
-    assert_eq!(error.code, "conflict");
+    assert_eq!(error.code, "rebaseConflict");
     assert_eq!(error.uncertain, None);
     assert!(local_state(&temp.project()).is_ok_and(|state| state == before));
     assert_eq!(
@@ -523,7 +523,7 @@ fn pull_aborts_a_conflicting_rebase_with_reference_transaction_hook_disabled() {
     )
     .unwrap_err();
 
-    assert_eq!(error.code, "conflict");
+    assert_eq!(error.code, "rebaseConflict");
     assert_eq!(error.uncertain, None);
     assert!(local_state(&temp.project()).is_ok_and(|state| state == before));
     assert_eq!(repository(&temp.project()).unwrap().operation, None);
