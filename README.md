@@ -4,6 +4,11 @@ Desktop app for Windows, macOS and Linux that combines note-taking with a
 workspace for CLI agents (Pi, OMP, Codex, Claude Code), built with Tauri 2,
 React, TypeScript, Rust and SQLite. Notes stay in local vaults.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/agents-dark.webp">
+  <img alt="Agent sessions in built-in terminals, next to the Git changes panel" src="docs/screenshots/agents-light.webp">
+</picture>
+
 ## Getting started
 
 Install Node.js at the version in [`.nvmrc`](.nvmrc), npm, Rust/Cargo via
@@ -77,6 +82,16 @@ The profile is stored in `%APPDATA%\com.soreno.notes` (Windows),
 - **Codex updates**: **Settings → AI** checks the Codex installation and offers
   **Update to** the latest version for a recognized npm or Homebrew install;
   otherwise, use its original package manager.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/design-dark.webp">
+  <img alt="Design whiteboard with three HTML/CSS variants drawn by an agent" src="docs/screenshots/design-light.webp">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/chat-dark.webp">
+  <img alt="Chat (OMP) session on an SSH project" src="docs/screenshots/chat-light.webp">
+</picture>
 
 ## Contributing
 

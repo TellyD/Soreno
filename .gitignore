@@ -35,6 +35,7 @@ dist-ssr
 # Maintainer-only notes and agent skills, kept out of the public repository
 /docs/*
 !/docs/changelog/
+!/docs/screenshots/
 /skills-lock.json
 /.pi/
 /.agents/
