@@ -176,9 +176,7 @@ export function AgentConversation({
     // Activating the pane from one of its fields (a request's answer) keeps that focus.
     if (
       document.querySelector('[aria-modal="true"]') ||
-      textarea
-        .closest(".agent-conversation")
-        ?.contains(document.activeElement)
+      textarea.closest(".agent-conversation")?.contains(document.activeElement)
     )
       return;
     if (textarea.disabled) deferredFocus.current = document.activeElement;

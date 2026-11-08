@@ -48,7 +48,9 @@ export function useKanbanIssueRequestNotifications(
     if (issue) {
       notifyInfo(
         t(
-          updated ? "kanban.issueRequest.updated" : "kanban.issueRequest.created",
+          updated
+            ? "kanban.issueRequest.updated"
+            : "kanban.issueRequest.created",
           { identifier: issue.identifier, session: sessionName, title },
         ),
         {

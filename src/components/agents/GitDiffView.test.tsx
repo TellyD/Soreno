@@ -1029,7 +1029,7 @@ it("aligns changed lines before diffing their characters", async () => {
   const changedLines = new Set(
     getChunks(editor.state)!.chunks.flatMap((chunk) => {
       const lines: string[] = [];
-      for (let pos = chunk.fromB; pos < chunk.toB; ) {
+      for (let pos = chunk.fromB; pos < chunk.toB;) {
         const line = editor.state.doc.lineAt(pos);
         lines.push(line.text);
         pos = line.to + 1;

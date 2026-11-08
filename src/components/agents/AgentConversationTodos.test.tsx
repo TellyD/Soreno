@@ -29,7 +29,9 @@ it("hides finished tasks until the list changes", () => {
     { name: "Fix", tasks: [{ content: "Patch", status: "completed" }] },
   ];
 
-  render([{ name: "Fix", tasks: [{ content: "Patch", status: "in_progress" }] }]);
+  render([
+    { name: "Fix", tasks: [{ content: "Patch", status: "in_progress" }] },
+  ]);
   expect(closeButton()).toBeNull();
 
   render(finished());

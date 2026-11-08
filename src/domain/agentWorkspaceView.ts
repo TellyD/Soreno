@@ -20,7 +20,9 @@ export const worktreeName = (
 ) => branch ?? agentProjectNameFromPath(worktree.path);
 
 /** The agents space without Design boards' sessions and synthetic project; statuses stay for the Design view. */
-export function agentsSpaceWorkspace(workspace: AgentWorkspace): AgentWorkspace {
+export function agentsSpaceWorkspace(
+  workspace: AgentWorkspace,
+): AgentWorkspace {
   return {
     ...workspace,
     projects: workspace.projects.filter(({ id }) => id !== designProjectId),

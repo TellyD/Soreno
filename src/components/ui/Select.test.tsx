@@ -113,7 +113,9 @@ it("shows an option's full text as tooltip only when it is clipped", async () =>
     )!;
   for (const label of ["GPT-6-Astra", "GPT-5.6-Sol"])
     await act(async () =>
-      option(label).dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
+      option(label).dispatchEvent(
+        new MouseEvent("mouseover", { bubbles: true }),
+      ),
     );
   expect(option("GPT-6-Astra").title).toBe("");
   expect(option("GPT-5.6-Sol").title).toBe("GPT-5.6-Sol");

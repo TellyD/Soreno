@@ -45,7 +45,8 @@ afterEach(async () => {
 it("draws agent diagrams as inert pictures, waits for streamed code to settle, and keeps the source of what it cannot draw", async () => {
   const flowchart =
     'flowchart LR\n  A[Front] --> B["<img src=x onerror=alert(1)>"]\n  click A "https://example.com"';
-  const gantt = "gantt\ndateFormat YYYY-MM-DD\nsection A\nX : 2025-01-01, 50000000d";
+  const gantt =
+    "gantt\ndateFormat YYYY-MM-DD\nsection A\nX : 2025-01-01, 50000000d";
   // Mermaid froze the app walking such a chart day by day; Pele gives up instead.
   const excluding = gantt.replace("section", "excludes 1900-01-01\nsection");
   await show(blocks(flowchart, gantt, excluding, "not a diagram"));
@@ -73,7 +74,7 @@ it("draws agent diagrams as inert pictures, waits for streamed code to settle, a
   );
   await settle();
   expect(container.querySelector("[aria-busy]")).toBeNull();
-  expect(container.querySelector(".markdown-diagram svg")?.textContent).toContain(
-    "Back",
-  );
+  expect(
+    container.querySelector(".markdown-diagram svg")?.textContent,
+  ).toContain("Back");
 });

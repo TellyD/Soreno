@@ -97,11 +97,13 @@
   pointer-events: none;
 }
 
-.agent-conversation-draft:has(textarea:disabled) .agent-conversation-draft-backdrop {
+.agent-conversation-draft:has(textarea:disabled)
+  .agent-conversation-draft-backdrop {
   opacity: 0.52;
 }
 
-.agent-conversation-draft:has(textarea[readonly]) .agent-conversation-draft-backdrop {
+.agent-conversation-draft:has(textarea[readonly])
+  .agent-conversation-draft-backdrop {
   opacity: 0.72;
 }
 

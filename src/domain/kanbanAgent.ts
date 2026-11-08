@@ -134,11 +134,7 @@ export function kanbanCommentTargets(
     )
     .map((session) => ({
       sessionId: session.id,
-      name: sessionName(
-        session,
-        statusesById.get(session.id),
-        terminalTitles,
-      ),
+      name: sessionName(session, statusesById.get(session.id), terminalTitles),
       executable: session.executable,
       linkedToIssue: false,
     }));

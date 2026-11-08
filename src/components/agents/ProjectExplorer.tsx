@@ -829,8 +829,7 @@ export function ProjectExplorer({
           path={target.path}
           project={project}
         />
-        {target.kind === "file" ||
-        (historyAvailable && onShowHistory) ? (
+        {target.kind === "file" || (historyAvailable && onShowHistory) ? (
           <Menu.Separator className="agent-menu-separator" />
         ) : null}
         {change && onShowChanges

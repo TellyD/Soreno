@@ -303,9 +303,9 @@ it("closes the tools with the issue only if they were closed for it since they l
   onVisibleChange.mockClear();
   await click("Lier une issue");
   expect(onVisibleChange).not.toHaveBeenCalledWith(false);
-  expect(
-    gitPanel.querySelector<HTMLElement>(".agent-git-panel")!.hidden,
-  ).toBe(false);
+  expect(gitPanel.querySelector<HTMLElement>(".agent-git-panel")!.hidden).toBe(
+    false,
+  );
   await click("Codex tests");
   expect(issuePressed()).toBe(true);
 });

@@ -542,9 +542,7 @@ export function AgentSessionTabs({
           <IconButton
             ref={designPanelButtonRef}
             size="small"
-            aria-label={
-              designPanel.linked ? s.designPanel : s.designPanelLink
-            }
+            aria-label={designPanel.linked ? s.designPanel : s.designPanelLink}
             title={designPanel.linked ? s.designPanel : s.designPanelLink}
             selected={designPanel.visible}
             aria-pressed={designPanel.visible}

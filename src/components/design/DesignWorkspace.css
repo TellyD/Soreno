@@ -59,7 +59,8 @@
 }
 
 /* Leading and trailing slots may hold a non-SVG icon (provider logos are spans). */
-.design-switcher-menu .app-menu-item:has(> :not(.app-menu-item-label) + .app-menu-item-label) {
+.design-switcher-menu
+  .app-menu-item:has(> :not(.app-menu-item-label) + .app-menu-item-label) {
   --menu-item-columns: 16px minmax(0, 1fr);
 }
 

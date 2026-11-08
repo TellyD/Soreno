@@ -146,10 +146,15 @@ export function renumberAgentConversationImageMarkers(
   text: string,
   renumber: (n: number) => number | null,
 ) {
-  return text.replace(/( ?)\[Image #(\d+)\]/g, (_, space: string, n: string) => {
-    const next = renumber(Number(n));
-    return next === null ? "" : `${space}${agentConversationImageMarker(next)}`;
-  });
+  return text.replace(
+    /( ?)\[Image #(\d+)\]/g,
+    (_, space: string, n: string) => {
+      const next = renumber(Number(n));
+      return next === null
+        ? ""
+        : `${space}${agentConversationImageMarker(next)}`;
+    },
+  );
 }
 
 /** `text` with `token` at `caret`, spaced from the words around it, and the caret after it. */

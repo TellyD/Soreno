@@ -149,7 +149,9 @@ export function DesignSessionPanel({
       await designApi.linkDesignSession(sessionId, id);
       onLinkChange();
       if (running)
-        setSent(await designApi.sendDesignToSession(sessionId, id, null, false));
+        setSent(
+          await designApi.sendDesignToSession(sessionId, id, null, false),
+        );
     });
   const unlink = () =>
     run(async () => {

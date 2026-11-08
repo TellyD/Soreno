@@ -1957,12 +1957,17 @@ it("closes another project's session from the rail without leaving the current p
   await act(async () => row.focus());
   await act(async () =>
     button("Codex tests", tabs).dispatchEvent(
-      new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
+      new MouseEvent("auxclick", {
+        button: 1,
+        bubbles: true,
+        cancelable: true,
+      }),
     ),
   );
   expect(api.deleteAgentSession).toHaveBeenLastCalledWith("s2");
   await act(
-    () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
   expect(document.activeElement).toBe(row);
 });

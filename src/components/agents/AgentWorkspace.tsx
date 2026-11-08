@@ -2863,9 +2863,7 @@ export function AgentWorkspace({
                 navigationDisabled={navigationDisabled}
                 disconnected={selectedProjectLaunchBlocked}
                 gitPanelAvailable={projectToolsAvailable}
-                gitPanelVisible={
-                  gitPanelVisible && !issueShown && !designShown
-                }
+                gitPanelVisible={gitPanelVisible && !issueShown && !designShown}
                 gitPanelButtonRef={gitPanelButtonRef}
                 returnFocusRef={returnFocusRef}
                 sessionTabRefs={sessionTabRefs}
@@ -3451,9 +3449,7 @@ export function AgentWorkspace({
                       ?.repositoryProjectId ?? issuePanelSession.projectId
                   }
                   boardId={activeDesignLink?.boardId ?? null}
-                  running={
-                    statusOf(issuePanelSession.id)?.state === "running"
-                  }
+                  running={statusOf(issuePanelSession.id)?.state === "running"}
                   projects={workspace.projects}
                   // The repository, not the session's worktree: deleting a worktree project would delete its boards.
                   hostProject={availableDesignProject(

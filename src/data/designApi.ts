@@ -46,7 +46,9 @@ export const duplicateDesignFrame = (boardId: string, frameId: string) =>
 export const deleteDesignFrame = (boardId: string, frameId: string) =>
   invoke<DesignFrame>("design_delete_frame", { boardId, frameId });
 /** Fires with the board ID after the agent wrote one of its frames. */
-export const listenDesignFramesChanged = (onChange: (boardId: string) => void) =>
+export const listenDesignFramesChanged = (
+  onChange: (boardId: string) => void,
+) =>
   listen<{ boardId: string }>("design-frames-changed", (event) =>
     onChange(event.payload.boardId),
   );

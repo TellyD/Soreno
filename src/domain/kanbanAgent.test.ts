@@ -322,8 +322,7 @@ describe("kanbanCommentTargets", () => {
       "Finish the steps",
     );
     expect(
-      linkedAgent({ ...linked, customName: "Renamed" }, [status], titles)
-        ?.name,
+      linkedAgent({ ...linked, customName: "Renamed" }, [status], titles)?.name,
     ).toBe("Renamed");
   });
 

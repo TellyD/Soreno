@@ -223,7 +223,9 @@ export function useDesignBoard(
     const id = geometry.boardId;
     setFrames(id, (list) =>
       list.map((item) =>
-        item.id === geometry.id ? { ...item, ...frameGeometry(geometry) } : item,
+        item.id === geometry.id
+          ? { ...item, ...frameGeometry(geometry) }
+          : item,
       ),
     );
     return mutate(geometry.id, async (isLatest) => {

@@ -858,7 +858,8 @@ export const en = {
   "design.emptyBody":
     "Create a board, then describe a screen: the agent draws it as HTML frames you move, duplicate and have reworked.",
   "design.framesEmptyTitle": "Empty board",
-  "design.framesEmptyBody": "Describe a screen or a component in the bar below.",
+  "design.framesEmptyBody":
+    "Describe a screen or a component in the bar below.",
   "design.placeholder": "Describe a screen or a change…",
   "design.send": "Send",
   "design.target.label": "Target",
