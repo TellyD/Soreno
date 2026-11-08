@@ -4,6 +4,8 @@ Desktop app for Windows, macOS and Linux that combines note-taking with a
 workspace for CLI agents (Pi, OMP, Codex, Claude Code), built with Tauri 2,
 React, TypeScript, Rust and SQLite. Notes stay in local vaults.
 
+Website: <https://www.soreno.dev>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/agents-dark.webp">
   <img alt="Agent sessions in built-in terminals, next to the Git changes panel" src="docs/screenshots/agents-light.webp">
