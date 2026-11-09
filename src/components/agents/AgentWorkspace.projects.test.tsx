@@ -851,6 +851,14 @@ it("keeps project actions on the project row and only Git actions on worktree ro
     complete: true,
     missingProjectIds: [],
   });
+  setStatus("s1", "idle");
+  data.sessions.push({
+    ...session,
+    id: "s3",
+    projectId: "p2",
+    name: "Feature agent",
+  });
+  data.statuses.push({ sessionId: "s3", state: "running", exitCode: null });
   await render();
   await vi.waitFor(() =>
     expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
@@ -868,6 +876,12 @@ it("keeps project actions on the project row and only Git actions on worktree ro
       (item) => item.textContent,
     ),
   ).toEqual(["Fusionner dans main et supprimer", "Supprimer le worktree"]);
+  await escape();
+
+  await click("Replier le groupe · Repository");
+  expect(
+    button("Repository").querySelector(".agent-project-activity"),
+  ).not.toBeNull();
 });
 
 it("waits for complete topology before migrating a manual group to a missing partial representative", async () => {
@@ -1792,10 +1806,14 @@ it("collapses and expands all projects", async () => {
     projectId: "group-g1",
     name: "Group agent",
   });
+  data.statuses.push({ sessionId: "s3", state: "running", exitCode: null });
   await render();
   const overviewSessions = () =>
     container.querySelector('[aria-label="Activité des sessions · Suite"]');
   expect(overviewSessions()?.textContent).toContain("Group agent");
+  const groupActivity = () =>
+    button("Suite").querySelector(".agent-project-activity");
+  expect(groupActivity()).toBeNull();
 
   await click("Replier tous les projets");
   expect(
@@ -1805,6 +1823,7 @@ it("collapses and expands all projects", async () => {
     button("Déplier le projet · Other").getAttribute("aria-expanded"),
   ).toBe("false");
   expect(overviewSessions()).toBeNull();
+  expect(groupActivity()?.getAttribute("aria-label")).toBe("1 agent actif");
   expect(
     button("Replier le groupe · Suite").getAttribute("aria-expanded"),
   ).toBe("true");
@@ -1826,6 +1845,8 @@ it("collapses and expands all projects", async () => {
   await click("Replier le groupe · Suite");
   await click("Déplier le groupe · Suite");
   expect(overviewSessions()?.textContent).toContain("Group agent");
+  await click("Replier le groupe · Suite");
+  expect(groupActivity()?.textContent).toBe("1");
 });
 
 it("persists collapsed projects across mounts", async () => {

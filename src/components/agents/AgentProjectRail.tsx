@@ -425,6 +425,61 @@ export function AgentProjectRail({
       </ul>
     ) : null;
   };
+  const collapsedActivity = (projectIds: readonly string[]) => {
+    const sessions = visibleSessions.filter((session) =>
+      projectIds.includes(session.projectId),
+    );
+    const activeSessions = sessions.filter(
+      (session) =>
+        startingSessionId === session.id ||
+        statusOf(session.id)?.state === "running",
+    );
+    const busySession = activeSessions.find(
+      (session) => startingSessionId === session.id || isWorking(session.id),
+    );
+    const marks = sessions.map((session) => attentionOf(session.id));
+    const attention = marks.includes("awaiting")
+      ? "awaiting"
+      : marks.includes("unread")
+        ? "unread"
+        : null;
+    const count = activeSessions.length;
+    if (count === 0 && !attention) return null;
+    const label = [
+      count > 0 ? s.groupActiveAgents(count) : null,
+      busySession
+        ? statusLabel(busySession.id)
+        : attention
+          ? s[attention]
+          : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return {
+      label,
+      badge: (
+        <span
+          className={`agent-project-activity${busySession ? " is-working" : ""}`}
+          role="status"
+          aria-label={label}
+        >
+          {busySession ? (
+            <LoaderCircle
+              size={11}
+              className="app-loading-spinner"
+              aria-hidden="true"
+            />
+          ) : (
+            <span
+              className={`agent-status-dot is-${attention ?? "running"}`}
+              aria-hidden="true"
+            />
+          )}
+          {count > 0 ? <span aria-hidden="true">{count}</span> : null}
+        </span>
+      ),
+    };
+  };
   const renderProject = ({
     project,
     manualGroup,
@@ -433,37 +488,7 @@ export function AgentProjectRail({
   }: AgentProjectRenderProps) => {
     const groupProjectIds = group?.projectIds ?? [project.id];
     const expanded = !groupProjectIds.some((id) => collapsed.has(id));
-    const activeSessions = visibleSessions.filter(
-      (session) =>
-        groupProjectIds.includes(session.projectId) &&
-        (startingSessionId === session.id ||
-          statusOf(session.id)?.state === "running"),
-    );
-    const busySession = activeSessions.find(
-      (session) => startingSessionId === session.id || isWorking(session.id),
-    );
-    const marks = visibleSessions
-      .filter((session) => groupProjectIds.includes(session.projectId))
-      .map((session) => attentionOf(session.id));
-    const projectAttention = marks.includes("awaiting")
-      ? "awaiting"
-      : marks.includes("unread")
-        ? "unread"
-        : null;
-    const activeAgentCount = activeSessions.length;
-    const collapsedActivityLabel =
-      !expanded && (activeAgentCount > 0 || projectAttention)
-        ? [
-            activeAgentCount > 0 ? s.groupActiveAgents(activeAgentCount) : null,
-            busySession
-              ? statusLabel(busySession.id)
-              : projectAttention
-                ? s[projectAttention]
-                : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")
-        : null;
+    const activity = expanded ? null : collapsedActivity(groupProjectIds);
     const branch = branches[project.id];
     const environmentTitle = agentEnvironmentLabel(
       project.environment,
@@ -515,7 +540,7 @@ export function AgentProjectRail({
                 group ? null : project.path,
                 environmentTitle,
                 branchTitle,
-                collapsedActivityLabel,
+                activity?.label,
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -525,29 +550,7 @@ export function AgentProjectRail({
                 <>
                   <span className="agent-project-heading">
                     <span className="agent-project-name">{project.name}</span>
-                    {collapsedActivityLabel ? (
-                      <span
-                        className={`agent-project-activity${busySession ? " is-working" : ""}`}
-                        role="status"
-                        aria-label={collapsedActivityLabel}
-                      >
-                        {busySession ? (
-                          <LoaderCircle
-                            size={11}
-                            className="app-loading-spinner"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <span
-                            className={`agent-status-dot is-${projectAttention ?? "running"}`}
-                            aria-hidden="true"
-                          />
-                        )}
-                        {activeAgentCount > 0 ? (
-                          <span aria-hidden="true">{activeAgentCount}</span>
-                        ) : null}
-                      </span>
-                    ) : null}
+                    {activity?.badge}
                   </span>
                   <span className="agent-project-details">
                     <span>{environment}</span>
@@ -763,12 +766,27 @@ export function AgentProjectRail({
       : null;
     const environment =
       anchor?.environment.kind === "ssh" ? s.ssh : environmentTitle;
+    // Worktree projects hide under their repository row, which is the only one stored in the group.
+    // shortcut: with incomplete worktree topology, a worktree still saved in another group also counts there; mirror AgentProjectList's repository filter if it shows up.
+    const memberIds = group.projectIds.flatMap(
+      (id) =>
+        worktreeGroups.find((worktree) => worktree.projectIds.includes(id))
+          ?.projectIds ?? [id],
+    );
     const activeAgents = workspace.sessions.filter(
       (session) =>
         (session.projectId === groupProject?.id ||
-          group.projectIds.includes(session.projectId)) &&
+          memberIds.includes(session.projectId)) &&
         isWorking(session.id),
     ).length;
+    // Hidden sessions: the whole group when collapsed, else only the overview's own list.
+    const activity = collapsedActivity(
+      group.collapsed
+        ? [...(groupProject ? [groupProject.id] : []), ...memberIds]
+        : groupProject && collapsed.has(groupProject.id)
+          ? [groupProject.id]
+          : [],
+    );
     const details = [
       hasOverview ? s.groupOverview : null,
       environment,
@@ -793,7 +811,10 @@ export function AgentProjectRail({
           <div className="agent-project-row">
             <NavItem
               className="agent-project-select"
-              title={environmentTitle ?? undefined}
+              title={
+                [environmentTitle, activity?.label].filter(Boolean).join(" · ") ||
+                undefined
+              }
               icon={
                 <AgentProjectIcon
                   project={group}
@@ -806,7 +827,10 @@ export function AgentProjectRail({
               }
               label={
                 <>
-                  <span className="agent-project-name">{group.name}</span>
+                  <span className="agent-project-heading">
+                    <span className="agent-project-name">{group.name}</span>
+                    {activity?.badge}
+                  </span>
                   <span className="agent-project-details">
                     <span>{details}</span>
                   </span>
