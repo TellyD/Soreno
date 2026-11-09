@@ -2,6 +2,7 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { syntaxHighlighting } from "@codemirror/language";
 import { closeSearchPanel, openSearchPanel, search } from "@codemirror/search";
 import {
+  Compartment,
   EditorSelection,
   EditorState,
   Text,
@@ -45,6 +46,8 @@ export type OpenDocument = ProjectFileContent & {
   value: string;
 };
 
+const lineWrapping = new Compartment();
+
 type SearchPanel = { dom: HTMLElement; view: EditorView; state: EditorState };
 
 function languageName(path: string): string {
@@ -57,6 +60,7 @@ function languageName(path: string): string {
 export function ProjectCodeEditor({
   document,
   editable,
+  wrap,
   reveal,
   searchRequested,
   onChange,
@@ -68,6 +72,7 @@ export function ProjectCodeEditor({
   editable: boolean;
   reveal: FileReveal | null;
   searchRequested: boolean;
+  wrap: boolean;
   onChange: (value: string) => void;
   onRevealed: (id: number) => void;
   onSave: () => void;
@@ -151,7 +156,7 @@ export function ProjectCodeEditor({
       EditorState.lineSeparator.of("\n"),
       EditorState.readOnly.of(!editable),
       EditorView.editable.of(editable),
-      EditorView.lineWrapping,
+      lineWrapping.of(wrap ? EditorView.lineWrapping : []),
       EditorView.contentAttributes.of({
         spellcheck: "false",
         "aria-label": document.path,
@@ -187,6 +192,13 @@ export function ProjectCodeEditor({
       });
     }
   }, [document.value]);
+
+  // Reconfigured in place so toggling keeps undo history and selection.
+  useLayoutEffect(() => {
+    editor.current?.dispatch({
+      effects: lineWrapping.reconfigure(wrap ? EditorView.lineWrapping : []),
+    });
+  }, [wrap]);
 
   useLayoutEffect(() => {
     const view = editor.current;

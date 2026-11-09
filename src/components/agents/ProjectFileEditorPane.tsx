@@ -1,8 +1,9 @@
-import { Eye, FileCode2, LoaderCircle } from "lucide-react";
+import { Eye, FileCode2, LoaderCircle, TextWrap } from "lucide-react";
 import {
   isMarkdownProjectFile,
   projectFileName,
 } from "../../domain/projectFiles";
+import { useStoredPreference } from "../../hooks/useStoredPreference";
 import { MarkdownContent } from "../MarkdownContent";
 import { EmptyState } from "../ui/EmptyState";
 import { IconButton } from "../ui/IconButton";
@@ -13,6 +14,8 @@ import {
   type FileReveal,
   type OpenDocument,
 } from "./ProjectCodeEditor";
+
+const parseWrap = (stored: string | null) => stored !== "false";
 
 export function ProjectFileEditorPane({
   closeLocked,
@@ -51,6 +54,11 @@ export function ProjectFileEditorPane({
   const markdownFile =
     !!document && !document.mediaType && isMarkdownProjectFile(document.path);
   const showMarkdownPreview = markdownFile && markdownPreview;
+  const [wrap, setWrap] = useStoredPreference(
+    "soreno:file-wrap",
+    "soreno:file-wrap-change",
+    parseWrap,
+  );
 
   return (
     <section
@@ -78,6 +86,18 @@ export function ProjectFileEditorPane({
                 {s.unsavedFile}
               </span>
             ) : null}
+            {document.mediaType || showMarkdownPreview ? null : (
+              <IconButton
+                size="small"
+                aria-label={s.wrapLines}
+                aria-pressed={wrap}
+                selected={wrap}
+                title={s.wrapLines}
+                onClick={() => setWrap(!wrap)}
+              >
+                <TextWrap />
+              </IconButton>
+            )}
             {markdownFile ? (
               <IconButton
                 size="small"
@@ -108,6 +128,7 @@ export function ProjectFileEditorPane({
               document={document}
               editable={!fileLoading && !closeLocked}
               reveal={reveal?.path === document.path ? reveal : null}
+              wrap={wrap}
               searchRequested={searchRequested}
               onChange={onChange}
               onRevealed={onRevealed}
