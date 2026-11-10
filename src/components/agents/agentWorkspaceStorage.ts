@@ -19,6 +19,7 @@ export const projectGroupsKey = "soreno.agents.project-groups.v1";
 export const collapsedProjectsKey = "soreno.agents.collapsed-projects.v1";
 export const hideProjectsWithoutAgentsKey =
   "soreno.agents.hide-projects-without-agents.v1";
+const priorityViewKey = "soreno.agents.priority-view.v1";
 export const serviceViewsKey = "soreno.agents.service-views.v1";
 export const servicesPanelHeightKey = "soreno.agents.services-panel-height.v1";
 const kanbanSelectedKey = "soreno.agents.kanban.v1";
@@ -170,6 +171,11 @@ export const readHideProjectsWithoutAgents = () =>
 
 export const writeHideProjectsWithoutAgents = (value: boolean) =>
   writeStoredJson(hideProjectsWithoutAgentsKey, value);
+
+export const readPriorityView = () => readStoredFlag(priorityViewKey);
+
+export const writePriorityView = (value: boolean) =>
+  writeStoredJson(priorityViewKey, value);
 
 export const readKanbanSelected = () => readStoredFlag(kanbanSelectedKey);
 

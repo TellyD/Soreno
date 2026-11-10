@@ -12,6 +12,7 @@ import {
   type AgentSessionStatus,
   type AgentWorkspace,
 } from "./agentSessions";
+import type { AgentSessionAttention } from "./agentAttention";
 import type { ProjectService } from "./projectServices";
 
 export const worktreeName = (
@@ -107,6 +108,24 @@ export function visibleAgentSessions({
         !closedIds.has(session.id) &&
         !splitChildIds.has(session.id),
     );
+}
+
+/** Rail priority view: waits then unread turns, then the other live sessions; the rest stays in the tree. */
+export function agentPrioritySections(
+  sessions: readonly AgentSession[],
+  attentionOf: (id: string) => AgentSessionAttention | null,
+  isLive: (id: string) => boolean,
+) {
+  const awaiting: AgentSession[] = [];
+  const unread: AgentSession[] = [];
+  const live: AgentSession[] = [];
+  for (const session of sessions) {
+    const mark = attentionOf(session.id);
+    if (mark === "awaiting") awaiting.push(session);
+    else if (mark === "unread") unread.push(session);
+    else if (isLive(session.id)) live.push(session);
+  }
+  return { toHandle: [...awaiting, ...unread], live };
 }
 
 /** Service sessions missing from the manifest stay listed but cannot be launched again. */

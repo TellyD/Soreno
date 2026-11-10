@@ -1787,7 +1787,7 @@ it("customizes a group's icon from its menu and keeps it after a rename", async 
   ).toBe("true");
 });
 
-it("collapses and expands all projects", async () => {
+it("collapses and expands all projects and groups", async () => {
   data.projects.push(
     { ...project, id: "p2", name: "Other" },
     {
@@ -1815,7 +1815,7 @@ it("collapses and expands all projects", async () => {
     button("Suite").querySelector(".agent-project-activity");
   expect(groupActivity()).toBeNull();
 
-  await click("Replier tous les projets");
+  await click("Tout replier");
   expect(
     button("Déplier le projet · Soreno").getAttribute("aria-expanded"),
   ).toBe("false");
@@ -1825,13 +1825,13 @@ it("collapses and expands all projects", async () => {
   expect(overviewSessions()).toBeNull();
   expect(groupActivity()?.getAttribute("aria-label")).toBe("1 agent actif");
   expect(
-    button("Replier le groupe · Suite").getAttribute("aria-expanded"),
-  ).toBe("true");
+    button("Déplier le groupe · Suite").getAttribute("aria-expanded"),
+  ).toBe("false");
   expect(JSON.parse(localStorage.getItem(collapsedProjectsKey)!)).toEqual(
-    expect.arrayContaining(["p1", "p2", "group-g1"]),
+    expect.arrayContaining(["p1", "p2", "group-g1", "group:g1"]),
   );
 
-  await click("Déplier tous les projets");
+  await click("Tout déplier");
   expect(
     button("Replier le projet · Soreno").getAttribute("aria-expanded"),
   ).toBe("true");
@@ -1841,8 +1841,7 @@ it("collapses and expands all projects", async () => {
   expect(JSON.parse(localStorage.getItem(collapsedProjectsKey)!)).toEqual([]);
   expect(overviewSessions()?.textContent).toContain("Group agent");
 
-  await click("Replier tous les projets");
-  await click("Replier le groupe · Suite");
+  await click("Tout replier");
   await click("Déplier le groupe · Suite");
   expect(overviewSessions()?.textContent).toContain("Group agent");
   await click("Replier le groupe · Suite");

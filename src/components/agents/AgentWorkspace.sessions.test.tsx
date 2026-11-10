@@ -62,6 +62,49 @@ it("filters projects without agents from the rail toggle and keeps the filter vi
   expect(container.querySelector(".agent-rail-filter-notice")).toBeNull();
 });
 
+it("ranks sessions from the priority toggle, counts waits on it and remembers it", async () => {
+  vi.useFakeTimers();
+  data.sessions.push({ ...session, id: "s3", name: "Stopped" });
+  data.statuses.push({ sessionId: "s3", state: "exited", exitCode: 0 });
+  setStatus("s2", "running");
+  await render();
+  data.statuses[1].working = true;
+  data.statuses[1].awaiting = true;
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  const toggle = () => button("Vue par priorités · 1 à traiter");
+  const sections = () =>
+    [...container.querySelectorAll(".agent-rail section")].map((section) => [
+      section.querySelector("h3")?.textContent,
+      [...section.querySelectorAll(".agent-priority-name")].map(
+        (item) => item.textContent,
+      ),
+    ]);
+
+  expect(toggle().getAttribute("aria-pressed")).toBe("false");
+  await act(async () => toggle().click());
+  expect(sections()).toEqual([
+    ["À traiter", ["Codex tests"]],
+    ["En cours · 1", ["Pi notes"]],
+  ]);
+
+  await act(async () => root.render(null));
+  await render();
+  expect(toggle().getAttribute("aria-pressed")).toBe("true");
+
+  // A split tab whose parent exited stays live while its secondary pane works.
+  data.statuses[1].awaiting = false;
+  setStatus("s1", "exited");
+  localStorage.setItem(terminalSplitsKey, JSON.stringify({ s1: "s2" }));
+  await act(async () => root.render(null));
+  await render();
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(sections()).toEqual([["En cours · 1", ["Pi notes"]]]);
+  expect(
+    container.querySelector(".agent-priority-session .app-loading-spinner"),
+  ).not.toBeNull();
+});
+
 it("shows live work in tabs and the sidebar, including hidden sessions, without confusing it with process lifetime", async () => {
   vi.useFakeTimers();
   await render();

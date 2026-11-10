@@ -5,6 +5,7 @@ import {
   Folders,
   GitBranch,
   GitMerge,
+  Inbox,
   LayoutGrid,
   LoaderCircle,
   Palette,
@@ -36,7 +37,10 @@ import {
   type AgentWorkspace,
 } from "../../domain/agentSessions";
 import type { AgentSessionAttention } from "../../domain/agentAttention";
-import { worktreeName } from "../../domain/agentWorkspaceView";
+import {
+  agentPrioritySections,
+  worktreeName,
+} from "../../domain/agentWorkspaceView";
 import { NavItem } from "../SidebarNav";
 import { IconButton } from "../ui/IconButton";
 import { MenuItem } from "../ui/Menu";
@@ -58,6 +62,7 @@ import {
 import type { Confirmation } from "./agentConfirmation";
 import { useAgentStrings } from "./agentStrings";
 import { useGitStrings } from "./gitStrings";
+import { readPriorityView, writePriorityView } from "./agentWorkspaceStorage";
 
 type AgentProjectRailForm = (
   | { kind: "project"; project?: AgentProject }
@@ -93,6 +98,7 @@ type AgentProjectRailProps = {
   onlyWithAgents: boolean;
   quickWorktreeLoadingProjectId: string | null;
   startingSessionId: string | null;
+  terminalSplits: Readonly<Record<string, string>>;
   statusOf: (id: string) => AgentSessionStatus | undefined;
   isWorking: (id: string) => boolean;
   attentionOf: (id: string) => AgentSessionAttention | null;
@@ -167,6 +173,7 @@ export function AgentProjectRail({
   onlyWithAgents,
   quickWorktreeLoadingProjectId,
   startingSessionId,
+  terminalSplits,
   statusOf,
   isWorking,
   attentionOf,
@@ -212,6 +219,16 @@ export function AgentProjectRail({
     x: number;
     y: number;
   } | null>(null);
+  const [priorityView, setPriorityView] = useState(readPriorityView);
+  const busy = (id: string) => startingSessionId === id || isWorking(id);
+  // A split tab is live while either pane is: the secondary pane can outlive the parent.
+  const tabPanes = (id: string) =>
+    terminalSplits[id] ? [id, terminalSplits[id]] : [id];
+  const priority = agentPrioritySections(visibleSessions, attentionOf, (id) =>
+    tabPanes(id).some(
+      (paneId) => busy(paneId) || statusOf(paneId)?.state === "running",
+    ),
+  );
   const appearanceItem =
     appearanceTarget?.kind === "group"
       ? projectGroups.find((group) => group.id === appearanceTarget.id)
@@ -230,7 +247,8 @@ export function AgentProjectRail({
   }
   const allProjectsCollapsed =
     orderedProjects.length > 0 &&
-    orderedProjects.every((project) => collapsed.has(project.id));
+    orderedProjects.every((project) => collapsed.has(project.id)) &&
+    projectGroups.every((group) => group.collapsed);
   const activeSessionProjectId = workspace.sessions.find(
     (session) => session.id === activeSessionId,
   )?.projectId;
@@ -888,6 +906,110 @@ export function AgentProjectRail({
       </>
     );
   };
+  const prioritySession = (session: AgentSession) => {
+    const project = workspace.projects.find(
+      (item) => item.id === session.projectId,
+    );
+    const overviewGroup = projectGroups.find(
+      (group) => group.groupProjectId === session.projectId,
+    );
+    const mark = attentionOf(session.id);
+    const branch = branches[session.projectId];
+    return (
+      <li key={session.id}>
+        <button
+          type="button"
+          className="agent-priority-session"
+          title={agentProviderLabel(session.executable)}
+          aria-current={activeSessionId === session.id ? "page" : undefined}
+          disabled={navigationDisabled}
+          onClick={() => selectSession(session)}
+        >
+          {mark ? (
+            <span
+              className={`agent-status-dot is-${mark}`}
+              aria-hidden="true"
+            />
+          ) : tabPanes(session.id).some(busy) ? (
+            <LoaderCircle
+              size={12}
+              className="app-loading-spinner"
+              aria-hidden="true"
+            />
+          ) : (
+            <span className="agent-status-dot is-running" aria-hidden="true" />
+          )}
+          <AgentProviderIcon executable={session.executable} />
+          <span className="agent-priority-name">{sessionName(session)}</span>
+          {mark ? (
+            <span className="agent-priority-reason" data-attention={mark}>
+              {mark === "awaiting"
+                ? s.notificationAwaiting
+                : s.notificationFinished}
+            </span>
+          ) : null}
+          {/* shortcut: the spoken status reads the tab's parent only, so a working split pane under an exited parent is announced stopped; aggregate both panes if split screen-reader use shows up. */}
+          <span className="sr-only">
+            {startingSessionId === session.id
+              ? s.startingShort
+              : statusLabel(session.id)}
+          </span>
+          <span className="agent-priority-context">
+            <span>{project?.name}</span>
+            <span>
+              {[
+                overviewGroup ? s.groupOverview : null,
+                project &&
+                  (project.environment.kind === "ssh"
+                    ? s.ssh
+                    : agentEnvironmentLabel(project.environment, s.local)),
+                overviewGroup
+                  ? s.groupProjectCount(overviewGroup.projectIds.length)
+                  : null,
+                branch ? "" : null,
+              ]
+                .filter((part) => part != null)
+                .map((part) => `· ${part}`.trim())
+                .join(" ")}
+            </span>
+            {branch ? (
+              <>
+                <GitBranch size={10} aria-hidden="true" />
+                <span>{branch}</span>
+              </>
+            ) : null}
+          </span>
+        </button>
+      </li>
+    );
+  };
+  const priorityList = (
+    <div className="agent-priority-list">
+      {priority.toHandle.length > 0 ? (
+        <section aria-labelledby="agent-priority-to-handle">
+          <h3 id="agent-priority-to-handle" className="agent-priority-heading">
+            {s.toHandle}
+          </h3>
+          <ul className="agent-priority-sessions">
+            {priority.toHandle.map(prioritySession)}
+          </ul>
+        </section>
+      ) : null}
+      {priority.live.length > 0 ? (
+        <section aria-labelledby="agent-priority-live">
+          <h3 id="agent-priority-live" className="agent-priority-heading">
+            {s.inProgress(priority.live.length)}
+          </h3>
+          <ul className="agent-priority-sessions">
+            {priority.live.map(prioritySession)}
+          </ul>
+        </section>
+      ) : null}
+      {priority.toHandle.length + priority.live.length === 0 ? (
+        <p className="agent-priority-empty">{s.priorityEmpty}</p>
+      ) : null}
+    </div>
+  );
   return (
     <aside
       className={`agent-rail${embedded ? " agent-rail-embedded" : ""}`}
@@ -901,7 +1023,26 @@ export function AgentProjectRail({
       <header className="agent-rail-header section-title">
         <h2>{embedded ? s.projects : s.title}</h2>
         <div className="agent-rail-actions">
-          {hasLoaded && orderedProjects.length === 0 ? null : (
+          <IconButton
+            className="agent-priority-toggle"
+            aria-label={s.priorityView(priority.toHandle.length)}
+            aria-pressed={priorityView}
+            title={s.priorityView(priority.toHandle.length)}
+            selected={priorityView}
+            onClick={() => {
+              setPriorityView(!priorityView);
+              writePriorityView(!priorityView);
+            }}
+          >
+            <Inbox aria-hidden="true" />
+            {priority.toHandle.length > 0 ? (
+              <span className="agent-priority-badge" aria-hidden="true">
+                {priority.toHandle.length}
+              </span>
+            ) : null}
+          </IconButton>
+          {priorityView ||
+          (hasLoaded && orderedProjects.length === 0) ? null : (
             <ProjectViewControls
               filterDisabled={loading || orderedProjects.length === 0}
               collapseDisabled={
@@ -911,19 +1052,18 @@ export function AgentProjectRail({
               onlyWithAgents={onlyWithAgents}
               onOnlyWithAgentsChange={onOnlyWithAgentsChange}
               onToggleCollapseAll={() =>
-                setCollapsed((current) => {
-                  const groupKeys = [...current].filter((key) =>
-                    key.startsWith(groupCollapseKey("")),
-                  );
-                  return new Set(
+                setCollapsed(
+                  new Set(
                     allProjectsCollapsed
-                      ? groupKeys
+                      ? []
                       : [
-                          ...groupKeys,
+                          ...projectGroups.map((group) =>
+                            groupCollapseKey(group.id),
+                          ),
                           ...orderedProjects.map((project) => project.id),
                         ],
-                  );
-                })
+                  ),
+                )
               }
             />
           )}
@@ -938,28 +1078,32 @@ export function AgentProjectRail({
           />
         </div>
       </header>
-      <AgentProjectList
-        projects={projects}
-        groups={groups}
-        worktreeGroups={worktreeGroups}
-        hasLoaded={hasLoaded}
-        loading={loading}
-        refreshing={refreshing}
-        reorderDisabled={reorderDisabled || onlyWithAgents}
-        sectionOrder={sectionOrder}
-        renderProject={renderProject}
-        renderGroup={renderGroup}
-        onOpenGroupOverview={(group) => void openGroupOverview(group)}
-        onReorder={onReorderProjects}
-        onSectionOrderChange={onSectionOrderChange}
-        onEditGroup={(group) =>
-          openForm({ kind: "group", group, fromMenu: true })
-        }
-        onCustomizeGroup={(group) => openAppearance("group", group.id)}
-        onDeleteGroup={onDeleteGroup}
-        onMoveProjectToGroup={onDropProjectInGroup}
-      />
-      {onlyWithAgents && !loading ? (
+      {priorityView && hasLoaded ? (
+        priorityList
+      ) : (
+        <AgentProjectList
+          projects={projects}
+          groups={groups}
+          worktreeGroups={worktreeGroups}
+          hasLoaded={hasLoaded}
+          loading={loading}
+          refreshing={refreshing}
+          reorderDisabled={reorderDisabled || onlyWithAgents}
+          sectionOrder={sectionOrder}
+          renderProject={renderProject}
+          renderGroup={renderGroup}
+          onOpenGroupOverview={(group) => void openGroupOverview(group)}
+          onReorder={onReorderProjects}
+          onSectionOrderChange={onSectionOrderChange}
+          onEditGroup={(group) =>
+            openForm({ kind: "group", group, fromMenu: true })
+          }
+          onCustomizeGroup={(group) => openAppearance("group", group.id)}
+          onDeleteGroup={onDeleteGroup}
+          onMoveProjectToGroup={onDropProjectInGroup}
+        />
+      )}
+      {onlyWithAgents && !loading && !priorityView ? (
         <footer className="agent-rail-filter-notice" role="status">
           <span>{s.hiddenProjects(hiddenProjectCount)}</span>
           <button

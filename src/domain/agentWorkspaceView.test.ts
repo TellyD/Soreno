@@ -9,6 +9,7 @@ import {
   type AgentSessionStatus,
 } from "./agentSessions";
 import {
+  agentPrioritySections,
   agentLaunchProjects,
   agentServiceCatalog,
   agentsSpaceWorkspace,
@@ -117,6 +118,32 @@ it("orders tabs per project with pins first and hides split children", () => {
       terminalSplits: { a3: "a1" },
     }).map((value) => value.id),
   ).toEqual(["b1", "a2", "a3"]);
+});
+
+it("ranks waits before unread turns, then live sessions, and leaves the rest out", () => {
+  const marks: Record<string, "awaiting" | "unread"> = {
+    unread: "unread",
+    awaiting: "awaiting",
+    liveAwaiting: "awaiting",
+  };
+  const sections = agentPrioritySections(
+    [
+      session("stopped", "a"),
+      session("unread", "a"),
+      session("live", "b"),
+      session("awaiting", "b"),
+      session("liveAwaiting", "a"),
+    ],
+    (id) => marks[id] ?? null,
+    (id) => id.startsWith("live"),
+  );
+
+  expect(sections.toHandle.map(({ id }) => id)).toEqual([
+    "awaiting",
+    "liveAwaiting",
+    "unread",
+  ]);
+  expect(sections.live.map(({ id }) => id)).toEqual(["live"]);
 });
 
 it("keeps Design boards' sessions and project out of the agents space", () => {

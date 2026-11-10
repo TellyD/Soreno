@@ -2702,6 +2702,7 @@ export function AgentWorkspace({
       onlyWithAgents={hideProjectsWithoutAgents}
       quickWorktreeLoadingProjectId={quickWorktree.loadingProjectId}
       startingSessionId={startingSessionId}
+      terminalSplits={terminalSplits}
       statusOf={statusOf}
       isWorking={isWorking}
       attentionOf={tabAttention}

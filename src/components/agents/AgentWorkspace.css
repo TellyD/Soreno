@@ -488,17 +488,7 @@
 .agent-project[data-drop]::after {
   z-index: 2;
 }
-.agent-project-list:not(.is-reordering) .agent-project:hover {
-  background-color: var(--surface-highlight);
-}
-.agent-project-list:not(.is-reordering) .agent-project.has-worktrees:hover {
-  background-color: transparent;
-}
-.agent-project-list:not(.is-reordering)
-  .agent-project.has-worktrees:has(.agent-project-select:hover) {
-  background-color: var(--surface-highlight);
-}
-/* Like a project over its worktrees, the group row highlights its whole section. */
+/* The group row highlights its whole section, member projects included. */
 .agent-project-list:not(.is-reordering)
   .agent-project-section:has(
     > .agent-project-group .agent-project-select:hover
@@ -507,9 +497,17 @@
   inset: 0 0 var(--agent-section-gap, 0);
   z-index: -1;
   border-radius: 5px;
-  background: var(--surface-highlight);
+  background: var(--surface-hover);
   content: "";
   pointer-events: none;
+}
+.agent-project-list:not(.is-reordering)
+  :is(
+    .agent-project:hover,
+    .agent-project-group:has(.agent-project-select:hover)
+  ) {
+  --agent-block-bg: var(--surface-hover);
+  background-color: var(--surface-hover);
 }
 .agent-project-select.selected {
   color: var(--text-soft);
@@ -706,7 +704,7 @@
   background: transparent;
 }
 .agent-worktree-select:hover {
-  background: var(--surface-highlight);
+  background: transparent;
 }
 .agent-worktree-select:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -724,16 +722,15 @@
   height: 9px;
   border: 1px solid currentColor;
   border-radius: 50%;
-  background: var(--surface);
+  background: var(--agent-block-bg, var(--surface));
 }
 .agent-project-list:not(.is-reordering)
-  .agent-project.has-worktrees:has(.agent-project-select:hover)
+  .agent-project.has-worktrees:hover
   .agent-worktree-node:not(.is-active),
 .agent-project-list:not(.is-reordering)
   .agent-project-section:has(> .agent-project-group .agent-project-select:hover)
-  .agent-worktree-node:not(.is-active),
-.agent-worktree-select:hover .agent-worktree-node:not(.is-active) {
-  background: var(--surface-highlight);
+  .agent-worktree-node:not(.is-active) {
+  background: var(--agent-block-bg, var(--surface-hover));
 }
 .agent-worktree-node.is-active {
   border-color: var(--primary);
@@ -817,16 +814,18 @@
 .agent-activity-session > :first-child {
   justify-self: center;
 }
-.agent-activity-name {
+.agent-activity-name,
+.agent-priority-name {
   overflow: hidden;
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-:root:not([data-theme="dark"]) .agent-activity-name {
+:root:not([data-theme="dark"]) :is(.agent-activity-name, .agent-priority-name) {
   color: color-mix(in srgb, var(--text-muted) 94%, var(--surface));
 }
-.agent-activity-session[aria-current="page"] .agent-activity-name {
+.agent-activity-session[aria-current="page"] .agent-activity-name,
+.agent-priority-session[aria-current="page"] .agent-priority-name {
   color: var(--text-soft);
   font-weight: 700;
 }
@@ -857,6 +856,119 @@
 .agent-session-indicator .app-loading-spinner {
   color: var(--primary-hover);
   stroke-width: 2.75;
+}
+.agent-priority-toggle {
+  position: relative;
+}
+.agent-priority-badge {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  padding: 0 3px;
+  color: var(--surface);
+  background: var(--badge-bg);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+.agent-priority-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 10px;
+}
+.agent-priority-heading {
+  margin: 0;
+  padding: 10px 8px 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.agent-priority-sessions {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.agent-priority-session {
+  display: grid;
+  grid-template-columns: 14px 14px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 7px;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text-heading);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: left;
+  cursor: pointer;
+}
+.agent-priority-session:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.agent-priority-session:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.agent-priority-session > :first-child {
+  justify-self: center;
+}
+.agent-priority-session .app-loading-spinner {
+  color: var(--primary-hover);
+  stroke-width: 2.75;
+}
+.agent-priority-name {
+  min-width: 0;
+}
+.agent-priority-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.agent-priority-reason[data-attention="awaiting"] {
+  color: var(--danger-action);
+}
+.agent-priority-reason[data-attention="unread"] {
+  color: var(--warning-accent);
+}
+.agent-priority-context {
+  display: flex;
+  grid-column: 3 / 5;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.agent-priority-context > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Long project or group names give way first; the environment stays readable. */
+.agent-priority-context > :is(span:nth-child(2), svg) {
+  flex-shrink: 0;
+}
+.agent-priority-empty {
+  margin: 10px 8px 0;
+  color: var(--text-muted);
+  font-size: 11px;
 }
 .agent-session-name {
   display: block;
