@@ -27,9 +27,13 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { sendAgentSessionMessage } from "../../data/agentSessionsApi";
+import {
+  attachAgentFile,
+  sendAgentSessionMessage,
+} from "../../data/agentSessionsApi";
 import { readTerminalClipboard } from "../../data/clipboard";
 import {
+  AGENT_CONVERSATION_ATTACHMENT_LIMIT,
   AGENT_CONVERSATION_IMAGE_MARKERS,
   agentConversationImageMarker,
   insertAgentConversationToken,
@@ -37,6 +41,7 @@ import {
 } from "../../domain/agentConversationAttachments";
 import {
   agentSessionActivity,
+  AGENT_ATTACHMENT_MAX_BYTES,
   type AgentProject,
   type AgentSession,
   type AgentSessionMessage,
@@ -57,6 +62,7 @@ import { errorMessage } from "../../domain/errors";
 import { isImeComposing, isTextFieldTarget } from "../../domain/keyboard";
 import { useAgentFileDrop } from "../../hooks/useAgentFileDrop";
 import { useAgentSessionMessage } from "../../hooks/useAgentSessionMessage";
+import { useFileDropTarget } from "../../hooks/useFileDropTarget";
 import { useDesignBoard } from "../../hooks/useDesignBoard";
 import { useI18n } from "../../i18n";
 import { notifyError } from "../../notifications";
@@ -119,8 +125,9 @@ type DesignWorkspaceProps = {
   registerTransitionGuard?: (guard: AgentTransitionGuard) => () => void;
 };
 
-/** An uploaded image: its marker `[Image #n]` in the draft stands for the nth one. */
-type DesignDraftImage = { name: string; path: string; src: string };
+/** A pasted image: its marker `[Image #n]` in the draft stands for the nth one. */
+// Uploaded at send: an agent relaunch empties its attachment folder, and a draft outlives runs.
+type DesignDraftImage = { name: string; file: File; src: string };
 type DesignDraft = { text: string; images: readonly DesignDraftImage[] };
 const emptyDraft: DesignDraft = { text: "", images: [] };
 const revokeDraftImages = (draft: DesignDraft) =>
@@ -700,7 +707,7 @@ function DesignBoardView({
   const backdropRef = useRef<HTMLDivElement>(null);
   // Where an inserted marker leaves the caret, until the textarea renders it.
   const caret = useRef<number | null>(null);
-  // The latest draft between renders: uploads finishing together each build on the previous one.
+  // The latest draft between renders: attachments finishing together each build on the previous one.
   const draftNow = useRef(draft);
   const seenDraft = useRef(draft);
   if (seenDraft.current !== draft) {
@@ -779,27 +786,7 @@ function DesignBoardView({
     sessionId: session?.id ?? "",
     canAttach: () => mounted.current && attachable.current,
     additive: true,
-    paste: (paths, files) => {
-      const current = draftNow.current;
-      const images = [...current.images];
-      const tokens = paths.map((path, index) => {
-        const file = files[index];
-        if (!file.type.startsWith("image/")) return path;
-        images.push({ name: file.name, path, src: URL.createObjectURL(file) });
-        return agentConversationImageMarker(images.length);
-      });
-      const textarea = textareaRef.current;
-      const next = insertAgentConversationToken(
-        current.text,
-        caret.current ??
-          (textarea?.value === current.text
-            ? textarea.selectionStart
-            : current.text.length),
-        tokens.join(" "),
-      );
-      caret.current = next.caret;
-      setDraft({ text: next.text, images });
-    },
+    paste: (paths) => insertInDraft(paths.join(" ")),
     focus: () => textareaRef.current?.focus(),
     onError: (error) =>
       notifyError(
@@ -811,6 +798,10 @@ function DesignBoardView({
       ),
     onSuccess: () => {},
   });
+  const drop = useFileDropTarget(
+    () => mounted.current && attachable.current,
+    attachFiles,
+  );
   const uploading = fileDrop.pending > 0 || reading > 0;
   // Keyed per board: a late upload must not land in the next board's draft.
   useEffect(() => {
@@ -825,6 +816,55 @@ function DesignBoardView({
     textareaRef.current?.setSelectionRange(caret.current, caret.current);
     caret.current = null;
   }, [draft.text]);
+
+  function insertInDraft(
+    token: string,
+    images: readonly DesignDraftImage[] = draftNow.current.images,
+  ) {
+    const current = draftNow.current;
+    const textarea = textareaRef.current;
+    const next = insertAgentConversationToken(
+      current.text,
+      caret.current ??
+        (textarea?.value === current.text
+          ? textarea.selectionStart
+          : current.text.length),
+      token,
+    );
+    caret.current = next.caret;
+    setDraft({ text: next.text, images });
+  }
+
+  /** Images join the draft as chips; other files are uploaded now and go in by path. */
+  function attachFiles(files: File[]) {
+    if (!mounted.current || !attachable.current) return;
+    const added = files.filter((file) => file.type.startsWith("image/"));
+    const others = files.filter((file) => !file.type.startsWith("image/"));
+    const images = draftNow.current.images;
+    if (images.length + added.length > AGENT_CONVERSATION_ATTACHMENT_LIMIT)
+      return notifyError(s.conversation.attachmentRefused({ reason: "count" }));
+    if (added.some((file) => file.size > AGENT_ATTACHMENT_MAX_BYTES))
+      return notifyError(s.terminalAttachmentTooLarge);
+    if (added.length) {
+      insertInDraft(
+        added
+          .map((_, index) =>
+            agentConversationImageMarker(images.length + index + 1),
+          )
+          .join(" "),
+        [
+          ...images,
+          ...added.map((file) => ({
+            name: file.name,
+            file,
+            src: URL.createObjectURL(file),
+          })),
+        ],
+      );
+      textareaRef.current?.focus();
+    }
+    if (others.length) fileDrop.attach(others);
+  }
 
   function removeImage(index: number) {
     const current = draftNow.current;
@@ -841,7 +881,7 @@ function DesignBoardView({
     const files = Array.from(event.clipboardData.files);
     if (files.length > 0) {
       event.preventDefault();
-      fileDrop.attach(files);
+      attachFiles(files);
       return;
     }
     if (event.clipboardData.types.includes("text/plain") || !attachable.current)
@@ -852,7 +892,7 @@ function DesignBoardView({
       .then((clipboard) => {
         if (clipboard.type !== "image" || !clipboard.dataBase64) return;
         const type = clipboard.mimeType ?? "image/png";
-        fileDrop.attach([
+        attachFiles([
           new File(
             [base64ToBytes(clipboard.dataBase64)],
             `image.${type.split("/")[1]}`,
@@ -890,23 +930,24 @@ function DesignBoardView({
   async function send() {
     if (!session || disabledReason || sending || uploading) return;
     if (!draft.text.trim() && !draft.images.length) return;
-    let body: string;
-    try {
-      body = designPrompt(
-        designDraftText(
-          draft.text,
-          draft.images.map((image) => image.path),
-        ),
-        frames,
-        shownTarget,
-      );
-    } catch (reason) {
-      if (!(reason instanceof DesignPromptTooLargeError)) throw reason;
-      notifyError(t("design.promptTooLarge"));
-      return;
-    }
     setSending(true);
     try {
+      const paths: string[] = [];
+      // shortcut: a prompt over 64 KiB is refused only after its images are uploaded, leaving files until the next relaunch; preflight designPrompt with the markers if users hit it.
+      for (const image of draft.images)
+        paths.push(await attachAgentFile(session.id, image.file));
+      let body: string;
+      try {
+        body = designPrompt(
+          designDraftText(draft.text, paths),
+          frames,
+          shownTarget,
+        );
+      } catch (reason) {
+        if (!(reason instanceof DesignPromptTooLargeError)) throw reason;
+        notifyError(t("design.promptTooLarge"));
+        return;
+      }
       const message = await sendAgentSessionMessage(
         session.id,
         crypto.randomUUID(),
@@ -1019,9 +1060,9 @@ function DesignBoardView({
       </div>
       <div
         className="design-prompt agent-conversation-composer"
-        {...fileDrop.handlers}
+        {...drop.handlers}
       >
-        {fileDrop.active ? (
+        {drop.active ? (
           <div className="agent-conversation-file-drop" aria-hidden="true">
             <FileUp size={34} strokeWidth={1.75} />
             <span>{s.conversation.dropFiles}</span>
@@ -1146,7 +1187,7 @@ function DesignBoardView({
               multiple
               hidden
               onChange={(event) => {
-                fileDrop.attach(Array.from(event.target.files ?? []));
+                attachFiles(Array.from(event.target.files ?? []));
                 event.target.value = "";
               }}
             />

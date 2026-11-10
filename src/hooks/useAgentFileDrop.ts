@@ -14,8 +14,8 @@ type AgentFileDropOptions = {
   sessionId: string;
   // Read at every event and after every upload: a closed or hidden terminal drops the paste.
   canAttach: () => boolean;
-  // Receives the uploaded paths, each quoted for a shell, in the order of `files`.
-  paste: (paths: string[], files: File[]) => void;
+  // Receives the uploaded paths, each quoted for a shell, in the order of the files.
+  paste: (paths: string[]) => void;
   focus: () => void;
   onError: (error: AgentFileDropError) => void;
   onSuccess: () => void;
@@ -47,7 +47,7 @@ export function useAgentFileDrop(options: AgentFileDropOptions) {
           paths.push(path);
         }
         if (!isCurrent()) return;
-        paste(paths, files);
+        paste(paths);
         onSuccess();
         if (isCurrent()) focus();
       } catch (reason) {
