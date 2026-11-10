@@ -131,8 +131,7 @@ const en = {
   detachSplitTerminal: "Detach secondary pane",
   splitPane: "Split view",
   activity: "Session activity",
-  priorityView: (count: number) =>
-    count > 0 ? `Priority view · ${count} to handle` : "Priority view",
+  priorityView: "Priority view",
   toHandle: "To handle",
   inProgress: (count: number) => `In progress · ${count}`,
   priorityEmpty: "No session to handle or in progress.",
@@ -690,8 +689,7 @@ const fr: typeof en = {
   detachSplitTerminal: "Détacher le volet secondaire",
   splitPane: "Vue divisée",
   activity: "Activité des sessions",
-  priorityView: (count: number) =>
-    count > 0 ? `Vue par priorités · ${count} à traiter` : "Vue par priorités",
+  priorityView: "Vue par priorités",
   toHandle: "À traiter",
   inProgress: (count: number) => `En cours · ${count}`,
   priorityEmpty: "Aucune session à traiter ni en cours.",

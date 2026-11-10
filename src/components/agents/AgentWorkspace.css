@@ -866,24 +866,6 @@
   color: var(--primary-hover);
   stroke-width: 2.75;
 }
-.agent-priority-toggle {
-  position: relative;
-}
-.agent-priority-badge {
-  position: absolute;
-  top: -3px;
-  right: -4px;
-  min-width: 14px;
-  height: 14px;
-  border-radius: 7px;
-  padding: 0 3px;
-  color: var(--surface);
-  background: var(--badge-bg);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 14px;
-  text-align: center;
-}
 .agent-priority-list {
   flex: 1;
   min-height: 0;

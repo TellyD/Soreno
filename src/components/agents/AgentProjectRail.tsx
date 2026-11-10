@@ -1024,10 +1024,9 @@ export function AgentProjectRail({
         <h2>{embedded ? s.projects : s.title}</h2>
         <div className="agent-rail-actions">
           <IconButton
-            className="agent-priority-toggle"
-            aria-label={s.priorityView(priority.toHandle.length)}
+            aria-label={s.priorityView}
             aria-pressed={priorityView}
-            title={s.priorityView(priority.toHandle.length)}
+            title={s.priorityView}
             selected={priorityView}
             onClick={() => {
               setPriorityView(!priorityView);
@@ -1035,11 +1034,6 @@ export function AgentProjectRail({
             }}
           >
             <Inbox aria-hidden="true" />
-            {priority.toHandle.length > 0 ? (
-              <span className="agent-priority-badge" aria-hidden="true">
-                {priority.toHandle.length}
-              </span>
-            ) : null}
           </IconButton>
           {priorityView ||
           (hasLoaded && orderedProjects.length === 0) ? null : (

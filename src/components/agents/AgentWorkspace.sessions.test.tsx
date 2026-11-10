@@ -62,7 +62,7 @@ it("filters projects without agents from the rail toggle and keeps the filter vi
   expect(container.querySelector(".agent-rail-filter-notice")).toBeNull();
 });
 
-it("ranks sessions from the priority toggle, counts waits on it and remembers it", async () => {
+it("ranks sessions from the priority toggle and remembers it", async () => {
   vi.useFakeTimers();
   data.sessions.push({ ...session, id: "s3", name: "Stopped" });
   data.statuses.push({ sessionId: "s3", state: "exited", exitCode: 0 });
@@ -72,7 +72,7 @@ it("ranks sessions from the priority toggle, counts waits on it and remembers it
   data.statuses[1].awaiting = true;
   await act(async () => vi.advanceTimersByTimeAsync(1000));
   await act(async () => vi.advanceTimersByTimeAsync(1000));
-  const toggle = () => button("Vue par priorités · 1 à traiter");
+  const toggle = () => button("Vue par priorités");
   const sections = () =>
     [...container.querySelectorAll(".agent-rail section")].map((section) => [
       section.querySelector("h3")?.textContent,
