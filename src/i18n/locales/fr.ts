@@ -881,6 +881,8 @@ export const fr = {
   "design.target.frame": "Cadre : {title}",
   "design.target.element": "Élément : {selector}",
   "design.target.remove": "Cibler tout le tableau",
+  "design.imageUnsupported":
+    "{name} : seules les images PNG, JPEG, GIF et WebP peuvent être jointes.",
   "design.start": "Démarrer l’agent",
   "design.stopped": "Démarrez l’agent pour lui écrire.",
   "design.unavailable": "Le projet du tableau est déconnecté ou introuvable.",

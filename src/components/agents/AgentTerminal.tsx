@@ -222,7 +222,7 @@ export const AgentTerminal = memo(function AgentTerminal({
   const fileDrop = useAgentFileDrop({
     sessionId,
     canAttach: () => isTauri() && canInteract() && runningRef.current,
-    paste: (paths) => pasteTextRef.current(`${paths.join(" ")} `),
+    paste: (text) => pasteTextRef.current(text),
     focus: () => input.current?.focus(),
     onError: (error) =>
       fail(

@@ -867,6 +867,8 @@ export const en = {
   "design.target.frame": "Frame: {title}",
   "design.target.element": "Element: {selector}",
   "design.target.remove": "Target the whole board",
+  "design.imageUnsupported":
+    "{name}: only PNG, JPEG, GIF and WebP images can be attached.",
   "design.start": "Start agent",
   "design.stopped": "Start the agent to write to it.",
   "design.unavailable": "The board’s project is disconnected or missing.",
