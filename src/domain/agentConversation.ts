@@ -6,7 +6,7 @@ import {
 } from "./agentConversationCommands";
 import { agentConversationDialog } from "./agentConversationDialogs";
 import { count, isObject, text, type Json } from "./agentConversationRecords";
-import { askAnswers, resultChanges } from "./agentConversationToolResults";
+import { resultChanges } from "./agentConversationToolResults";
 
 type AgentConversationToolStatus = "pending" | "running" | "done" | "error";
 
@@ -36,8 +36,6 @@ export type AgentConversationTool = {
   output: string;
   /** Files an edit or a write changed, as OMP reports them. */
   changes: AgentConversationFileChange[] | null;
-  /** What the user answered an `ask` call, question by question. */
-  answers: AgentConversationAskAnswer[] | null;
   /** Soreno's clock when the run started it; unknown for history. */
   startedAt: number | null;
   durationMs: number | null;
@@ -80,12 +78,6 @@ export type AgentConversationAskQuestion = {
   options: { label: string; description: string | null }[];
   multi: boolean;
   recommended: number | null;
-};
-
-export type AgentConversationAskAnswer = {
-  question: string;
-  selected: string[];
-  custom: string | null;
 };
 
 export type AgentConversationDialog =
@@ -444,7 +436,6 @@ function newTool(
     status: "pending",
     output: "",
     changes: null,
-    answers: null,
     startedAt: null,
     durationMs: null,
   };
@@ -510,10 +501,6 @@ function toolResult(
     status: message.isError === true ? "error" : "done",
     output: resultOutput(message, tool.output),
     changes: resultChanges(message.details) ?? tool.changes,
-    answers:
-      tool.name === "ask"
-        ? (askAnswers(message.details) ?? tool.answers)
-        : null,
   }));
 }
 
@@ -988,8 +975,6 @@ export function applyAgentConversationRecord(
         status: record.isError === true ? "error" : "done",
         output: resultOutput(record.result, tool.output),
         changes: resultChanges(details) ?? tool.changes,
-        answers:
-          tool.name === "ask" ? (askAnswers(details) ?? tool.answers) : null,
         durationMs:
           typeof record.receivedAt === "number" && tool.startedAt !== null
             ? Math.max(0, record.receivedAt - tool.startedAt)

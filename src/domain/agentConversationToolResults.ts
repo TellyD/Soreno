@@ -1,5 +1,4 @@
 import type {
-  AgentConversationAskAnswer,
   AgentConversationDiffLine,
   AgentConversationFileChange,
 } from "./agentConversation";
@@ -50,28 +49,4 @@ export function resultChanges(
         },
       ]
     : null;
-}
-
-/** One answer per question an `ask` result reports: a single question or `results`. */
-export function askAnswers(
-  details: unknown,
-): AgentConversationAskAnswer[] | null {
-  if (!isObject(details)) return null;
-  const results = Array.isArray(details.results)
-    ? details.results.filter(isObject)
-    : typeof details.question === "string"
-      ? [details]
-      : null;
-  return (
-    results?.map((result) => ({
-      question: text(result.question),
-      selected: Array.isArray(result.selectedOptions)
-        ? result.selectedOptions.filter(
-            (option): option is string => typeof option === "string",
-          )
-        : [],
-      custom:
-        typeof result.customInput === "string" ? result.customInput : null,
-    })) ?? null
-  );
 }
