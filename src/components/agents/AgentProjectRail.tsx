@@ -812,8 +812,9 @@ export function AgentProjectRail({
             <NavItem
               className="agent-project-select"
               title={
-                [environmentTitle, activity?.label].filter(Boolean).join(" · ") ||
-                undefined
+                [environmentTitle, activity?.label]
+                  .filter(Boolean)
+                  .join(" · ") || undefined
               }
               icon={
                 <AgentProjectIcon
