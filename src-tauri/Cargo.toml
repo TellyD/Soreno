@@ -1,6 +1,6 @@
 [package]
 name = "soreno"
-version = "1.2.5"
+version = "1.2.6"
 description = "Soreno - prise de notes locale (Tauri, React, SQLite)"
 authors = ["Soreno"]
 edition = "2021"
