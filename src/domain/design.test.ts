@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import {
   designAgentSessionName,
   designInstructionsAccepted,
+  designDraftText,
   designLaunchPrompt,
   designPrompt,
   DesignPromptTooLargeError,
@@ -90,6 +91,16 @@ it("refuses a message over 64 KiB counted in UTF-8 bytes instead of truncating i
   expect(() =>
     designPrompt("€".repeat(21_000), frames, { kind: "board" }),
   ).not.toThrow();
+});
+
+it("puts each image's path at its marker, unmarked images after the text", () => {
+  expect(
+    designDraftText("Comme [Image #2] mais [Image #9] ", [
+      "'/a.png'",
+      "'/b.png'",
+    ]),
+  ).toBe("Comme '/b.png' mais [Image #9] '/a.png'");
+  expect(designDraftText("", ["'/a.png'"])).toBe("'/a.png'");
 });
 
 it("replays history in order, a new action clearing redo and a dropped entry leaving the rest", () => {

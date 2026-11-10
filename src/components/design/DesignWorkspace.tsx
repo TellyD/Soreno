@@ -1,12 +1,15 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { Menu } from "@base-ui/react/menu";
 import {
   ArrowUp,
   Check,
   ChevronDown,
   Crosshair,
+  FileUp,
   LoaderCircle,
   Palette,
   Pencil,
+  Paperclip,
   Play,
   Plus,
   Redo2,
@@ -15,9 +18,23 @@ import {
   X,
   Undo2,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { sendAgentSessionMessage } from "../../data/agentSessionsApi";
+import { readTerminalClipboard } from "../../data/clipboard";
+import {
+  AGENT_CONVERSATION_IMAGE_MARKERS,
+  agentConversationImageMarker,
+  insertAgentConversationToken,
+  renumberAgentConversationImageMarkers,
+} from "../../domain/agentConversationAttachments";
 import {
   agentSessionActivity,
   type AgentProject,
@@ -26,7 +43,9 @@ import {
   type AgentSessionDesignBoard,
   type AgentSessionStatus,
 } from "../../domain/agentSessions";
+import { base64ToBytes } from "../../domain/base64";
 import {
+  designDraftText,
   designPrompt,
   DesignPromptTooLargeError,
   type DesignAgentRequest,
@@ -36,11 +55,14 @@ import {
 } from "../../domain/design";
 import { errorMessage } from "../../domain/errors";
 import { isImeComposing, isTextFieldTarget } from "../../domain/keyboard";
+import { useAgentFileDrop } from "../../hooks/useAgentFileDrop";
 import { useAgentSessionMessage } from "../../hooks/useAgentSessionMessage";
 import { useDesignBoard } from "../../hooks/useDesignBoard";
 import { useI18n } from "../../i18n";
 import { notifyError } from "../../notifications";
 import { useAgentStrings } from "../agents/agentStrings";
+import { AgentConversationDraftBackdrop } from "../agents/AgentConversationDraftBackdrop";
+import { AgentImagePreview } from "../agents/AgentImagePreview";
 import { AgentProviderIcon } from "../agents/AgentProviderIcon";
 import type {
   AgentSessionRequest,
@@ -58,6 +80,7 @@ import {
   DesignLinkedAgents,
   type DesignImplementOptions,
 } from "./DesignAgents";
+import "../agents/AgentConversation.css";
 import "../agents/AgentConversationComposer.css";
 import "./DesignWorkspace.css";
 
@@ -96,9 +119,16 @@ type DesignWorkspaceProps = {
   registerTransitionGuard?: (guard: AgentTransitionGuard) => () => void;
 };
 
+/** An uploaded image: its marker `[Image #n]` in the draft stands for the nth one. */
+type DesignDraftImage = { name: string; path: string; src: string };
+type DesignDraft = { text: string; images: readonly DesignDraftImage[] };
+const emptyDraft: DesignDraft = { text: "", images: [] };
+const revokeDraftImages = (draft: DesignDraft) =>
+  draft.images.forEach((image) => URL.revokeObjectURL(image.src));
+
 type SentPrompt = {
   boardId: string;
-  text: string;
+  draft: DesignDraft;
   /** What the send returned; the watcher follows it. */
   sent: AgentSessionMessage;
   delivery: AgentSessionMessage;
@@ -165,7 +195,7 @@ export function DesignWorkspace({
   const [deleting, setDeleting] = useState<DesignBoard | null>(null);
   const [pending, setPending] = useState(false);
   // Outside the remounted board view: a prompt queued then switched away from is still followed.
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, DesignDraft>>({});
   const [sentPrompts, setSentPrompts] = useState<SentPrompt[]>([]);
   const [busyFrames, setBusyFrames] = useState<BusyFrame[]>([]);
   const settledPrompts = useRef(new Set<string>());
@@ -174,7 +204,11 @@ export function DesignWorkspace({
   function forgetBoards(keep: (boardId: string) => boolean) {
     setSentPrompts((list) => {
       const next = list.filter((item) => keep(item.boardId));
-      return next.length === list.length ? list : next;
+      if (next.length === list.length) return list;
+      list.forEach(
+        (item) => keep(item.boardId) || revokeDraftImages(item.draft),
+      );
+      return next;
     });
     setBusyFrames((list) => {
       const next = list.filter((item) => keep(item.boardId));
@@ -184,7 +218,10 @@ export function DesignWorkspace({
       const ids = Object.keys(current).filter((id) => !keep(id));
       if (!ids.length) return current;
       const next = { ...current };
-      for (const id of ids) delete next[id];
+      for (const id of ids) {
+        revokeDraftImages(next[id]);
+        delete next[id];
+      }
       return next;
     });
   }
@@ -206,7 +243,8 @@ export function DesignWorkspace({
     setSentPrompts((list) =>
       list.filter((item) => item.sent.id !== delivery.id),
     );
-    if (delivery.status !== "failed") return;
+    // shortcut: a draft edited after a board switch during the send still shares these URLs, so its thumbnails break (paths still go out); count URL references if users hit it.
+    if (delivery.status !== "failed") return revokeDraftImages(prompt.draft);
     setBusyFrames((list) => list.filter((item) => item.sentId !== delivery.id));
     notifyError(
       delivery.error
@@ -214,11 +252,13 @@ export function DesignWorkspace({
         : t("design.deliveryFailed"),
     );
     // Several failures: the first refills an empty draft, each one is notified.
-    setDrafts((current) =>
-      current[prompt.boardId]?.trim()
-        ? current
-        : { ...current, [prompt.boardId]: prompt.text },
-    );
+    setDrafts((current) => {
+      const draft = current[prompt.boardId];
+      if (!draft?.text.trim() && !draft?.images.length)
+        return { ...current, [prompt.boardId]: prompt.draft };
+      revokeDraftImages(prompt.draft);
+      return current;
+    });
   }
   const boardQueued = sentPrompts.filter(
     (item) => item.boardId === board?.id && item.delivery.status === "queued",
@@ -407,23 +447,23 @@ export function DesignWorkspace({
             undo: () => void design.undo(),
             redo: () => void design.redo(),
           }}
-          draft={drafts[board.id] ?? ""}
+          draft={drafts[board.id] ?? emptyDraft}
           onDraftChange={(draft) =>
             setDrafts((current) => ({ ...current, [board.id]: draft }))
           }
           queued={queuedPrompt ?? null}
           busyFrameIds={busyFrameIds}
-          onSent={(sent, text, frameId) => {
+          onSent={(sent, draft, frameId) => {
             const boardId = board.id;
             // A late answer: the board may be gone, or its draft retyped meanwhile.
             if (!liveBoardIds.current.has(boardId)) return;
             setSentPrompts((list) => [
               ...list,
-              { boardId, text, sent, delivery: sent },
+              { boardId, draft, sent, delivery: sent },
             ]);
             setDrafts((current) =>
-              current[boardId]?.trim() === text
-                ? { ...current, [boardId]: "" }
+              current[boardId] === draft
+                ? { ...current, [boardId]: emptyDraft }
                 : current,
             );
             const frame = frameId
@@ -603,8 +643,8 @@ type DesignBoardViewProps = {
     undo: () => void;
     redo: () => void;
   };
-  draft: string;
-  onDraftChange: (draft: string) => void;
+  draft: DesignDraft;
+  onDraftChange: (draft: DesignDraft) => void;
   /** The board's latest prompt not yet read by the agent. */
   queued: AgentSessionMessage | null;
   /** Frames a targeted prompt is reworking. */
@@ -612,7 +652,7 @@ type DesignBoardViewProps = {
   /** `frameId`: the frame the prompt targeted, null for the whole board. */
   onSent: (
     sent: AgentSessionMessage,
-    text: string,
+    draft: DesignDraft,
     frameId: string | null,
   ) => void;
   renderTerminal: (session: AgentSession, visible: boolean) => ReactNode;
@@ -637,7 +677,7 @@ function DesignBoardView({
   onDelete,
   history,
   draft,
-  onDraftChange: setDraft,
+  onDraftChange,
   queued,
   busyFrameIds,
   onSent,
@@ -650,10 +690,29 @@ function DesignBoardView({
   const s = useAgentStrings();
   const [target, setTarget] = useState<DesignTarget>(boardTarget);
   const [sending, setSending] = useState(false);
+  // Native clipboard reads in flight, before their image reaches the upload.
+  const [reading, setReading] = useState(0);
   const [logsOpen, setLogsOpen] = useState(false);
   const [targeting, setTargeting] = useState(false);
   const logsButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pickerRef = useRef<HTMLInputElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  // Where an inserted marker leaves the caret, until the textarea renders it.
+  const caret = useRef<number | null>(null);
+  // The latest draft between renders: uploads finishing together each build on the previous one.
+  const draftNow = useRef(draft);
+  const seenDraft = useRef(draft);
+  if (seenDraft.current !== draft) {
+    seenDraft.current = draft;
+    draftNow.current = draft;
+  }
+  function setDraft(next: DesignDraft) {
+    draftNow.current = next;
+    onDraftChange(next);
+  }
+  const attachable = useRef(false);
+  const mounted = useRef(false);
   const running = status?.state === "running";
   const activity = agentSessionActivity(status);
   // A deleted frame no longer holds the target.
@@ -715,6 +774,95 @@ function DesignBoardView({
         : running
           ? null
           : t("design.stopped");
+  attachable.current = isTauri() && !disabledReason && !sending;
+  const fileDrop = useAgentFileDrop({
+    sessionId: session?.id ?? "",
+    canAttach: () => mounted.current && attachable.current,
+    additive: true,
+    paste: (paths, files) => {
+      const current = draftNow.current;
+      const images = [...current.images];
+      const tokens = paths.map((path, index) => {
+        const file = files[index];
+        if (!file.type.startsWith("image/")) return path;
+        images.push({ name: file.name, path, src: URL.createObjectURL(file) });
+        return agentConversationImageMarker(images.length);
+      });
+      const textarea = textareaRef.current;
+      const next = insertAgentConversationToken(
+        current.text,
+        caret.current ??
+          (textarea?.value === current.text
+            ? textarea.selectionStart
+            : current.text.length),
+        tokens.join(" "),
+      );
+      caret.current = next.caret;
+      setDraft({ text: next.text, images });
+    },
+    focus: () => textareaRef.current?.focus(),
+    onError: (error) =>
+      notifyError(
+        error === "count"
+          ? s.terminalAttachmentCountError
+          : error === "tooLarge"
+            ? s.terminalAttachmentTooLarge
+            : s.terminalAttachmentError,
+      ),
+    onSuccess: () => {},
+  });
+  const uploading = fileDrop.pending > 0 || reading > 0;
+  // Keyed per board: a late upload must not land in the next board's draft.
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      fileDrop.invalidate();
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (caret.current === null) return;
+    textareaRef.current?.setSelectionRange(caret.current, caret.current);
+    caret.current = null;
+  }, [draft.text]);
+
+  function removeImage(index: number) {
+    const current = draftNow.current;
+    URL.revokeObjectURL(current.images[index].src);
+    setDraft({
+      text: renumberAgentConversationImageMarkers(current.text, (n) =>
+        n === index + 1 ? null : n > index + 1 ? n - 1 : n,
+      ),
+      images: current.images.filter((_, position) => position !== index),
+    });
+  }
+
+  function onPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(event.clipboardData.files);
+    if (files.length > 0) {
+      event.preventDefault();
+      fileDrop.attach(files);
+      return;
+    }
+    if (event.clipboardData.types.includes("text/plain") || !attachable.current)
+      return;
+    // A screenshot some webviews paste without a file: the native clipboard has it.
+    setReading((count) => count + 1);
+    void readTerminalClipboard(true)
+      .then((clipboard) => {
+        if (clipboard.type !== "image" || !clipboard.dataBase64) return;
+        const type = clipboard.mimeType ?? "image/png";
+        fileDrop.attach([
+          new File(
+            [base64ToBytes(clipboard.dataBase64)],
+            `image.${type.split("/")[1]}`,
+            { type },
+          ),
+        ]);
+      })
+      .catch(() => notifyError(s.terminalAttachmentError))
+      .finally(() => setReading((count) => count - 1));
+  }
   // In the prompt bar, the latest step of what was sent: sending, queued, then the agent's turn.
   const working = !sending && !queued && activity === "working";
   const awaiting = !sending && !queued && activity === "awaiting";
@@ -740,11 +888,18 @@ function DesignBoardView({
           : s.stopped;
 
   async function send() {
-    const text = draft.trim();
-    if (!text || !session || disabledReason || sending) return;
+    if (!session || disabledReason || sending || uploading) return;
+    if (!draft.text.trim() && !draft.images.length) return;
     let body: string;
     try {
-      body = designPrompt(text, frames, shownTarget);
+      body = designPrompt(
+        designDraftText(
+          draft.text,
+          draft.images.map((image) => image.path),
+        ),
+        frames,
+        shownTarget,
+      );
     } catch (reason) {
       if (!(reason instanceof DesignPromptTooLargeError)) throw reason;
       notifyError(t("design.promptTooLarge"));
@@ -759,7 +914,7 @@ function DesignBoardView({
       );
       onSent(
         message,
-        text,
+        draft,
         shownTarget.kind === "board" ? null : shownTarget.frameId,
       );
     } catch (reason) {
@@ -862,7 +1017,16 @@ function DesignBoardView({
           {t("design.logs")}
         </Button>
       </div>
-      <div className="design-prompt agent-conversation-composer">
+      <div
+        className="design-prompt agent-conversation-composer"
+        {...fileDrop.handlers}
+      >
+        {fileDrop.active ? (
+          <div className="agent-conversation-file-drop" aria-hidden="true">
+            <FileUp size={34} strokeWidth={1.75} />
+            <span>{s.conversation.dropFiles}</span>
+          </div>
+        ) : null}
         <div
           className="agent-conversation-input"
           onMouseDown={(event) => {
@@ -890,7 +1054,42 @@ function DesignBoardView({
               ) : null}
             </li>
           </ul>
-          <div className="agent-conversation-draft">
+          {draft.images.length > 0 ? (
+            <ul
+              className="agent-conversation-attachments"
+              aria-label={s.conversation.attachments}
+            >
+              {draft.images.map((image, index) => {
+                const name = s.conversation.image(index + 1);
+                return (
+                  <li key={image.src}>
+                    <AgentImagePreview
+                      src={image.src}
+                      name={image.name}
+                      label={s.conversation.previewAttachment(name)}
+                    />
+                    <span title={image.name}>{name}</span>
+                    <IconButton
+                      size="small"
+                      aria-label={s.conversation.removeAttachment(name)}
+                      title={s.conversation.removeAttachment(name)}
+                      disabled={sending}
+                      onClick={() => removeImage(index)}
+                    >
+                      <X />
+                    </IconButton>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          <div
+            className={`agent-conversation-draft${AGENT_CONVERSATION_IMAGE_MARKERS.test(draft.text) ? " has-chips" : ""}`}
+          >
+            <AgentConversationDraftBackdrop
+              draft={draft.text}
+              ref={backdropRef}
+            />
             <textarea
               ref={textareaRef}
               aria-label={t("design.placeholder")}
@@ -898,8 +1097,18 @@ function DesignBoardView({
               readOnly={sending}
               placeholder={disabledReason ?? t("design.placeholder")}
               rows={1}
-              value={draft}
-              onChange={(event) => setDraft(event.currentTarget.value)}
+              value={draft.text}
+              onChange={(event) =>
+                setDraft({
+                  ...draftNow.current,
+                  text: event.currentTarget.value,
+                })
+              }
+              onScroll={(event) => {
+                if (backdropRef.current)
+                  backdropRef.current.scrollTop = event.currentTarget.scrollTop;
+              }}
+              onPaste={onPaste}
               onKeyDown={(event) => {
                 if (
                   event.key !== "Enter" ||
@@ -923,6 +1132,24 @@ function DesignBoardView({
             >
               <Crosshair />
             </IconButton>
+            <IconButton
+              aria-label={s.conversation.attach}
+              title={s.conversation.attach}
+              disabled={!attachable.current}
+              onClick={() => pickerRef.current?.click()}
+            >
+              <Paperclip />
+            </IconButton>
+            <input
+              ref={pickerRef}
+              type="file"
+              multiple
+              hidden
+              onChange={(event) => {
+                fileDrop.attach(Array.from(event.target.files ?? []));
+                event.target.value = "";
+              }}
+            />
             <div className="agent-conversation-controls-end">
               {/* Always mounted: a live region announces changes only once it exists. */}
               <span
@@ -952,7 +1179,12 @@ function DesignBoardView({
                 className="agent-conversation-send"
                 aria-label={t("design.send")}
                 title={disabledReason ?? t("design.send")}
-                disabled={!!disabledReason || sending || !draft.trim()}
+                disabled={
+                  !!disabledReason ||
+                  sending ||
+                  uploading ||
+                  (!draft.text.trim() && !draft.images.length)
+                }
                 onClick={() => void send()}
               >
                 <ArrowUp />

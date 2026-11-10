@@ -42,6 +42,19 @@ export type DesignTarget =
 export const DESIGN_PROMPT_MAX_BYTES = 64 * 1024;
 export class DesignPromptTooLargeError extends Error {}
 
+/** The draft with each `[Image #n]` replaced by the nth image's path; images without a marker follow the text. */
+export function designDraftText(text: string, paths: readonly string[]) {
+  const placed = new Set<string>();
+  const inline = text.replace(/\[Image #(\d+)\]/g, (marker, n: string) => {
+    const path = paths[Number(n) - 1];
+    if (path === undefined) return marker;
+    placed.add(n);
+    return path;
+  });
+  const rest = paths.filter((_, index) => !placed.has(String(index + 1)));
+  return [inline.trim(), ...rest].filter(Boolean).join(" ");
+}
+
 export function designPrompt(
   text: string,
   frames: readonly DesignFrame[],

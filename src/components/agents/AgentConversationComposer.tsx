@@ -5,7 +5,6 @@ import {
   EyeOff,
   FileText,
   History,
-  ImageIcon,
   LoaderCircle,
   Paperclip,
   Sparkle,
@@ -60,6 +59,7 @@ import { IconButton } from "../ui/IconButton";
 import { MenuItem, MenuSurface } from "../ui/Menu";
 import { Select } from "../ui/Select";
 import { AgentImagePreview } from "./AgentImagePreview";
+import { AgentConversationDraftBackdrop } from "./AgentConversationDraftBackdrop";
 import { label } from "./agentConversationStrings";
 import type { AgentStrings } from "./agentStrings";
 import "./AgentConversationComposer.css";
@@ -202,7 +202,7 @@ export function AgentConversationComposer({
   const commandStart = activeCommand?.start;
   const commandQuery = activeCommand?.query;
   const [recall, setRecall] = useState<AgentConversationRecall>(null);
-  const draftParts = draft.split(AGENT_CONVERSATION_IMAGE_MARKERS);
+  const hasChips = AGENT_CONVERSATION_IMAGE_MARKERS.test(draft);
   const backdrop = useRef<HTMLDivElement>(null);
 
   function syncBackdrop() {
@@ -217,22 +217,6 @@ export function AgentConversationComposer({
     textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
     syncBackdrop();
-  }, [draft, textareaRef]);
-
-  // A marker holds a space, so it may wrap: its chip would then sit over one fragment only.
-  useLayoutEffect(() => {
-    const textarea = textareaRef.current;
-    const markSplitChips = () =>
-      backdrop.current
-        ?.querySelectorAll(".agent-conversation-draft-chip")
-        .forEach((chip) =>
-          chip.classList.toggle("is-split", chip.getClientRects().length > 1),
-        );
-    markSplitChips();
-    if (!textarea || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(markSplitChips);
-    observer.observe(textarea);
-    return () => observer.disconnect();
   }, [draft, textareaRef]);
 
   // No dependencies: a completion may leave the draft unchanged and only move the caret.
@@ -620,32 +604,9 @@ export function AgentConversationComposer({
           </section>
         ) : null}
         <div
-          className={`agent-conversation-draft${draftParts.length > 1 ? " has-chips" : ""}`}
+          className={`agent-conversation-draft${hasChips ? " has-chips" : ""}`}
         >
-          {/* A textarea cannot style its text: chips are drawn beneath its transparent copy. */}
-          {draftParts.length > 1 ? (
-            <div
-              ref={backdrop}
-              className="agent-conversation-draft-backdrop"
-              aria-hidden="true"
-            >
-              {draftParts.map((part, index) =>
-                index % 2 ? (
-                  <span key={index} className="agent-conversation-draft-chip">
-                    {part}
-                    <span>
-                      <ImageIcon size={12} />
-                      <span>{part.slice(1, -1)}</span>
-                    </span>
-                  </span>
-                ) : (
-                  part
-                ),
-              )}
-              {/* Keeps a trailing empty line, so both scroll as far. */}
-              {"\u200b"}
-            </div>
-          ) : null}
+          <AgentConversationDraftBackdrop draft={draft} ref={backdrop} />
           <textarea
             ref={textareaRef}
             aria-label={s.placeholder}
