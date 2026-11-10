@@ -46,6 +46,7 @@ import { IconButton } from "../ui/IconButton";
 import { MenuItem } from "../ui/Menu";
 import type { AgentProjectGroup } from "./AgentForms";
 import {
+  agentRailLayout,
   AgentProjectList,
   type AgentProjectGroupRenderProps,
   type AgentProjectRenderProps,
@@ -224,10 +225,37 @@ export function AgentProjectRail({
   // A split tab is live while either pane is: the secondary pane can outlive the parent.
   const tabPanes = (id: string) =>
     terminalSplits[id] ? [id, terminalSplits[id]] : [id];
-  const priority = agentPrioritySections(visibleSessions, attentionOf, (id) =>
-    tabPanes(id).some(
-      (paneId) => busy(paneId) || statusOf(paneId)?.state === "running",
+  const railLayout = agentRailLayout({
+    projects,
+    groups,
+    worktreeGroups,
+    sectionOrder,
+  });
+  // Tree display order: overview, then each repository followed by its worktrees.
+  // shortcut: when the main checkout is gone and a later worktree represents the group, its sessions rank before earlier worktrees; rank by worktree rows only if that setup shows up.
+  const railRank = new Map<string, number>();
+  for (const section of railLayout.railSections)
+    for (const id of [
+      ...(section.group?.groupProjectId ? [section.group.groupProjectId] : []),
+      ...section.projects.flatMap((project) => [
+        project.id,
+        ...(railLayout.worktreeGroupByProjectId
+          .get(project.id)
+          ?.worktrees.flatMap((worktree) => worktree.projectIds) ?? []),
+      ]),
+    ])
+      if (!railRank.has(id)) railRank.set(id, railRank.size);
+  const priority = agentPrioritySections(
+    [...visibleSessions].sort(
+      (a, b) =>
+        (railRank.get(a.projectId) ?? railRank.size) -
+        (railRank.get(b.projectId) ?? railRank.size),
     ),
+    attentionOf,
+    (id) =>
+      tabPanes(id).some(
+        (paneId) => busy(paneId) || statusOf(paneId)?.state === "running",
+      ),
   );
   const appearanceItem =
     appearanceTarget?.kind === "group"
@@ -964,7 +992,11 @@ export function AgentProjectRail({
                     ? s.ssh
                     : agentEnvironmentLabel(project.environment, s.local)),
                 overviewGroup
-                  ? s.groupProjectCount(overviewGroup.projectIds.length)
+                  ? s.groupProjectCount(
+                      railLayout.groupedRailProjects.find(
+                        (item) => item.group.id === overviewGroup.id,
+                      )?.projects.length ?? 0,
+                    )
                   : null,
                 branch ? "" : null,
               ]

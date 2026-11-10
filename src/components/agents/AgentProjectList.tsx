@@ -59,35 +59,16 @@ type AgentProjectListProps = {
   onMoveProjectToGroup: (projectId: string, groupId: string | null) => void;
 };
 
-function dropPosition(
-  before: boolean,
-  after: boolean,
-): "before" | "after" | undefined {
-  if (before) return "before";
-  if (after) return "after";
-  return undefined;
-}
-
-export function AgentProjectList({
+/** Rail sections in display order, shared by the tree and the priority view's ordering. */
+export function agentRailLayout({
   projects,
   groups,
   worktreeGroups,
-  hasLoaded,
-  loading,
-  refreshing,
-  reorderDisabled,
   sectionOrder,
-  renderProject,
-  renderGroup,
-  onOpenGroupOverview,
-  onReorder,
-  onSectionOrderChange,
-  onEditGroup,
-  onCustomizeGroup,
-  onDeleteGroup,
-  onMoveProjectToGroup,
-}: AgentProjectListProps) {
-  const s = useAgentStrings();
+}: Pick<
+  AgentProjectListProps,
+  "projects" | "groups" | "worktreeGroups" | "sectionOrder"
+>) {
   const worktreeGroupByProjectId = new Map(
     worktreeGroups.flatMap((group) =>
       group.projectIds.map((id) => [id, group] as const),
@@ -140,7 +121,51 @@ export function AgentProjectList({
         projects: [],
       });
   }
-  const railSections = orderAgentItems(derivedRailSections, sectionOrder);
+  return {
+    worktreeGroupByProjectId,
+    manualGroupByProjectId,
+    groupedRailProjects,
+    ungroupedRailProjects,
+    railSections: orderAgentItems(derivedRailSections, sectionOrder),
+  };
+}
+
+function dropPosition(
+  before: boolean,
+  after: boolean,
+): "before" | "after" | undefined {
+  if (before) return "before";
+  if (after) return "after";
+  return undefined;
+}
+
+export function AgentProjectList({
+  projects,
+  groups,
+  worktreeGroups,
+  hasLoaded,
+  loading,
+  refreshing,
+  reorderDisabled,
+  sectionOrder,
+  renderProject,
+  renderGroup,
+  onOpenGroupOverview,
+  onReorder,
+  onSectionOrderChange,
+  onEditGroup,
+  onCustomizeGroup,
+  onDeleteGroup,
+  onMoveProjectToGroup,
+}: AgentProjectListProps) {
+  const s = useAgentStrings();
+  const {
+    worktreeGroupByProjectId,
+    manualGroupByProjectId,
+    groupedRailProjects,
+    ungroupedRailProjects,
+    railSections,
+  } = agentRailLayout({ projects, groups, worktreeGroups, sectionOrder });
   const projectDragIds = railSections.flatMap((section) => {
     const projectIds = section.projects.map((project) => project.id);
     if (!section.group) return projectIds;

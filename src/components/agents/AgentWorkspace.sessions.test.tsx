@@ -29,6 +29,7 @@ import {
 import * as api from "../../data/agentSessionsApi";
 import * as attentionApi from "../../data/agentAttentionApi";
 import { getNotifications } from "../../notifications";
+import { projectSectionOrderKey } from "./agentWorkspaceStorage";
 
 it("filters projects without agents from the rail toggle and keeps the filter visible", async () => {
   data.projects.push({
@@ -103,6 +104,49 @@ it("ranks sessions from the priority toggle and remembers it", async () => {
   expect(
     container.querySelector(".agent-priority-session .app-loading-spinner"),
   ).not.toBeNull();
+});
+
+it("lists priority sessions in the tree's section order with the group's rail project count", async () => {
+  data.projects.push(
+    { ...project, id: "p2", name: "Member", path: "/projects/member" },
+    {
+      ...project,
+      id: "group-g1",
+      name: "Suite",
+      path: "/home/dev/.soreno/groups/g1",
+    },
+  );
+  data.groups = [
+    {
+      id: "g1",
+      name: "Suite",
+      projectIds: ["p2", "gone"],
+      groupProjectId: "group-g1",
+    },
+  ];
+  data.sessions.push({
+    ...session,
+    id: "s3",
+    projectId: "group-g1",
+    name: "Group agent",
+  });
+  data.statuses.push({ sessionId: "s3", state: "running", exitCode: null });
+  localStorage.setItem(
+    projectSectionOrderKey,
+    JSON.stringify(["group:g1", "project:p1"]),
+  );
+  await render();
+  await click("Vue par priorités");
+
+  const cards = [...container.querySelectorAll(".agent-priority-session")];
+  expect(
+    cards.map(
+      (card) => card.querySelector(".agent-priority-name")?.textContent,
+    ),
+  ).toEqual(["Group agent", "Pi notes"]);
+  expect(
+    cards[0].querySelector(".agent-priority-context")?.textContent,
+  ).toContain("1 projet");
 });
 
 it("shows live work in tabs and the sidebar, including hidden sessions, without confusing it with process lifetime", async () => {
