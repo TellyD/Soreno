@@ -1,6 +1,6 @@
 //! Agent runs scheduled on an SSH server by a systemd user timer; the desktop attaches later.
 use super::{
-    conversations, environment_dormant, get, groups, id, list, lock,
+    closed_sessions, conversations, environment_dormant, get, groups, id, list, lock,
     posix_command_in_with_environment, project_disconnected, remote_dtach, remote_host,
     require_project, require_session, wake_project, AgentProject, AgentSession, AgentSessions,
     Result,
@@ -63,10 +63,14 @@ pub(super) fn initialize(db: &Connection) -> Result<()> {
     Ok(())
 }
 
+pub(super) fn has(db: &Connection, session_id: &str) -> Result<bool> {
+    Ok(get::<AgentAutomation>(db, "agent_automations", session_id)?.is_some())
+}
+
 /// Deleting a session must not orphan its timer on the server.
 pub(super) fn ensure_none(db: &Connection, session_ids: &[&str]) -> Result<()> {
     for session_id in session_ids {
-        if get::<AgentAutomation>(db, "agent_automations", session_id)?.is_some() {
+        if has(db, session_id)? {
             return Err(HAS_AUTOMATION.into());
         }
     }
@@ -499,11 +503,12 @@ impl AgentSessions {
             let target = self.automation_target(session_id)?;
             run(&target.connection, &remove_script(session_id))?;
         }
-        lock(&self.store)?
+        let store = lock(&self.store)?;
+        store
             .db
             .execute("DELETE FROM agent_automations WHERE id=?1", [session_id])
             .map_err(|error| error.to_string())?;
-        Ok(())
+        closed_sessions::reopen_unkept_sessions(&store.db)
     }
 
     pub fn run_automation(&self, session_id: &str) -> Result<AgentAutomation> {

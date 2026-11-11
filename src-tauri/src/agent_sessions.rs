@@ -321,6 +321,8 @@ pub struct AgentWorkspace {
     pub linear_project_links: Vec<AgentProjectLinearLink>,
     /// Kept without a tab, until reopened.
     pub closed_session_ids: Vec<String>,
+    /// Sessions an automation runs in; closing their tab keeps them.
+    pub automation_session_ids: Vec<String>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -927,6 +929,10 @@ impl AgentSessions {
             design_board_sessions: design::list_board_sessions(&store.db)?,
             linear_project_links: linear_links::list_links(&store.db)?,
             closed_session_ids: closed_sessions::closed_session_ids(&store.db)?,
+            automation_session_ids: list::<AgentAutomation>(&store.db, "agent_automations")?
+                .into_iter()
+                .map(|automation| automation.input.session_id)
+                .collect(),
         })
     }
     /// Runs `action` in one transaction of the agents database, committed only when it succeeds.

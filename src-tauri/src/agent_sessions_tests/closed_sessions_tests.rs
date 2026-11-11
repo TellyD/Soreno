@@ -32,7 +32,7 @@ fn only_favorite_or_linked_sessions_can_be_closed() {
 
     assert_eq!(
         state.set_session_closed("plain", true).unwrap_err(),
-        "Seule une session favorite ou liée à une issue peut être fermée sans être supprimée."
+        "Seule une session favorite, liée à une issue ou automatisée peut être fermée sans être supprimée."
     );
     state.set_session_closed("favorite", true).unwrap();
     state.set_session_closed("linked", true).unwrap();

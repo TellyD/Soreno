@@ -100,6 +100,7 @@ async function render(sessions = [session]) {
           onOpenSession={onOpenSession}
           onConnectProject={vi.fn()}
           onServerReached={onServerReached}
+          onAutomationDeleted={vi.fn()}
         />
       </I18nProvider>,
     ),

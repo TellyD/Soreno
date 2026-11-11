@@ -1,12 +1,12 @@
 use super::{
-    connected_ssh, ensure_stopped, id, kanban_issue_sessions, lock, require_project,
+    automations, connected_ssh, ensure_stopped, id, kanban_issue_sessions, lock, require_project,
     require_session, stop_remote_sessions_before_delete, AgentSessions, Result,
 };
 use crate::sqlite::table_column_exists;
 use rusqlite::{params, Connection};
 
 const NOT_KEPT_MESSAGE: &str =
-    "Seule une session favorite ou liée à une issue peut être fermée sans être supprimée.";
+    "Seule une session favorite, liée à une issue ou automatisée peut être fermée sans être supprimée.";
 const CLOSED_MESSAGE: &str = "Rouvrez cette session avant de la démarrer.";
 
 pub(super) fn initialize(db: &Connection) -> Result<()> {
@@ -43,13 +43,14 @@ pub(super) fn ensure_not_closed(db: &Connection, session_id: &str) -> Result<()>
     Ok(())
 }
 
-/// A session stays closed only while a favorite or an issue keeps it reachable.
+/// A session stays closed only while a favorite, an issue or an automation keeps it reachable.
 pub(super) fn reopen_unkept_sessions(db: &Connection) -> Result<()> {
     db.execute(
         "UPDATE agent_sessions SET closed=0 WHERE closed=1
             AND NOT COALESCE(json_extract(data, '$.favorite'), 0)
             AND NOT EXISTS(SELECT 1 FROM agent_kanban_issue_sessions link WHERE link.session_id=agent_sessions.id)
-            AND NOT EXISTS(SELECT 1 FROM agent_linear_issue_sessions link WHERE link.session_id=agent_sessions.id)",
+            AND NOT EXISTS(SELECT 1 FROM agent_linear_issue_sessions link WHERE link.session_id=agent_sessions.id)
+            AND NOT EXISTS(SELECT 1 FROM agent_automations automation WHERE automation.id=agent_sessions.id)",
         [],
     )
     .map_err(|error| error.to_string())?;
@@ -64,7 +65,10 @@ impl AgentSessions {
         let store = lock(&self.store)?;
         let session = require_session(&store, session_id)?;
         if closed {
-            if !session.favorite && !kanban_issue_sessions::has_live_link(&store.db, session_id)? {
+            if !session.favorite
+                && !kanban_issue_sessions::has_live_link(&store.db, session_id)?
+                && !automations::has(&store.db, session_id)?
+            {
                 return Err(NOT_KEPT_MESSAGE.into());
             }
             ensure_stopped(&store, session_id)?;

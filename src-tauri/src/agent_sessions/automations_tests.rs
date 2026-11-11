@@ -146,7 +146,10 @@ fn a_scheduled_session_cannot_be_deleted_before_its_automation() {
             .unwrap();
     }
     state
-        .save_session(session("session", "claude", &[]))
+        .save_session(AgentSession {
+            favorite: false,
+            ..session("session", "claude", &[])
+        })
         .unwrap();
     put(
         &lock(&state.store).unwrap().db,
@@ -165,8 +168,14 @@ fn a_scheduled_session_cannot_be_deleted_before_its_automation() {
     state
         .set_project_connected_with("project", false, |_, _| Ok(None))
         .unwrap();
+    // The automation keeps a session no favorite holds closed, until it is deleted.
+    state.set_session_closed("session", true).unwrap();
+    let workspace = state.workspace().unwrap();
+    assert_eq!(workspace.closed_session_ids, ["session"]);
+    assert_eq!(workspace.automation_session_ids, ["session"]);
     state.delete_automation("session").unwrap();
     assert!(state.automations().unwrap().is_empty());
+    assert!(state.workspace().unwrap().closed_session_ids.is_empty());
     state.delete_session("session").unwrap();
 }
 

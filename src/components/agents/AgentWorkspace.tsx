@@ -492,8 +492,14 @@ export function AgentWorkspace({
         workspace.closedSessionIds ?? [],
         workspace.sessions,
         kanbanIssueSessions,
+        workspace.automationSessionIds ?? [],
       ),
-    [workspace.closedSessionIds, workspace.sessions, kanbanIssueSessions],
+    [
+      workspace.closedSessionIds,
+      workspace.sessions,
+      kanbanIssueSessions,
+      workspace.automationSessionIds,
+    ],
   );
   const projectsWithAgents = projectIdsWithAgents(
     workspace.sessions,
@@ -2542,6 +2548,7 @@ export function AgentWorkspace({
         } else if (
           action.kind === "close" &&
           (action.session.favorite ||
+            workspace.automationSessionIds?.includes(action.session.id) ||
             kanbanIssueSessions.some(
               (link) => link.sessionId === action.session.id,
             ))
@@ -2967,6 +2974,14 @@ export function AgentWorkspace({
                       void connectProject(projectId)
                     }
                     onServerReached={() => void retry()}
+                    onAutomationDeleted={(sessionId) => {
+                      setHiddenSessionIds((current) => {
+                        const next = new Set(current);
+                        next.delete(sessionId);
+                        return next;
+                      });
+                      void retry();
+                    }}
                   />
                 </div>
               ) : null}

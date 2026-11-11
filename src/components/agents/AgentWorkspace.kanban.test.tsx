@@ -6,6 +6,7 @@ import {
   data,
   project,
   render,
+  requestAutomations,
   requestKanban,
   runtime,
   setGitPanelContainer,
@@ -44,6 +45,15 @@ type ControllerProps = {
 const board = vi.hoisted(() => ({
   props: null as ControllerProps | null,
   issueRequest: undefined as { issue: KanbanIssueSelection } | undefined,
+  onAutomationDeleted: null as ((sessionId: string) => void) | null,
+}));
+vi.mock("../automations/AutomationsBoard", () => ({
+  AutomationsBoard: (props: {
+    onAutomationDeleted: (sessionId: string) => void;
+  }) => {
+    board.onAutomationDeleted = props.onAutomationDeleted;
+    return null;
+  },
 }));
 vi.mock("../kanban/KanbanBoard", () => ({
   KanbanBoard: (props: { issueRequest?: { issue: KanbanIssueSelection } }) => {
@@ -748,4 +758,21 @@ it("deletes the session of a deleted issue when its tab closes", async () => {
   expect(api.setAgentSessionClosed).not.toHaveBeenCalled();
   expect(api.deleteAgentSession).toHaveBeenCalledWith(saved.id);
   expect(tabNames()).not.toContain("TEL-1 · Claude Code");
+});
+
+it("keeps an automation's session closed until the automation is deleted", async () => {
+  data.automationSessionIds = ["s2"];
+  await render();
+  await click("Fermer l’onglet · Codex tests");
+
+  expect(api.setAgentSessionClosed).toHaveBeenCalledExactlyOnceWith("s2", true);
+  expect(api.deleteAgentSession).not.toHaveBeenCalled();
+  expect(tabNames()).toEqual(["Pi notes"]);
+
+  await requestAutomations();
+  data.automationSessionIds = [];
+  data.closedSessionIds = [];
+  await act(async () => board.onAutomationDeleted!("s2"));
+
+  expect(tabNames()).toEqual(["Pi notes", "Codex tests"]);
 });

@@ -77,6 +77,8 @@ type AutomationsBoardProps = {
   onConnectProject: (projectId: string) => void;
   /** Saving reaches a dormant server, which the workspace then shows connected. */
   onServerReached: () => void;
+  /** The deleted automation no longer keeps its session closed. */
+  onAutomationDeleted: (sessionId: string) => void;
 };
 
 type Draft = Omit<AgentAutomationInput, "sessionId" | "timeZone"> & {
@@ -102,6 +104,7 @@ export function AutomationsBoard({
   onOpenSession,
   onConnectProject,
   onServerReached,
+  onAutomationDeleted,
 }: AutomationsBoardProps) {
   const { t, locale } = useI18n();
   const sshProjects = projects.filter(
@@ -375,6 +378,7 @@ export function AutomationsBoard({
             onDelete={async () => {
               if (!selected) return;
               await remove(selected.session.id);
+              onAutomationDeleted(selected.session.id);
               setSelection(null);
             }}
           />

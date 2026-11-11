@@ -297,15 +297,17 @@ export type AgentSessionDesignBoard = {
   linkedAt: string;
 };
 
-/** Like the backend, keeps closed only sessions a favorite or a listed issue still holds. */
+/** Like the backend, keeps closed only sessions a favorite, a listed issue or an automation still holds. */
 export function closedAgentSessionIds(
   closedIds: readonly string[],
   sessions: readonly AgentSession[],
   links: readonly AgentSessionKanbanIssue[],
+  automationSessionIds: readonly string[],
 ): Set<string> {
   const kept = new Set([
     ...sessions.flatMap((session) => (session.favorite ? [session.id] : [])),
     ...links.flatMap((link) => (link.sessionId ? [link.sessionId] : [])),
+    ...automationSessionIds,
   ]);
   return new Set(closedIds.filter((id) => kept.has(id)));
 }
@@ -324,6 +326,8 @@ export type AgentWorkspace = {
   linearProjectLinks?: AgentProjectLinearLink[];
   /** Sessions kept without a tab until reopened. */
   closedSessionIds?: string[];
+  /** Sessions an automation runs in; closing their tab keeps them. */
+  automationSessionIds?: string[];
 };
 
 /** An explicitly disconnected project refuses launches; a dormant one connects on launch. */
