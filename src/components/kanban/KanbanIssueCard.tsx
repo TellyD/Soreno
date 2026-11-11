@@ -126,14 +126,26 @@ export function KanbanStateIcon({
   );
 }
 
-/** A comment author's avatar; local comments have no author and stand for the Soreno user. */
-export function KanbanUserAvatar({ label }: { label: string }) {
-  return (
+export function KanbanUserAvatar({
+  size,
+  url,
+}: {
+  size: number;
+  url: string | undefined;
+}) {
+  return url ? (
+    <img
+      alt=""
+      className="kanban-avatar"
+      height={size}
+      src={url}
+      width={size}
+    />
+  ) : (
     <CircleUserRound
-      aria-label={label}
+      aria-hidden="true"
       className="kanban-avatar-empty"
-      role="img"
-      size={18}
+      size={size}
     />
   );
 }
@@ -220,6 +232,15 @@ export function KanbanIssueCard({
         >
           <KanbanPriorityIcon priority={priority} size={14} />
         </span>
+        {issue.assignee ? (
+          <span
+            className="kanban-chip"
+            title={t("kanban.issue.assignee")}
+          >
+            <KanbanUserAvatar size={14} url={issue.assignee.avatarUrl} />
+            <span className="kanban-chip-label">{issue.assignee.name}</span>
+          </span>
+        ) : null}
         {agentSession ? (
           <span
             aria-label={agentLabel}

@@ -1,5 +1,4 @@
 import {
-  CircleUserRound,
   FolderOpen,
   GitPullRequest,
   Trash2,
@@ -265,7 +264,8 @@ export function KanbanIssueContent({
                         </span>
                       ) : (
                         <KanbanUserAvatar
-                          label={comment.user?.name ?? t("kanban.issue.you")}
+                          size={18}
+                          url={comment.user?.avatarUrl}
                         />
                       )}
                     </span>
@@ -361,7 +361,7 @@ export function KanbanIssueContent({
               className="kanban-issue-property"
               title={t("kanban.issue.assignee")}
             >
-              <CircleUserRound aria-hidden="true" size={14} />
+              <KanbanUserAvatar size={14} url={issue.assignee?.avatarUrl} />
               {issue.assignee?.name ?? t("kanban.issue.unassigned")}
             </span>
           ) : null}

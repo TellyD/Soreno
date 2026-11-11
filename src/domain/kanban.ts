@@ -24,7 +24,7 @@ type KanbanLinearProjectRef = {
   color: string;
 };
 
-type KanbanUserRef = { name: string };
+type KanbanUserRef = { name: string; avatarUrl?: string };
 
 type KanbanPullRequest = { number: number; url: string };
 

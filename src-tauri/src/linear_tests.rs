@@ -796,6 +796,7 @@ fn issue_detail_merges_follow_up_pages_with_comments_oldest_first() {
         detail.comments[1].user,
         Some(Some(KanbanUserRef {
             name: "Ada Lovelace".into(),
+            avatar_url: None,
         }))
     );
     assert_eq!(detail.pull_requests[0].number, 12);
