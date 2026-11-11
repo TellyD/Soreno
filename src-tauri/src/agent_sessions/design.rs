@@ -3,11 +3,9 @@ use super::{
     agent_local_path,
     attachments::{mirror_directory, MIRROR_SUFFIX},
     conversations::{self, Provider},
-    get, id, lock,
-    messages::MESSAGE_LIMIT,
-    require_project, require_session, runtime_status, text, validate_project, AgentEnvironment,
-    AgentProject, AgentSession, AgentSessionMessage, AgentSessions, PromptAttachment,
-    RemoteClipboard, Result,
+    get, id, lock, require_project, require_session, runtime_status, text, validate_project,
+    AgentEnvironment, AgentProject, AgentSession, AgentSessionMessage, AgentSessions,
+    PromptAttachment, RemoteClipboard, Result,
 };
 use regex::Regex;
 use rusqlite::{params, Connection, OptionalExtension};
@@ -33,6 +31,7 @@ const COORDINATE_LIMIT: f64 = 10_000_000.0;
 const FRAME_GAP: f64 = 80.0;
 const DUPLICATE_OFFSET: f64 = 40.0;
 const INSTRUCTIONS_FILENAME: &str = "instructions.md";
+const BOARD_INDEX_FILENAME: &str = "design-board.md";
 const INSTRUCTIONS_LIMIT: usize = 16 * 1024;
 /// The full design instruction, in the private directory: a native Windows Codex launch line
 /// cannot hold it with Codex's hooks and the restriction overrides.
@@ -170,6 +169,17 @@ fn selected_frames(
 // shortcut: frames differing only by case (home/Home) collide in one launch directory on case-insensitive volumes and fail the launch; suffix colliding names if agents produce such ids.
 fn handoff_filename(frame: &DesignFrame) -> String {
     format!("design-{}.html", frame.id)
+}
+
+fn screen_title(frame: &DesignFrame) -> &str {
+    match frame.title.trim() {
+        "" => &frame.id,
+        title => title,
+    }
+}
+
+fn board_index(name: &str, screens: &str) -> String {
+    format!("# Design board \"{name}\"\n\nStatic HTML/CSS mockups, one file per screen. Reproduce their layout, styles and content with this project's stack and conventions; do not copy the HTML files into the project.\n\n{screens}")
 }
 
 pub(super) fn valid_frame_id(value: &str) -> bool {
@@ -730,8 +740,8 @@ impl AgentSessions {
         })
     }
 
-    /// `instructions.md` when the user wrote some, then one `design-<frame id>.html` launch
-    /// attachment per selected frame.
+    /// `instructions.md` when the user wrote some, the `design-board.md` index, then one
+    /// `design-<frame id>.html` launch attachment per selected frame.
     pub fn design_prompt_attachments(
         &self,
         selection: &DesignFrameSelection,
@@ -749,14 +759,31 @@ impl AgentSessions {
             );
         }
         let store = lock(&self.store)?;
-        let (_, frames) =
+        let (found, frames) =
             selected_frames(&store.db, &selection.board_id, Some(&selection.frame_ids))?;
+        // shortcut: a `]` in a frame title breaks its Markdown link, the file name still shows the frame; escape titles if agents write such titles.
+        let screens = frames
+            .iter()
+            .map(|frame| {
+                format!(
+                    "- [{}]({}) ({:.0}×{:.0})\n",
+                    screen_title(frame),
+                    handoff_filename(frame),
+                    frame.width,
+                    frame.height
+                )
+            })
+            .collect::<String>();
         Ok(instructions
             .map(|instructions| PromptAttachment {
                 filename: INSTRUCTIONS_FILENAME.into(),
                 bytes: instructions.as_bytes().to_vec(),
             })
             .into_iter()
+            .chain([PromptAttachment {
+                filename: BOARD_INDEX_FILENAME.into(),
+                bytes: board_index(&found.name, &screens).into_bytes(),
+            }])
             .chain(frames.into_iter().map(|frame| PromptAttachment {
                 filename: handoff_filename(&frame),
                 bytes: frame.html.into_bytes(),
@@ -793,29 +820,26 @@ impl AgentSessions {
                 let path =
                     self.attach_file(session_id, &handoff_filename(frame), frame.html.as_bytes())?;
                 Ok(format!(
-                    "{} ({:.0}x{:.0}): {path}",
-                    frame.title, frame.width, frame.height
+                    "- {} ({:.0}×{:.0}): `{path}`\n",
+                    screen_title(frame),
+                    frame.width,
+                    frame.height
                 ))
             })
-            .collect::<Result<Vec<_>>>()?
-            .join("; ");
+            .collect::<Result<String>>()?;
+        let index = board_index(&found.name, &screens);
+        let index = self.attach_file(session_id, BOARD_INDEX_FILENAME, index.as_bytes())?;
         let body = if update {
             format!(
-                "Soreno: design board \"{}\" was updated. Screens: {screens}. Use this version as the reference. Reply with one short acknowledgement; do not read the files or change your work until the user asks.",
+                "Soreno: design board \"{}\" was updated; its screens are listed in {index}. Use this version as the reference. Reply with one short acknowledgement; do not read the files or change your work until the user asks.",
                 found.name
             )
         } else {
             format!(
-                "Soreno: this session is now linked to design board \"{}\". Screens: {screens}. These static HTML/CSS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks. When you do, reproduce their layout, styles and content with this project's stack and conventions; do not copy the HTML files into the project.",
+                "Soreno: this session is now linked to design board \"{}\"; its screens are listed in {index}. These static HTML/CSS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks.",
                 found.name
             )
         };
-        // shortcut: the frames are already deposited when the message is refused; they stay until the run ends. Prevalidate the size if huge boards hit it.
-        if body.len() > MESSAGE_LIMIT {
-            return Err(
-                "Le message de transmission dépasse 64 Kio : transmettez moins de cadres.".into(),
-            );
-        }
         // shortcut: a run ending between the deposit and this call queues the message for the next start with paths its cleanup removed; bind both to one run if users get dead paths.
         self.send_message(session_id, &message_id, &body)
     }

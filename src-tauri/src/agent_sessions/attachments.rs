@@ -614,10 +614,8 @@ pub(super) fn prompt_with_attachments(
         .partition(|name| name.starts_with("design-") && name.ends_with(".html"));
     let frames = match frames.len() {
         0 => None,
-        1 => Some("1 design-*.html file (one per screen, named design-<frame id>.html)".into()),
-        count => Some(format!(
-            "{count} design-*.html files (one per screen, named design-<frame id>.html)"
-        )),
+        1 => Some("1 design-*.html file".into()),
+        count => Some(format!("{count} design-*.html files")),
     };
     let names = files
         .into_iter()

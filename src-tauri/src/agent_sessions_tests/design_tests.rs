@@ -461,6 +461,10 @@ fn launch_attachments_hold_the_selected_frames_of_the_board_only() {
             .collect::<Vec<_>>(),
         [
             ("instructions.md", "Use Tailwind.".into()),
+            (
+                "design-board.md",
+                "# Design board \"Maquettes\"\n\nStatic HTML/CSS mockups, one file per screen. Reproduce their layout, styles and content with this project's stack and conventions; do not copy the HTML files into the project.\n\n- [Card](design-card.html) (1280×800)\n- [Home](design-home.html) (1280×800)\n".into()
+            ),
             ("design-card.html", "<title>Card</title></html>".into()),
             ("design-home.html", "<title>Home</title></html>".into()),
         ]
@@ -470,7 +474,7 @@ fn launch_attachments_hold_the_selected_frames_of_the_board_only() {
             .design_prompt_attachments(&selection(&["home"], Some(" \n")))
             .unwrap()
             .len(),
-        1
+        2
     );
     assert!(state
         .design_prompt_attachments(&selection(&["home"], Some(&"a".repeat(16 * 1024 + 1))))
@@ -490,7 +494,7 @@ fn launch_attachments_hold_the_selected_frames_of_the_board_only() {
     .collect::<Vec<_>>();
     assert_eq!(
         prompt_with_attachments("Build it.", "/tmp/prompt", &many),
-        "Build it.\n\nAttached files in /tmp/prompt: instructions.md, 100 design-*.html files (one per screen, named design-<frame id>.html)"
+        "Build it.\n\nAttached files in /tmp/prompt: instructions.md, 100 design-*.html files"
     );
     std::fs::remove_dir_all(&directory).unwrap();
 }
@@ -515,16 +519,19 @@ fn a_running_agent_receives_the_frames_and_a_message_naming_them() {
         .unwrap()
         .clone()
         .unwrap();
-    assert!(message.body.starts_with(
-        "Soreno: this session is now linked to design board \"Maquettes\". Screens: Home (1280x800): "
-    ));
-    assert!(message
+    let index = message
         .body
-        .contains(". These static HTML/CSS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks."));
-    let path = message
-        .body
-        .split_once("Home (1280x800): ")
-        .and_then(|(_, rest)| rest.split_once(". These"))
+        .strip_prefix(
+            "Soreno: this session is now linked to design board \"Maquettes\"; its screens are listed in ",
+        )
+        .and_then(|rest| rest.split_once(". These static HTML/CSS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks."))
+        .map(|(path, _)| PathBuf::from(path.trim_matches('\'')))
+        .unwrap();
+    assert!(index.starts_with(&private) && index.ends_with("design-board.md"));
+    let index = std::fs::read_to_string(&index).unwrap();
+    let path = index
+        .split_once("- Home (1280×800): `")
+        .and_then(|(_, rest)| rest.split_once('`'))
         .map(|(path, _)| PathBuf::from(path.trim_matches('\'')))
         .unwrap();
     assert!(path.starts_with(&private) && path.ends_with("design-home.html"));
@@ -537,7 +544,7 @@ fn a_running_agent_receives_the_frames_and_a_message_naming_them() {
         .unwrap();
     assert!(update
         .body
-        .starts_with("Soreno: design board \"Maquettes\" was updated. Screens: Home (1280x800): "));
+        .starts_with("Soreno: design board \"Maquettes\" was updated; its screens are listed in "));
     assert!(update.body.ends_with(
         ". Use this version as the reference. Reply with one short acknowledgement; do not read the files or change your work until the user asks."
     ));

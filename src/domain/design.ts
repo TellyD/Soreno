@@ -1,9 +1,4 @@
-import {
-  ATTACHMENT_NOTE_COST,
-  fitTitle,
-  launchCost,
-  PROMPT_COST_LIMIT,
-} from "./kanbanAgent";
+import { fitTitle } from "./kanbanAgent";
 
 export type DesignBoard = {
   id: string;
@@ -164,62 +159,23 @@ export function designInstructionsAccepted(instructions: string): boolean {
   return !text.includes("\0") && utf8Length(text) <= INSTRUCTIONS_MAX_BYTES;
 }
 
-const DESIGN_LAUNCH_TAIL =
-  "The attached design-*.html files are static HTML/CSS mockups: reproduce their layout, styles and content with this project's stack and conventions; do not copy the HTML files into the project.";
 const BOARD_NAME_COST_LIMIT = 120;
-const SCREEN_TITLE_COST_LIMIT = 80;
-// Windows PowerShell launchers reject arguments holding `"` (legacy_powershell_args_safe).
-const withoutDoubleQuotes = (text: string) => text.replace(/"/g, "'");
 
 const INSTRUCTIONS_LINE =
   "\nUser instructions: see the attached instructions.md and follow them.";
-const moreScreens = (count: number) => `\n- and ${count} more`;
 
 /**
- * Within the Kanban launch budget; screens past it are counted, their files still all attached.
- * The user's instructions travel as `instructions.md`: the prompt only points at the file.
+ * Within the Kanban launch budget: the screens and their files are listed in the attached
+ * `design-board.md`, the user's instructions travel as `instructions.md`.
  */
 export function designLaunchPrompt(
   boardName: string,
-  frames: readonly Pick<DesignFrame, "id" | "title" | "width" | "height">[],
   withInstructions = false,
 ): string {
-  const headWith = (name: string) =>
-    `Design board “${name}” from Soreno: implement these screens in this project.${withInstructions ? INSTRUCTIONS_LINE : ""}\nScreens:`;
-  const tail = `\n${DESIGN_LAUNCH_TAIL}`;
-  // The backend appends "\n\nAttached files in <dir>: [instructions.md, ]<N> design-*.html files (one per screen, …)".
-  const note = `${withInstructions ? "instructions.md, " : ""}${frames.length} design-*.html file${frames.length === 1 ? "" : "s"} (one per screen, named design-<frame id>.html)`;
-  const fixed =
-    PROMPT_COST_LIMIT -
-    ATTACHMENT_NOTE_COST -
-    launchCost(note) -
-    launchCost(headWith("")) -
-    launchCost(tail);
-  // The name gives way first, so the fixed parts and at least the screen count always fit.
-  const nameRoom = Math.min(
+  // Windows PowerShell launchers reject arguments holding `"` (legacy_powershell_args_safe).
+  const name = fitTitle(
+    boardName.trim().replace(/"/g, "'"),
     BOARD_NAME_COST_LIMIT,
-    fixed - (frames.length ? launchCost(moreScreens(frames.length)) : 0),
   );
-  const fitted = fitTitle(withoutDoubleQuotes(boardName.trim()), nameRoom);
-  // Below the ellipsis' own cost nothing of the name fits.
-  const name = launchCost(fitted) <= nameRoom ? fitted : "";
-  const head = headWith(name);
-  let room = fixed - launchCost(name);
-  const lines: string[] = [];
-  for (const [index, frame] of frames.entries()) {
-    const title = fitTitle(
-      withoutDoubleQuotes(frame.title.trim() || frame.id),
-      SCREEN_TITLE_COST_LIMIT,
-    );
-    const line = `\n- ${title} (${Math.round(frame.width)}x${Math.round(frame.height)})`;
-    const remaining = frames.length - index - 1;
-    const reserve = remaining ? launchCost(moreScreens(remaining)) : 0;
-    if (launchCost(line) + reserve > room) {
-      lines.push(moreScreens(frames.length - index));
-      break;
-    }
-    lines.push(line);
-    room -= launchCost(line);
-  }
-  return `${head}${lines.join("")}${tail}`;
+  return `Design board “${name}” from Soreno: implement its screens in this project.${withInstructions ? INSTRUCTIONS_LINE : ""}\nStart from the attached design-board.md: it lists the screens, links their static HTML/CSS mockups and says how to implement them.`;
 }

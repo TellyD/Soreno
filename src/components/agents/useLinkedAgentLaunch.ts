@@ -211,7 +211,7 @@ export function useLinkedAgentLaunch({
       branchName: designBranchName(board.name),
       link: (sessionId) => designApi.linkDesignSession(sessionId, board.id),
       launch: {
-        prompt: designLaunchPrompt(board.name, frames, asked !== null),
+        prompt: designLaunchPrompt(board.name, asked !== null),
         imageNames: [],
         imageUrls: [],
         imageTargets: [],

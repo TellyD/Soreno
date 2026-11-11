@@ -143,48 +143,26 @@ it("keeps only the latest actions within the history limit", () => {
   expect(history.undo[0]).toEqual({ kind: "delete", frame: frame("1") });
 });
 
-it("lists every screen of a small board in the launch prompt", () => {
-  const prompt = designLaunchPrompt("Accueil", [
-    frame("home"),
-    { ...frame("login"), title: "", width: 390.4, height: 844 },
-  ]);
-
-  expect(prompt.split("\n")[0]).toBe(
-    "Design board “Accueil” from Soreno: implement these screens in this project.",
-  );
-  expect(prompt).toContain("- Title home (1280x800)");
-  expect(prompt).toContain("- login (390x844)");
-  expect(prompt).toContain("do not copy the HTML files into the project");
-  expect(prompt).not.toContain("more");
-});
-
-it("counts the screens past the launch budget, within it even for a large board", () => {
-  const frames = Array.from({ length: 300 }, (_, index) => ({
-    ...frame(`screen-${index}`),
-    title: `A rather descriptive screen title number ${index}`,
-  }));
-
-  const prompt = designLaunchPrompt("Big board", frames);
-  const listed = prompt.split("\n").filter((line) => line.startsWith("- A"));
-  const more = /- and (\d+) more/.exec(prompt);
+it("points the launch prompt at the attached index, within the budget even for a long name", () => {
+  const prompt = designLaunchPrompt("設計".repeat(50), true);
   // The backend appends this note, its directory within ATTACHMENT_NOTE_COST.
-  const note = `${frames.length} design-*.html files (one per screen, named design-<frame id>.html)`;
+  const note = "instructions.md, design-board.md, 300 design-*.html files";
 
-  expect(listed[0]).toContain("number 0");
-  expect(listed.length + Number(more![1])).toBe(frames.length);
+  expect(prompt.split("\n")[1]).toBe(
+    "User instructions: see the attached instructions.md and follow them.",
+  );
+  expect(prompt).toContain("design-board.md");
   expect(
     launchCost(prompt) + ATTACHMENT_NOTE_COST + launchCost(note),
   ).toBeLessThanOrEqual(PROMPT_COST_LIMIT);
+  expect(designLaunchPrompt("Board")).not.toContain("instructions.md");
 });
 
 it("keeps double quotes out of the launch prompt, which PowerShell launchers reject", () => {
-  const prompt = designLaunchPrompt('Le "grand" écran', [
-    { ...frame("home"), title: 'Page "Accueil"' },
-  ]);
+  const prompt = designLaunchPrompt('Le "grand" écran');
 
   expect(prompt).not.toContain('"');
   expect(prompt).toContain("Le 'grand' écran");
-  expect(prompt).toContain("- Page 'Accueil' (1280x800)");
 });
 
 it("bounds the agent session name in UTF-8 bytes without cutting a character", () => {
@@ -194,37 +172,6 @@ it("bounds the agent session name in UTF-8 bytes without cutting a character", (
   expect(name.endsWith(" · Claude Code")).toBe(true);
   expect(name).not.toContain("\uFFFD");
   expect(designAgentSessionName("Accueil", "Codex")).toBe("Accueil · Codex");
-});
-
-it("points the agent at the attached instructions within the budget, the screens shrinking first", () => {
-  const frames = Array.from({ length: 300 }, (_, index) => ({
-    ...frame(`screen-${index}`),
-    title: `A rather descriptive screen title number ${index}`,
-  }));
-
-  const prompt = designLaunchPrompt("Board", frames, true);
-  // The backend lists instructions.md before the screens in its note.
-  const note = `instructions.md, ${frames.length} design-*.html files (one per screen, named design-<frame id>.html)`;
-
-  expect(prompt.split("\n")[1]).toBe(
-    "User instructions: see the attached instructions.md and follow them.",
-  );
-  expect(prompt).toMatch(/- and \d+ more/);
-  expect(
-    launchCost(prompt) + ATTACHMENT_NOTE_COST + launchCost(note),
-  ).toBeLessThanOrEqual(PROMPT_COST_LIMIT);
-  expect(designLaunchPrompt("Board", [frame("home")])).not.toContain(
-    "instructions.md",
-  );
-
-  // A long CJK name gives way so that even a single screen's count fits.
-  const one = [{ ...frame("home"), title: "設計".repeat(40) }];
-  const cjk = designLaunchPrompt("設計".repeat(20), one, true);
-  const oneNote = `instructions.md, 1 design-*.html file (one per screen, named design-<frame id>.html)`;
-  expect(
-    launchCost(cjk) + ATTACHMENT_NOTE_COST + launchCost(oneNote),
-  ).toBeLessThanOrEqual(PROMPT_COST_LIMIT);
-  expect(cjk).toContain("Design board “設計");
 });
 
 it("accepts launch instructions only within the backend's 16 KiB, without NUL", () => {
