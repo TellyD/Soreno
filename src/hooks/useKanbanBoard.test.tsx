@@ -899,6 +899,7 @@ const linearBoard: LinearKanbanBoard = {
   ],
   truncated: false,
   linkedProjectIds: [],
+  members: [],
 };
 
 async function flush() {

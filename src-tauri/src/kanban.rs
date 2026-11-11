@@ -59,6 +59,8 @@ pub(crate) const EMPTY_UPDATE_MESSAGE: &str =
     "[Kanban/emptyUpdate] La modification de l’issue est vide.";
 pub(crate) const LABEL_CONFLICT_MESSAGE: &str =
     "[Kanban/labelConflict] Un label ne peut pas être à la fois ajouté et retiré.";
+const ASSIGNEE_MESSAGE: &str =
+    "[Kanban/assigneeUnsupported] Une issue locale ne peut pas être assignée.";
 
 /// The error without its `[Kanban/<code>]` tag, for readers that do not localize it.
 pub(crate) fn untagged_error(error: &str) -> &str {
@@ -111,6 +113,7 @@ pub struct KanbanProjectRef {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KanbanUserRef {
+    pub id: String,
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub avatar_url: Option<String>,
@@ -217,6 +220,9 @@ pub struct KanbanIssueInput {
     pub added_label_ids: Vec<String>,
     #[serde(default)]
     pub removed_label_ids: Vec<String>,
+    /// Linear only.
+    #[serde(default, deserialize_with = "present")]
+    pub assignee_id: Option<Option<String>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -599,6 +605,9 @@ pub(crate) fn update_issue(
     issue_id: &str,
     patch: KanbanIssueInput,
 ) -> Result<KanbanIssueUpdate> {
+    if patch.assignee_id.is_some() {
+        return Err(ASSIGNEE_MESSAGE.into());
+    }
     if patch.state_id.is_none()
         && patch.priority.is_none()
         && patch.title.is_none()

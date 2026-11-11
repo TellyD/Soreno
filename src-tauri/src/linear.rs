@@ -5,7 +5,7 @@ use crate::kanban::{
     self, KanbanBoard, KanbanComment, KanbanIssue, KanbanIssueCreateInput,
     KanbanIssueDescriptionUpdate, KanbanIssueDetail, KanbanIssueInput, KanbanIssueUpdate,
     KanbanLabel, KanbanLinearFields, KanbanLinearProjectRef, KanbanProjectRef, KanbanPullRequest,
-    KanbanSource, KanbanSubIssue, KanbanTeam,
+    KanbanSource, KanbanSubIssue, KanbanTeam, KanbanUserRef,
 };
 use reqwest::header::{HeaderValue, AUTHORIZATION};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -107,6 +107,8 @@ pub struct LinearKanbanBoard {
     pub truncated: bool,
     /// The Soreno projects linked to a Linear project of the board's workspace.
     pub linked_project_ids: Vec<String>,
+    /// Active members of the board's team, by name: who its issues can be assigned to.
+    pub members: Vec<KanbanUserRef>,
 }
 
 /// Soreno projects linked to Linear projects, keyed by Linear project id.
@@ -250,7 +252,7 @@ pub async fn load_board(
         .map(|workspace| workspace.api_key.clone())
         .ok_or(NO_TEAM_MESSAGE)?;
 
-    let mut states = None;
+    let mut first_page = None;
     let mut raw_issues = Vec::new();
     let mut after: Option<String> = None;
     let mut truncated = false;
@@ -259,8 +261,8 @@ pub async fn load_board(
         let board = graphql::<TeamBoardData>(&client, &api_key, TEAM_BOARD_QUERY, variables)
             .await?
             .team;
-        if states.is_none() {
-            states = Some(board.states.nodes);
+        if first_page.is_none() {
+            first_page = Some((board.states.nodes, board.members.nodes));
         }
         raw_issues.extend(board.issues.nodes);
 
@@ -277,8 +279,9 @@ pub async fn load_board(
         }
     }
 
-    let mut states = states.unwrap_or_default();
+    let (mut states, mut members) = first_page.unwrap_or_default();
     kanban::sort_states(&mut states);
+    members.sort_by_key(|member| member.name.to_lowercase());
     let labels = team_labels(&client, &api_key, &team.id).await?;
     complete_labels(
         &client,
@@ -328,6 +331,7 @@ pub async fn load_board(
         teams,
         truncated,
         linked_project_ids,
+        members,
     })
 }
 

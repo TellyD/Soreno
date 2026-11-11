@@ -161,6 +161,7 @@ fn issue_update_input_maps_every_editable_field_and_the_linked_project() {
             "projectId": "soreno-web",
             "addedLabelIds": ["l-bug"],
             "removedLabelIds": ["l-chore", "l-ux"],
+            "assigneeId": "u-ada",
         })),
         Ok(json!({
             "stateId": "s-done",
@@ -169,11 +170,12 @@ fn issue_update_input_maps_every_editable_field_and_the_linked_project() {
             "projectId": "p-auth",
             "addedLabelIds": ["l-bug"],
             "removedLabelIds": ["l-chore", "l-ux"],
+            "assigneeId": "u-ada",
         }))
     );
     assert_eq!(
-        update_input(json!({ "projectId": null })),
-        Ok(json!({ "projectId": null }))
+        update_input(json!({ "projectId": null, "assigneeId": null })),
+        Ok(json!({ "projectId": null, "assigneeId": null }))
     );
 }
 
@@ -196,7 +198,6 @@ fn invalid_issue_patches_are_rejected_with_local_codes() {
         let error = update_input(patch.clone()).expect_err("rejected");
         assert_eq!(code(&error), expected, "{patch}");
     }
-    assert!(serde_json::from_value::<KanbanIssueInput>(json!({ "assigneeId": "u" })).is_err());
 }
 
 #[test]
@@ -270,7 +271,7 @@ fn applied_issue_update_maps_the_linked_project_and_linear_fields() {
         r##"{"issueUpdate":{"success":true,"issue":{
             "id":"i1","title":"Fix login redirect","url":"https://linear.app/i1","priority":3.0,"updatedAt":"2026-09-27T10:00:00.000Z",
             "state":{"id":"s-done"},
-            "assignee":{"name":"Ada Lovelace"},
+            "assignee":{"id":"u-ada","name":"Ada Lovelace"},
             "project":{"id":"p-auth","name":"Auth revamp","color":"#f2994a"},
             "labelIds":["l-bug"],
             "labels":{"nodes":[{"id":"l-bug","name":"Bug","color":"#eb5757"}]}
@@ -290,7 +291,7 @@ fn applied_issue_update_maps_the_linked_project_and_linear_fields() {
             "labels": [{ "id": "l-bug", "name": "Bug", "color": "#eb5757" }],
             "updatedAt": "2026-09-27T10:00:00.000Z",
             "url": "https://linear.app/i1",
-            "assignee": { "name": "Ada Lovelace" },
+            "assignee": { "id": "u-ada", "name": "Ada Lovelace" },
             "linearProject": { "id": "p-auth", "name": "Auth revamp", "color": "#f2994a" },
         })
     );
@@ -561,6 +562,7 @@ const TEAM_BOARD_FIXTURE: &str = r##"{
           { "id": "s-todo", "name": "Todo", "type": "unstarted", "color": "#e2e2e2", "position": 1.5 }
         ]
       },
+      "members": { "nodes": [{ "id": "u-ada", "name": "Ada Lovelace", "avatarUrl": null }] },
       "issues": {
         "nodes": [
           {
@@ -572,7 +574,7 @@ const TEAM_BOARD_FIXTURE: &str = r##"{
             "createdAt": "2026-08-14T09:12:00.000Z",
             "updatedAt": "2026-08-15T10:00:00.000Z",
             "state": { "id": "s-todo" },
-            "assignee": { "name": "Ada Lovelace" },
+            "assignee": { "id": "u-ada", "name": "Ada Lovelace" },
             "project": { "id": "p-auth", "name": "Auth revamp", "color": "#f2994a" },
             "labelIds": ["l-bug"],
             "labels": { "nodes": [{ "id": "l-bug", "name": "Bug", "color": "#eb5757" }] },
@@ -636,7 +638,7 @@ fn board_issues_serialize_in_the_local_shape_with_linear_fields() {
             "labels": [{ "id": "l-bug", "name": "Bug", "color": "#eb5757" }],
             "pullRequests": [{ "number": 5, "url": "https://github.com/acme/web/pull/5" }],
             "url": "https://linear.app/acme/issue/ENG-42/fix-login-redirect",
-            "assignee": { "name": "Ada Lovelace" },
+            "assignee": { "id": "u-ada", "name": "Ada Lovelace" },
             "linearProject": { "id": "p-auth", "name": "Auth revamp", "color": "#f2994a" },
         })
     );
@@ -732,7 +734,7 @@ const ISSUE_DETAIL_FIXTURE: &str = r##"{
       "comments": {
         "nodes": [
           { "id": "c-3", "body": "Shipped", "createdAt": "2026-08-16T08:00:00.000Z", "user": null },
-          { "id": "c-1", "body": "First", "createdAt": "2026-08-14T10:00:00.000Z", "user": { "name": "Ada Lovelace" } }
+          { "id": "c-1", "body": "First", "createdAt": "2026-08-14T10:00:00.000Z", "user": { "id": "u-ada", "name": "Ada Lovelace" } }
         ],
         "pageInfo": { "hasNextPage": false, "endCursor": "comments-1" }
       },
@@ -795,6 +797,7 @@ fn issue_detail_merges_follow_up_pages_with_comments_oldest_first() {
     assert_eq!(
         detail.comments[1].user,
         Some(Some(KanbanUserRef {
+            id: "u-ada".into(),
             name: "Ada Lovelace".into(),
             avatar_url: None,
         }))

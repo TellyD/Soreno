@@ -11,6 +11,7 @@ import {
   kanbanPriorityName,
   type KanbanLabel,
   type KanbanProjectRef,
+  type KanbanUserRef,
   type KanbanWorkflowState,
 } from "../../domain/kanban";
 import { useI18n } from "../../i18n";
@@ -23,6 +24,7 @@ import { Select } from "../ui/Select";
 import {
   KanbanPriorityIcon,
   KanbanStateIcon,
+  KanbanUserAvatar,
   kanbanPriorityLabelKeys,
 } from "./KanbanIssueCard";
 
@@ -115,6 +117,43 @@ export function KanbanPrioritySelect({
       valueLabel={
         chip && priority === "none" ? t("kanban.issue.priority") : undefined
       }
+    />
+  );
+}
+
+export function KanbanAssigneeSelect({
+  members,
+  onChange,
+  value,
+}: FieldControlProps<KanbanUserRef | null> & {
+  members: readonly KanbanUserRef[];
+}) {
+  const { t } = useI18n();
+  const options = withCurrent(members, value ? [value] : []);
+  return (
+    <Select
+      className="kanban-issue-property-select"
+      aria-label={t("kanban.issue.assignee")}
+      onValueChange={(option) => {
+        if (option === (value?.id ?? noneValue)) return;
+        onChange(options.find(({ id }) => id === option) ?? null);
+      }}
+      options={[
+        {
+          icon: <KanbanUserAvatar size={14} url={undefined} />,
+          label: t("kanban.issue.unassigned"),
+          value: noneValue,
+        },
+        ...options.map((member) => ({
+          icon: <KanbanUserAvatar size={14} url={member.avatarUrl} />,
+          label: member.name,
+          value: member.id,
+        })),
+      ]}
+      size="small"
+      startIcon={<KanbanUserAvatar size={14} url={value?.avatarUrl} />}
+      title={t("kanban.issue.assignee")}
+      value={value?.id ?? noneValue}
     />
   );
 }

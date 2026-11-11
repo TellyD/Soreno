@@ -24,7 +24,7 @@ type KanbanLinearProjectRef = {
   color: string;
 };
 
-type KanbanUserRef = { name: string; avatarUrl?: string };
+export type KanbanUserRef = { id: string; name: string; avatarUrl?: string };
 
 type KanbanPullRequest = { number: number; url: string };
 
@@ -68,6 +68,8 @@ export type LinearKanbanBoard = KanbanBoard & {
   truncated: boolean;
   // Soreno projects linked to a Linear project of this board's workspace.
   linkedProjectIds: string[];
+  // Who the team's issues can be assigned to.
+  members: KanbanUserRef[];
 };
 
 /** A Linear project a Soreno project can be linked to. */
@@ -84,13 +86,14 @@ export type KanbanIssueFields = {
   priority: number;
   project: KanbanProjectRef | null;
   labels: KanbanLabel[];
+  // Linear only.
+  assignee?: KanbanUserRef | null;
 };
 
 export type KanbanIssueUpdate = KanbanIssueFields & {
   id: string;
   updatedAt: string;
   // Linear only.
-  assignee?: KanbanUserRef | null;
   linearProject?: KanbanLinearProjectRef | null;
 };
 
@@ -109,6 +112,7 @@ export type KanbanIssueInput = {
   projectId?: string | null;
   addedLabelIds?: string[];
   removedLabelIds?: string[];
+  assigneeId?: string | null;
 };
 
 export type KanbanIssueCreateInput = {
@@ -412,6 +416,12 @@ export function kanbanIssueInput(
     patch.project?.id !== confirmed.project?.id
   ) {
     input.projectId = patch.project?.id ?? null;
+  }
+  if (
+    patch.assignee !== undefined &&
+    patch.assignee?.id !== confirmed.assignee?.id
+  ) {
+    input.assigneeId = patch.assignee?.id ?? null;
   }
   if (patch.labels !== undefined) {
     const current = new Set(confirmed.labels.map(({ id }) => id));

@@ -20,6 +20,7 @@ import {
   type KanbanIssuePatch,
   type KanbanIssueSelection,
   type KanbanLabel,
+  type KanbanUserRef,
   type KanbanWorkflowState,
 } from "../../domain/kanban";
 import {
@@ -47,6 +48,7 @@ import { KanbanCommentToAgent } from "./KanbanCommentToAgent";
 import { KanbanIssueAgentSection } from "./KanbanIssueAgentSection";
 import { KanbanIssueDescription } from "./KanbanIssueDescription";
 import {
+  KanbanAssigneeSelect,
   KanbanLabelDot,
   KanbanLabelsMenu,
   KanbanPrioritySelect,
@@ -81,6 +83,8 @@ type KanbanIssueDetailProps = {
   overviewProjectIds: ReadonlySet<string>;
   labels: readonly KanbanLabel[];
   locale: string;
+  // Linear team members the issue can be assigned to.
+  members: readonly KanbanUserRef[];
   onCreateLabel: (name: string) => Promise<KanbanLabel | null>;
   onOpenIssue: (issue: KanbanIssueSelection) => void;
   onOpenProject: (projectId: string) => void;
@@ -114,6 +118,7 @@ export function KanbanIssueContent({
   knownProjects,
   labels,
   locale,
+  members,
   onAddComment,
   onDeleteComment,
   onCreateLabel,
@@ -356,7 +361,13 @@ export function KanbanIssueContent({
               {t(kanbanPriorityLabelKeys[priority])}
             </span>
           )}
-          {detail.source === "linear" ? (
+          {detail.source !== "linear" ? null : boardIssue ? (
+            <KanbanAssigneeSelect
+              members={members}
+              onChange={(assignee) => onUpdateIssue(boardIssue, { assignee })}
+              value={boardIssue.assignee ?? null}
+            />
+          ) : (
             <span
               className="kanban-issue-property"
               title={t("kanban.issue.assignee")}
@@ -364,7 +375,7 @@ export function KanbanIssueContent({
               <KanbanUserAvatar size={14} url={issue.assignee?.avatarUrl} />
               {issue.assignee?.name ?? t("kanban.issue.unassigned")}
             </span>
-          ) : null}
+          )}
         </section>
 
         {boardIssue || issue.labels.length > 0 ? (

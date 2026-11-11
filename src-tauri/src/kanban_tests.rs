@@ -387,16 +387,16 @@ fn updates_validate_every_field_before_applying_any() {
             serde_json::json!({ "title": "Kept", "stateId": "missing" }),
             STATE_NOT_FOUND,
         ),
+        (
+            serde_json::json!({ "title": "Kept", "assigneeId": null }),
+            ASSIGNEE_MESSAGE,
+        ),
     ] {
         assert_eq!(
             update_issue(&db, &issue.id, patch(value)).unwrap_err(),
             error
         );
     }
-    assert!(
-        serde_json::from_value::<KanbanIssueInput>(serde_json::json!({ "assigneeId": null }))
-            .is_err()
-    );
     assert_eq!(load_issue(&db, &issue.id).unwrap().title, "Issue");
 
     let done = state_named(&db, "Done");

@@ -39,6 +39,9 @@ pub(super) fn issue_update_input(patch: KanbanIssueInput, links: &ProjectLinks) 
             .transpose()?;
         input.insert("projectId".into(), json!(linear_project_id));
     }
+    if let Some(assignee_id) = patch.assignee_id {
+        input.insert("assigneeId".into(), json!(assignee_id));
+    }
     if !patch.added_label_ids.is_empty() {
         input.insert("addedLabelIds".into(), json!(patch.added_label_ids));
     }

@@ -20,7 +20,7 @@ macro_rules! board_issue_fragment {
 fragment LinearBoardIssue on Issue {
   id identifier title url priority createdAt updatedAt
   state { id }
-  assignee { name avatarUrl }
+  assignee { id name avatarUrl }
   project { id name color }
   labelIds
   labels(first: 20) { nodes { id name color } }
@@ -29,11 +29,13 @@ fragment LinearBoardIssue on Issue {
 "#
     };
 }
+// shortcut: only a team's first 250 members can be assignees, without paging; page them if larger teams appear.
 pub(super) const TEAM_BOARD_QUERY: &str = concat!(
     r#"
 query LinearTeamBoard($id: String!, $after: String) {
   team(id: $id) {
     states(first: 250) { nodes { id name type color position } }
+    members(first: 250) { nodes { id name avatarUrl } }
     issues(first: 100, after: $after, orderBy: updatedAt) {
       nodes { ...LinearBoardIssue }
       pageInfo { hasNextPage endCursor }
@@ -86,7 +88,7 @@ mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {
     issue {
       id title url priority updatedAt
       state { id }
-      assignee { name avatarUrl }
+      assignee { id name avatarUrl }
       project { id name color }
       labelIds
       labels(first: 50) { nodes { id name color } }
@@ -106,7 +108,7 @@ pub(super) const CREATE_COMMENT_MUTATION: &str = r#"
 mutation LinearCreateComment($input: CommentCreateInput!) {
   commentCreate(input: $input) {
     success
-    comment { id body createdAt user { name avatarUrl } }
+    comment { id body createdAt user { id name avatarUrl } }
   }
 }
 "#;
@@ -126,7 +128,7 @@ pub(super) const UPDATE_COMMENT_MUTATION: &str = r#"
 mutation LinearUpdateComment($id: String!, $body: String!) {
   commentUpdate(id: $id, input: { body: $body }) {
     success
-    comment { id body createdAt user { name avatarUrl } }
+    comment { id body createdAt user { id name avatarUrl } }
   }
 }
 "#;
@@ -184,7 +186,7 @@ query LinearIssueDetail($id: String!) {
     id identifier title url description branchName priority createdAt updatedAt
     state { id }
     team { id }
-    assignee { name avatarUrl }
+    assignee { id name avatarUrl }
     project { id name color }
     labelIds
     labels(first: 50) { nodes { id name color } }
@@ -193,7 +195,7 @@ query LinearIssueDetail($id: String!) {
       pageInfo { hasNextPage endCursor }
     }
     comments(first: 100) {
-      nodes { id body createdAt user { name avatarUrl } }
+      nodes { id body createdAt user { id name avatarUrl } }
       pageInfo { hasNextPage endCursor }
     }
     attachments(first: 10) { nodes { url sourceType } }
@@ -214,7 +216,7 @@ pub(super) const ISSUE_COMMENTS_QUERY: &str = r#"
 query LinearIssueComments($id: String!, $after: String!) {
   issue(id: $id) {
     comments(first: 100, after: $after) {
-      nodes { id body createdAt user { name avatarUrl } }
+      nodes { id body createdAt user { id name avatarUrl } }
       pageInfo { hasNextPage endCursor }
     }
   }

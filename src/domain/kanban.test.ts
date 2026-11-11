@@ -290,12 +290,13 @@ describe("kanbanIssueInput", () => {
     priority: 1,
     project: { id: "p1", name: "Alpha" },
     labels: [bug, ui],
+    assignee: { id: "u-ada", name: "Ada" },
   };
 
-  it("clears the project with null", () => {
-    expect(kanbanIssueInput({ project: null }, confirmed)).toEqual({
-      projectId: null,
-    });
+  it("clears the project and the assignee with null", () => {
+    expect(
+      kanbanIssueInput({ project: null, assignee: null }, confirmed),
+    ).toEqual({ projectId: null, assigneeId: null });
   });
 
   it("omits fields equal to the confirmed ones", () => {

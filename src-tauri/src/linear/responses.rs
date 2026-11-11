@@ -103,6 +103,7 @@ pub(super) struct TeamBoardData {
 #[derive(Debug, Deserialize)]
 pub(super) struct RawTeamBoard {
     pub(super) states: Connection<KanbanWorkflowState>,
+    pub(super) members: Connection<KanbanUserRef>,
     pub(super) issues: Page<RawIssue>,
 }
 

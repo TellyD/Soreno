@@ -392,6 +392,7 @@ export function KanbanIssueView({
           knownProjects={kanban.knownProjects}
           labels={sourceBoard?.labels ?? []}
           locale={locale}
+          members={kanban.linear?.members ?? []}
           onAddComment={async (body) => {
             await addComment(body);
             contentSaved(selection);
