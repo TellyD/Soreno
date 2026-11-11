@@ -220,6 +220,9 @@ pub(super) fn add_launch_args(
         "You are the agent of the Soreno project group “{group_name}”. You can read and edit its repositories directly:"
     ))
     .chain(members.iter().map(|(name, path)| format!("- {name}: {path}")))
+    .chain(std::iter::once(
+        "In a Kanban issue request to Soreno, set project to the name of the repository above that the issue concerns; when you cannot tell which one, ask the user first.".to_owned(),
+    ))
     .collect::<Vec<_>>()
     .join(separator);
     match provider {

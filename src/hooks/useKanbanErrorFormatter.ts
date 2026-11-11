@@ -35,6 +35,7 @@ const errorKeys = {
   requestImagePlaceholder: "kanban.error.requestImagePlaceholder",
   requestInvalidJson: "kanban.error.requestInvalidJson",
   requestNotRegular: "kanban.error.requestNotRegular",
+  requestProject: "kanban.error.requestProject",
   requestTooLarge: "kanban.error.requestTooLarge",
   sessionHasIssue: "kanban.error.sessionHasIssue",
   sessionNotLinked: "kanban.error.sessionNotLinked",
@@ -51,7 +52,7 @@ export function useKanbanErrorFormatter() {
     (error: unknown) => {
       const message = errorMessage(error);
       const code = kanbanErrorCode(message);
-      // Only `linearRequest`, `linearWorkspaceAuth` and `transferIncomplete` show their detail: the text after the tag.
+      // Only `linearRequest`, `linearWorkspaceAuth`, `requestProject` and `transferIncomplete` show their detail: the text after the tag.
       return code && Object.prototype.hasOwnProperty.call(errorKeys, code)
         ? t(errorKeys[code as keyof typeof errorKeys], {
             detail: message.slice(message.indexOf("] ") + 2),

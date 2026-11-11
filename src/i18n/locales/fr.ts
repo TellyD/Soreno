@@ -242,6 +242,8 @@ export const fr = {
     "La demande de l’agent n’est pas un JSON valide.",
   "kanban.error.requestNotRegular":
     "La demande de l’agent n’est pas un fichier ordinaire.",
+  "kanban.error.requestProject":
+    "L’agent doit nommer le projet du groupe concerné par cette issue ({detail}).",
   "kanban.error.requestTooLarge":
     "La demande de l’agent est trop volumineuse (64 Kio maximum).",
   "kanban.error.sessionHasIssue":

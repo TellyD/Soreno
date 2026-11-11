@@ -162,12 +162,16 @@ struct RequestFile {
     linear: bool,
     #[serde(default)]
     update: bool,
+    #[serde(default)]
+    project: Option<String>,
 }
 
 struct IssueContent {
     title: String,
     description: Option<String>,
     linear: bool,
+    /// The group member the issue concerns, as the group prompt names it.
+    project: Option<String>,
 }
 
 /// New title and/or description of the session's linked issue; an empty description clears it.
@@ -211,6 +215,7 @@ fn parse_request(bytes: &[u8]) -> Result<Request> {
         title: valid_title(file.title.as_deref().unwrap_or_default())?,
         description: description.filter(|description| !description.is_empty()),
         linear: file.linear,
+        project: file.project,
     }))
 }
 
@@ -397,11 +402,12 @@ pub struct DesignFrameOutcome {
 }
 
 /// The project of the session's linked issue, else the session's own project unless it is a
-/// group project.
+/// group project, whose member is the one the agent `named`.
 pub(super) fn request_project(
     db: &Connection,
     session_id: &str,
     project_id: &str,
+    named: Option<&str>,
 ) -> Result<Option<String>> {
     let linked: Option<String> = db
         .query_row(
@@ -416,27 +422,81 @@ pub(super) fn request_project(
     if linked.is_some() {
         return Ok(linked);
     }
-    Ok(groups::group_by_group_project(db, project_id)?
-        .is_none()
-        .then(|| project_id.to_owned()))
-}
-
-// shortcut: a worktree session reads its own project's link, which worktrees never have, so its Linear issue gets no project; resolve the repository project if worktree users report it.
-fn request_linear_project(
-    db: &Connection,
-    session_id: &str,
-    project_id: &str,
-) -> Result<Option<String>> {
-    let Some(project) = request_project(db, session_id, project_id)? else {
+    let Some(group) = groups::group_by_group_project(db, project_id)? else {
+        return Ok(Some(project_id.to_owned()));
+    };
+    let Some(named) = named else {
         return Ok(None);
     };
+    let members = named_members(db, &group)?;
+    // shortcut: members with the same name (case aside) resolve to the first one, which the agent cannot tell apart either; reject the ambiguity if groups with homonym projects show up.
+    members
+        .iter()
+        .find(|(_, name)| name.trim().to_lowercase() == named.trim().to_lowercase())
+        .map(|(id, _)| Some(id.clone()))
+        .ok_or_else(|| project_choice(&members))
+}
+
+fn named_members(
+    db: &Connection,
+    group: &groups::AgentProjectGroup,
+) -> Result<Vec<(String, String)>> {
+    Ok(group
+        .project_ids
+        .iter()
+        .cloned()
+        .zip(
+            groups::group_members(db, group)?
+                .into_iter()
+                .map(|(name, _)| name),
+        )
+        .collect())
+}
+
+fn project_choice(members: &[(String, String)]) -> String {
+    let names = members
+        .iter()
+        .map(|(_, name)| name.as_str())
+        .collect::<Vec<_>>();
+    format!("[Kanban/requestProject] project: {}", names.join(", "))
+}
+
+fn linear_link(db: &Connection, project_id: &str) -> Result<Option<String>> {
     db.query_row(
         "SELECT linear_project_id FROM agent_project_linear_links WHERE project_id=?1",
-        [project],
+        [project_id],
         |row| row.get(0),
     )
     .optional()
     .map_err(|error| error.to_string())
+}
+
+/// A group session that named no member gets its only member linked to Linear; with several,
+/// the agent must name one.
+// shortcut: a worktree session reads its own project's link, which worktrees never have, so its Linear issue gets no project; resolve the repository project if worktree users report it.
+pub(super) fn request_linear_project(
+    db: &Connection,
+    session_id: &str,
+    project_id: &str,
+    named: Option<&str>,
+) -> Result<Option<String>> {
+    if let Some(project) = request_project(db, session_id, project_id, named)? {
+        return linear_link(db, &project);
+    }
+    let Some(group) = groups::group_by_group_project(db, project_id)? else {
+        return Ok(None);
+    };
+    let mut linked = Vec::new();
+    for (id, name) in named_members(db, &group)? {
+        if let Some(link) = linear_link(db, &id)? {
+            linked.push((link, name));
+        }
+    }
+    match linked.as_slice() {
+        [] => Ok(None),
+        [(link, _)] => Ok(Some(link.clone())),
+        _ => Err(project_choice(&linked)),
+    }
 }
 
 /// The issue the session works on, local or Linear.
@@ -885,10 +945,16 @@ impl AgentSessions {
         create_linear: Result<Option<LinearIssueCreator<'_>>>,
     ) -> Result<CreatedIssue> {
         let linear = content.linear || linked_linear_issue.is_some();
+        let named = content.project.as_deref();
         match create_linear {
             Ok(Some(create_linear)) if linear => create_linear(LinearIssueRequest::Create {
-                linear_project_id: self
-                    .kanban(|db, _| request_linear_project(db, session_id, project_id))?,
+                // Linear places an issue next to the linked one, whatever project this names.
+                linear_project_id: match linked_linear_issue {
+                    Some(_) => None,
+                    None => self.kanban(|db, _| {
+                        request_linear_project(db, session_id, project_id, named)
+                    })?,
+                },
                 linked_issue_id: linked_linear_issue,
                 title: content.title,
                 description: content.description,
@@ -903,7 +969,7 @@ impl AgentSessions {
                         team_id: kanban::default_team_id(db)?,
                         title: content.title,
                         description: content.description,
-                        project_id: request_project(db, session_id, project_id)?,
+                        project_id: request_project(db, session_id, project_id, named)?,
                         ..KanbanIssueCreateInput::default()
                     },
                 )?;

@@ -237,6 +237,8 @@ export const en = {
   "kanban.error.requestInvalidJson": "The agent’s request is not valid JSON.",
   "kanban.error.requestNotRegular":
     "The agent’s request is not a regular file.",
+  "kanban.error.requestProject":
+    "The agent must name the project of the group this issue concerns ({detail}).",
   "kanban.error.requestTooLarge":
     "The agent’s request is too large (64 KiB maximum).",
   "kanban.error.sessionHasIssue":

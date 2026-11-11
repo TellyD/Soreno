@@ -1056,14 +1056,15 @@ fn an_update_of_a_linked_linear_issue_goes_to_linear_and_fails_without_a_key() {
 }
 
 #[test]
-fn requests_from_a_group_project_session_get_no_project() {
+fn group_session_requests_go_to_the_member_the_agent_names() {
     let state = memory_state();
     insert_project(&state, &local_project("a"));
+    insert_project(&state, &local_project("b"));
     state
         .save_group(AgentProjectGroupInput {
             id: "g1".into(),
             name: "Jinka".into(),
-            project_ids: vec!["a".into()],
+            project_ids: vec!["a".into(), "b".into()],
         })
         .unwrap();
     let root = unique_temp_path("soreno-issue-request-group");
@@ -1075,14 +1076,40 @@ fn requests_from_a_group_project_session_get_no_project() {
         })
         .unwrap();
     let store = lock(&state.store).unwrap();
+    let db = &store.db;
+    let group = group_project.id.as_str();
+    let project = |named| issue_requests::request_project(db, "session", group, named);
+    let linear = |named| issue_requests::request_linear_project(db, "session", group, named);
+    let link = |project: &str, linear: &str| {
+        db.execute(
+            "INSERT INTO agent_project_linear_links VALUES (?1, ?2)",
+            [project, linear],
+        )
+        .unwrap();
+    };
+
+    assert_eq!(project(None).unwrap(), None);
+    assert_eq!(project(Some(" projet B ")).unwrap(), Some("b".into()));
     assert_eq!(
-        issue_requests::request_project(&store.db, "session", &group_project.id).unwrap(),
-        None
+        project(Some("c")).unwrap_err(),
+        "[Kanban/requestProject] project: Projet a, Projet b"
     );
+    // A session outside a group keeps its own project, whatever it names.
     assert_eq!(
-        issue_requests::request_project(&store.db, "session", "a").unwrap(),
+        issue_requests::request_project(db, "session", "a", Some("Projet b")).unwrap(),
         Some("a".into())
     );
+
+    assert_eq!(linear(None).unwrap(), None);
+    link("b", "lin-b");
+    assert_eq!(linear(None).unwrap(), Some("lin-b".into()));
+    assert_eq!(linear(Some("Projet a")).unwrap(), None);
+    link("a", "lin-a");
+    assert_eq!(
+        linear(None).unwrap_err(),
+        "[Kanban/requestProject] project: Projet a, Projet b"
+    );
+    assert_eq!(linear(Some("Projet a")).unwrap(), Some("lin-a".into()));
     drop(store);
     std::fs::remove_dir_all(root).unwrap();
 }
