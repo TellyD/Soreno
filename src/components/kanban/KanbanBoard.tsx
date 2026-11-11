@@ -145,9 +145,7 @@ function KanbanBoardContent({
   } | null>(null);
   // Teams are only qualified by their workspace once several are connected.
   const multipleWorkspaces = linearWorkspaces.length > 1;
-  const shownLinearTeam = linear?.teams.find(
-    ({ id }) => id === linear.team.id,
-  );
+  const shownLinearTeam = linear?.teams.find(({ id }) => id === linear.team.id);
 
   const sourceIssues = useMemo(
     () => filterIssuesBySource(kanban.issues, sourceFilter),

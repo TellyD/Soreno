@@ -305,15 +305,7 @@ export function useKanbanController({
       );
       onIssueTransferred?.(issue.id);
     },
-    [
-      board,
-      linear,
-      locale,
-      onIssueTransferred,
-      reloadBoard,
-      t,
-      transferIssue,
-    ],
+    [board, linear, locale, onIssueTransferred, reloadBoard, t, transferIssue],
   );
 
   const localTeamId = board?.team.id;
