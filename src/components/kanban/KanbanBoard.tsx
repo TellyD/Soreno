@@ -1,5 +1,7 @@
+import { Menu } from "@base-ui/react/menu";
 import {
   Plug,
+  Plus,
   RefreshCw,
   SquarePen,
   SquareKanban,
@@ -22,6 +24,8 @@ import {
   type KanbanIssue,
   type KanbanIssueSelection,
   type KanbanSourceFilter,
+  linearWorkspaceName,
+  type LinearWorkspace,
 } from "../../domain/kanban";
 import {
   readPreference,
@@ -36,6 +40,7 @@ import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { EmptyState } from "../ui/EmptyState";
 import { IconButton } from "../ui/IconButton";
 import { LoadingState } from "../ui/LoadingState";
+import { MenuItem, MenuSurface } from "../ui/Menu";
 import { SegmentedControl, SegmentedControlItem } from "../ui/SegmentedControl";
 import { Select } from "../ui/Select";
 import { KanbanColumns } from "./KanbanColumns";
@@ -106,6 +111,7 @@ function KanbanBoardContent({
     linear,
     linearAvailable,
     linearConnected,
+    linearWorkspaces,
     releaseLinearTeam,
   } = kanban;
   const [tab, setTab] = useState<KanbanBoardTab>("all");
@@ -131,11 +137,17 @@ function KanbanBoardContent({
     useState<KanbanIssueCreateDefaults | null>(null);
   const createReturnFocusRef = useRef<HTMLElement | null>(null);
   const [connectingLinear, setConnectingLinear] = useState(false);
-  // Connecting swaps the connect button for the disconnect one and back: focus returns to whichever is shown.
+  // Connecting swaps the connect button for the workspace menu and back: focus returns to whichever is shown.
   const linearActionRef = useRef<HTMLButtonElement | null>(null);
-  const [disconnectingLinear, setDisconnectingLinear] = useState<
-    "confirm" | "pending" | null
-  >(null);
+  const [disconnectingLinear, setDisconnectingLinear] = useState<{
+    workspace: LinearWorkspace;
+    pending: boolean;
+  } | null>(null);
+  // Teams are only qualified by their workspace once several are connected.
+  const multipleWorkspaces = linearWorkspaces.length > 1;
+  const shownLinearTeam = linear?.teams.find(
+    ({ id }) => id === linear.team.id,
+  );
 
   const sourceIssues = useMemo(
     () => filterIssuesBySource(kanban.issues, sourceFilter),
@@ -302,10 +314,11 @@ function KanbanBoardContent({
     if (panel.expanded) panel.onExpandedChange(false);
   };
 
-  const disconnectLinear = async () => {
-    setDisconnectingLinear("pending");
+  const disconnectLinear = async (workspace: LinearWorkspace) => {
+    setDisconnectingLinear({ workspace, pending: true });
     try {
-      await kanban.disconnectLinear();
+      await kanban.disconnectLinear(workspace.id);
+      // shortcut: the issue's workspace is unknown here, so any open Linear issue closes, losing an unsent comment draft of another workspace's issue; keep it open if users disconnect while writing.
       setSelectedIssue((current) => {
         if (current?.source !== "linear") return current;
         focusViewRef.current = false;
@@ -387,11 +400,17 @@ function KanbanBoardContent({
               options={linear.teams.map((team) => ({
                 label: team.name,
                 value: team.id,
+                hint: multipleWorkspaces
+                  ? linearWorkspaceName(team.workspace)
+                  : undefined,
               }))}
               size="small"
               value={linear.team.id}
               valueLabel={t("kanban.linear.teamValue", {
-                team: linear.team.name,
+                team:
+                  multipleWorkspaces && shownLinearTeam
+                    ? `${linearWorkspaceName(shownLinearTeam.workspace)} › ${shownLinearTeam.name}`
+                    : linear.team.name,
               })}
             />
           ) : null}
@@ -463,16 +482,59 @@ function KanbanBoardContent({
             </IconButton>
           </div>
           {linearConnected ? (
-            <IconButton
-              aria-label={t("kanban.linear.disconnect")}
-              className="kanban-board-disconnect"
-              onClick={() => setDisconnectingLinear("confirm")}
-              ref={linearActionRef}
-              size="small"
-              title={t("kanban.linear.disconnect")}
-            >
-              <Unplug size={14} />
-            </IconButton>
+            <Menu.Root modal={false}>
+              <Menu.Trigger
+                ref={linearActionRef}
+                render={
+                  <IconButton
+                    aria-label={t("kanban.linear.workspaces")}
+                    className="kanban-board-linear-menu"
+                    size="small"
+                    title={t("kanban.linear.workspaces")}
+                  >
+                    <Plug size={14} />
+                  </IconButton>
+                }
+              />
+              <Menu.Portal>
+                <Menu.Positioner
+                  className="agent-menu-positioner"
+                  sideOffset={4}
+                  align="end"
+                  collisionPadding={8}
+                >
+                  <Menu.Popup
+                    render={<MenuSurface className="agent-actions-menu" />}
+                    finalFocus={() =>
+                      !document.querySelector('[aria-modal="true"]')
+                    }
+                  >
+                    {linearWorkspaces.map((workspace) => (
+                      <Menu.Item
+                        key={workspace.id}
+                        nativeButton
+                        render={<MenuItem leading={<Unplug />} />}
+                        onClick={() =>
+                          setDisconnectingLinear({ workspace, pending: false })
+                        }
+                      >
+                        {t("kanban.linear.disconnectWorkspace", {
+                          workspace: linearWorkspaceName(workspace.name),
+                        })}
+                      </Menu.Item>
+                    ))}
+                    <Menu.Separator className="agent-menu-separator" />
+                    <Menu.Item
+                      nativeButton
+                      render={<MenuItem leading={<Plus />} />}
+                      onClick={() => setConnectingLinear(true)}
+                    >
+                      {t("kanban.linear.addWorkspace")}
+                    </Menu.Item>
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
           ) : null}
         </header>
 
@@ -582,17 +644,23 @@ function KanbanBoardContent({
 
           {disconnectingLinear ? (
             <ConfirmationDialog
-              cancelDisabled={disconnectingLinear === "pending"}
+              cancelDisabled={disconnectingLinear.pending}
               cancelLabel={t("kanban.linear.disconnectDialog.cancel")}
               closeLabel={t("confirmationDialog.close")}
-              confirmDisabled={disconnectingLinear === "pending"}
+              confirmDisabled={disconnectingLinear.pending}
               confirmLabel={t("kanban.linear.disconnectDialog.confirm")}
-              confirmPending={disconnectingLinear === "pending"}
+              confirmPending={disconnectingLinear.pending}
               description={t("kanban.linear.disconnectDialog.description")}
               onCancel={() => setDisconnectingLinear(null)}
-              onConfirm={() => void disconnectLinear()}
+              onConfirm={() =>
+                void disconnectLinear(disconnectingLinear.workspace)
+              }
               returnFocusRef={linearActionRef}
-              title={t("kanban.linear.disconnectDialog.title")}
+              title={t("kanban.linear.disconnectDialog.title", {
+                workspace: linearWorkspaceName(
+                  disconnectingLinear.workspace.name,
+                ),
+              })}
             />
           ) : null}
 

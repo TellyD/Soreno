@@ -54,11 +54,20 @@ export type KanbanBoard = {
   issues: KanbanIssue[];
 };
 
-/** One Linear team's board; `teams` lists every team the key can read. */
+/** A connected Linear workspace; the name is empty for a key saved before workspaces existed. */
+export type LinearWorkspace = { id: string; name: string };
+
+export function linearWorkspaceName(name: string): string {
+  return name || "Linear";
+}
+
+/** One Linear team's board; `teams` lists every team of every connected workspace. */
 export type LinearKanbanBoard = KanbanBoard & {
-  teams: KanbanTeam[];
+  teams: (KanbanTeam & { workspace: string })[];
   // More issues than the board loads; the oldest updated are left out.
   truncated: boolean;
+  // Soreno projects linked to a Linear project of this board's workspace.
+  linkedProjectIds: string[];
 };
 
 /** A Linear project a Soreno project can be linked to. */
@@ -66,6 +75,7 @@ export type LinearProjectSummary = {
   id: string;
   name: string;
   teams: string[];
+  workspace: string;
 };
 
 export type KanbanIssueFields = {

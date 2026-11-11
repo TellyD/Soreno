@@ -4,7 +4,7 @@ import {
   createKanbanIssue,
   createKanbanLabel,
   deleteKanbanIssue,
-  hasLinearApiKey,
+  listLinearWorkspaces,
   loadKanbanBoard,
   loadLinearKanbanBoard,
   setLinearApiKey,
@@ -22,6 +22,7 @@ import {
   type KanbanIssueUpdate,
   type KanbanLabel,
   type KanbanSource,
+  type LinearWorkspace,
 } from "../domain/kanban";
 
 const LINEAR_REFRESH_MS = 5 * 60 * 1000;
@@ -466,7 +467,10 @@ export function useKanbanBoard({
     [],
   );
   const linear = useSourceBoard("linear", loadLinearSnapshot);
-  const [linearConnected, setLinearConnected] = useState(false);
+  const [linearWorkspaces, setLinearWorkspaces] = useState<LinearWorkspace[]>(
+    [],
+  );
+  const linearConnected = linearWorkspaces.length > 0;
   const [keyError, setKeyError] = useState<unknown>(null);
   const { load: loadLocal } = local;
   const { load: loadLinear, reset: resetLinear } = linear;
@@ -487,8 +491,8 @@ export function useKanbanBoard({
 
   useEffect(() => {
     let current = true;
-    hasLinearApiKey().then(
-      (connected) => current && setLinearConnected(connected),
+    listLinearWorkspaces().then(
+      (workspaces) => current && setLinearWorkspaces(workspaces),
       (error: unknown) => current && setKeyError(error),
     );
     return () => {
@@ -551,10 +555,10 @@ export function useKanbanBoard({
         readLinear();
       } else if (keyError !== null) {
         // Once connected, the team effect loads Linear.
-        hasLinearApiKey().then(
-          (connected) => {
+        listLinearWorkspaces().then(
+          (workspaces) => {
             setKeyError(null);
-            setLinearConnected(connected);
+            setLinearWorkspaces(workspaces);
           },
           (error: unknown) => setKeyError(error),
         );
@@ -563,19 +567,29 @@ export function useKanbanBoard({
     [keyError, linearConnected, loadLocal, readLinear],
   );
 
-  // The team effect loads the board once connected.
-  const connectLinear = useCallback(async (apiKey: string) => {
-    await setLinearApiKey(apiKey);
-    setKeyError(null);
-    setLinearConnected(true);
-  }, []);
+  // The team effect loads the board once connected; another workspace adds its teams on reload.
+  const connectLinear = useCallback(
+    async (apiKey: string) => {
+      await setLinearApiKey(apiKey);
+      const workspaces = await listLinearWorkspaces();
+      setKeyError(null);
+      setLinearWorkspaces(workspaces);
+      if (linearConnected) readLinear();
+    },
+    [linearConnected, readLinear],
+  );
 
-  const disconnectLinear = useCallback(async () => {
-    await clearLinearApiKey();
-    setKeyError(null);
-    resetLinear();
-    setLinearConnected(false);
-  }, [resetLinear]);
+  const disconnectLinear = useCallback(
+    async (workspaceId: string) => {
+      await clearLinearApiKey(workspaceId);
+      setKeyError(null);
+      resetLinear();
+      const remaining = linearWorkspaces.filter(({ id }) => id !== workspaceId);
+      setLinearWorkspaces(remaining);
+      if (remaining.length > 0) readLinear();
+    },
+    [linearWorkspaces, readLinear, resetLinear],
+  );
 
   const routes = useMemo(() => {
     const sources = { local: local.actions, linear: linear.actions };
@@ -626,6 +640,7 @@ export function useKanbanBoard({
     issues,
     linear: linear.board,
     linearConnected,
+    linearWorkspaces,
     linearError: linear.error ?? keyError,
     loading: local.loading || linear.loading,
     reload,

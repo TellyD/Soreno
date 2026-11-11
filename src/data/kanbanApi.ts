@@ -14,6 +14,7 @@ import type {
   KanbanSource,
   LinearKanbanBoard,
   LinearProjectSummary,
+  LinearWorkspace,
 } from "../domain/kanban";
 
 /** Errors raised before reaching the backend, coded like its `[Kanban/<code>]` errors. */
@@ -150,20 +151,20 @@ export async function createKanbanLabel(
   });
 }
 
-export async function hasLinearApiKey(): Promise<boolean> {
-  if (!isTauri()) return false;
-  return invoke<boolean>("has_linear_api_key");
+export async function listLinearWorkspaces(): Promise<LinearWorkspace[]> {
+  if (!isTauri()) return [];
+  return invoke<LinearWorkspace[]>("list_linear_workspaces");
 }
 
-/** Linear validates the key before it is stored. */
+/** Linear validates the key before it is stored; a key of a connected workspace replaces it. */
 export async function setLinearApiKey(apiKey: string): Promise<void> {
   if (!isTauri()) throw new Error(kanbanErrors.desktopOnly);
   await invoke("set_linear_api_key", { apiKey });
 }
 
-export async function clearLinearApiKey(): Promise<void> {
+export async function clearLinearApiKey(workspaceId: string): Promise<void> {
   if (!isTauri()) throw new Error(kanbanErrors.desktopOnly);
-  await invoke("clear_linear_api_key");
+  await invoke("clear_linear_api_key", { workspaceId });
 }
 
 export async function listLinearProjects(): Promise<LinearProjectSummary[]> {

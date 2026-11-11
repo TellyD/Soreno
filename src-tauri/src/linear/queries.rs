@@ -1,4 +1,13 @@
-pub(super) const VIEWER_QUERY: &str = "query LinearViewer { viewer { id } }";
+pub(super) const ORGANIZATION_QUERY: &str = "query LinearOrganization { organization { id name } }";
+/// Ids are UUIDs: whichever connection lists the id tells the workspace holds it.
+pub(super) const OWNER_QUERY: &str = r#"
+query LinearOwner($id: ID!) {
+  issues(filter: { id: { eq: $id } }, includeArchived: true, first: 1) { nodes { id } }
+  teams(filter: { id: { eq: $id } }, includeArchived: true, first: 1) { nodes { id } }
+  projects(filter: { id: { eq: $id } }, includeArchived: true, first: 1) { nodes { id } }
+  comments(filter: { id: { eq: $id } }, includeArchived: true, first: 1) { nodes { id } }
+}
+"#;
 pub(super) const TEAMS_QUERY: &str = r#"
 query LinearTeams {
   teams(first: 250) { nodes { id key name } }
@@ -62,6 +71,12 @@ query LinearProjects($after: String) {
     nodes { id name teams(first: 10) { nodes { id key name } } }
     pageInfo { hasNextPage endCursor }
   }
+}
+"#;
+// shortcut: one page of 250, so past 250 linked Soreno projects some drop out of the board's project choices; batch the ids like `complete_labels` if that many links appear.
+pub(super) const PROJECT_IDS_QUERY: &str = r#"
+query LinearProjectIds($ids: [ID!]!) {
+  projects(filter: { id: { in: $ids } }, includeArchived: true, first: 250) { nodes { id } }
 }
 "#;
 pub(super) const UPDATE_ISSUE_MUTATION: &str = r#"

@@ -323,7 +323,7 @@ pub fn run() {
             commands::kanban::create_kanban_label,
             commands::kanban::upload_kanban_image,
             commands::kanban::open_kanban_image,
-            commands::linear::has_linear_api_key,
+            commands::linear::list_linear_workspaces,
             commands::linear::set_linear_api_key,
             commands::linear::clear_linear_api_key,
             commands::linear::load_linear_board,

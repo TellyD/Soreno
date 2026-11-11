@@ -212,6 +212,8 @@ export const en = {
   "kanban.error.linearForbidden":
     "The Linear API key is not allowed to do this.",
   "kanban.error.linearMissingKey": "No Linear API key is configured.",
+  "kanban.error.linearNotFound":
+    "No connected Linear workspace holds this item.",
   "kanban.error.linearNoTeam": "This Linear API key cannot read any team.",
   "kanban.error.linearProjectNotLinked":
     "This project is not linked to a Linear project.",
@@ -220,6 +222,10 @@ export const en = {
   "kanban.error.linearRequest": "The Linear request failed: {detail}",
   "kanban.error.linearUnavailable":
     "Linear cannot be reached. Check the connection and try again.",
+  "kanban.error.linearWorkspaceAmbiguous":
+    "Several Linear workspaces are connected: link this session's project to a Linear project.",
+  "kanban.error.linearWorkspaceAuth":
+    "Linear rejected the API key of the {detail} workspace.",
   "kanban.error.openLink": "Could not open the link.",
   "kanban.error.parentNotFound":
     "The parent issue does not exist in this team.",
@@ -316,23 +322,25 @@ export const en = {
   "kanban.issue.you": "You",
   "kanban.issues": "Issues",
   "kanban.title": "Kanban",
+  "kanban.linear.addWorkspace": "Add a workspace…",
   "kanban.linear.connect": "Connect Linear",
   "kanban.linear.connectDialog.createKey": "Create an API key",
   "kanban.linear.connectDialog.description":
-    "Paste a personal Linear API key to show a Linear team's issues next to the local issues. Editing them requires the Write permission. The key is stored in the system keychain.",
+    "Paste a personal Linear API key to show a Linear team's issues next to the local issues. Each workspace has its own key. Editing them requires the Write permission. The key is stored in the system keychain.",
   "kanban.linear.connectDialog.label": "Linear API key",
   "kanban.linear.connectDialog.submit": "Connect",
   "kanban.linear.connectDialog.title": "Connect Linear",
-  "kanban.linear.disconnect": "Disconnect Linear",
   "kanban.linear.disconnectDialog.cancel": "Cancel",
   "kanban.linear.disconnectDialog.confirm": "Disconnect",
   "kanban.linear.disconnectDialog.description":
-    "Your Linear API key will be removed from this computer's keychain. You will need to enter it again to reconnect. Local issues, agent sessions and project links stay in Soreno.",
-  "kanban.linear.disconnectDialog.title": "Disconnect Linear?",
+    "This workspace's API key will be removed from this computer's keychain. You will need to enter it again to reconnect. Local issues, agent sessions and project links stay in Soreno.",
+  "kanban.linear.disconnectDialog.title": "Disconnect {workspace}?",
+  "kanban.linear.disconnectWorkspace": "Disconnect {workspace}",
   "kanban.linear.error": "Could not load Linear issues: {detail}",
   "kanban.linear.open": "Open in Linear",
   "kanban.linear.team": "Linear team",
   "kanban.linear.teamValue": "Linear team: {team}",
+  "kanban.linear.workspaces": "Linear workspaces",
   "kanban.linear.truncated":
     "Only the most recently updated Linear issues are shown.",
   "kanban.loading": "Loading issues…",

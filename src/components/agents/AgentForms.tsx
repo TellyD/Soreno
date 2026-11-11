@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { pickAgentProjectDirectory } from "../../data/agentSessionsApi";
-import { hasLinearApiKey, listLinearProjects } from "../../data/kanbanApi";
+import { listLinearProjects, listLinearWorkspaces } from "../../data/kanbanApi";
 import {
   agentEnvironmentKey,
   agentEnvironmentLabel,
@@ -21,7 +21,10 @@ import {
   type AgentProjectLinearLink,
   type AgentSession,
 } from "../../domain/agentSessions";
-import type { LinearProjectSummary } from "../../domain/kanban";
+import {
+  linearWorkspaceName,
+  type LinearProjectSummary,
+} from "../../domain/kanban";
 import { errorMessage } from "../../domain/errors";
 import { useAgentEnvironmentDiscovery } from "../../hooks/useAgentEnvironmentDiscovery";
 import { useNotification, useScopedNotification } from "../../notifications";
@@ -380,7 +383,7 @@ export function AgentProjectForm({
     let active = true;
     void (async () => {
       try {
-        if (!(await hasLinearApiKey()) || !active) return;
+        if ((await listLinearWorkspaces()).length === 0 || !active) return;
         setLinearChoices({ status: "loading" });
         const linearProjects = await listLinearProjects();
         if (active)
@@ -408,6 +411,10 @@ export function AgentProjectForm({
           link.projectId,
       ]),
   );
+  // Projects are only qualified by their workspace once several are connected.
+  const multipleWorkspaces =
+    linearChoices.status === "ready" &&
+    new Set(linearChoices.projects.map(({ workspace }) => workspace)).size > 1;
   const linearOptions =
     linearChoices.status === "ready"
       ? [
@@ -419,7 +426,13 @@ export function AgentProjectForm({
           ...linearChoices.projects.map((item) => {
             const owner = linearOwners.get(item.id);
             // shortcut: the hint never shrinks, so many long team names squeeze the project name; truncate it if multi-team projects become common.
-            const hint = item.teams.join(", ") || undefined;
+            const hint =
+              [
+                multipleWorkspaces ? linearWorkspaceName(item.workspace) : "",
+                item.teams.join(", "),
+              ]
+                .filter(Boolean)
+                .join(" · ") || undefined;
             return owner === undefined
               ? { value: item.id, label: item.name, hint }
               : {

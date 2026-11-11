@@ -586,7 +586,7 @@ fn linear_issue_request(
             // shortcut: after a mid-session transfer to Linear, a kept `image-N` still names the deleted local file, so the edit is refused (nothing lost); map targets to the transferred uploads if users hit it.
             let description = match description {
                 Some(description) => {
-                    Some(super::linear::with_linear_images(app, &description).await?)
+                    Some(super::linear::with_linear_images(app, &issue.id, &description).await?)
                 }
                 None => None,
             };

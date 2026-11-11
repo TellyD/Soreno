@@ -62,7 +62,7 @@ fn text_without_local_images_is_kept_without_any_request() {
     let text =
         "![shot](https://uploads.linear.app/a/b) and [doc](asset://localhost/%2Fnotes%2Fa.png)";
     assert_eq!(
-        tauri::async_runtime::block_on(upload_local_images(Path::new("/nowhere"), text)),
+        tauri::async_runtime::block_on(upload_local_images(Path::new("/nowhere"), "", text)),
         Ok(text.to_owned())
     );
 }
@@ -71,7 +71,8 @@ fn text_without_local_images_is_kept_without_any_request() {
 fn a_missing_local_image_fails_before_any_request() {
     let text = format!("![shot](asset://localhost/%2Fdata%2Fkanban-images%2F{NAME})");
     assert!(
-        tauri::async_runtime::block_on(upload_local_images(Path::new("/nowhere"), &text)).is_err()
+        tauri::async_runtime::block_on(upload_local_images(Path::new("/nowhere"), "", &text))
+            .is_err()
     );
 }
 

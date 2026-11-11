@@ -20,7 +20,7 @@ vi.mock("../data/kanbanApi", async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   loadKanbanBoard: vi.fn(),
   loadLinearKanbanBoard: vi.fn(),
-  hasLinearApiKey: vi.fn(),
+  listLinearWorkspaces: vi.fn(),
   setLinearApiKey: vi.fn(),
   clearLinearApiKey: vi.fn(),
   createKanbanLabel: vi.fn(),
@@ -89,7 +89,7 @@ let kanban: {
     name: string,
   ) => Promise<KanbanLabel>;
   deleteIssue: (issue: KanbanIssue) => Promise<void>;
-  disconnectLinear: () => Promise<void>;
+  disconnectLinear: (workspaceId: string) => Promise<void>;
   error: unknown;
   issues: readonly KanbanIssue[];
   linear: LinearKanbanBoard | null;
@@ -121,7 +121,7 @@ beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-27T10:00:00.000Z"));
   vi.mocked(api.loadKanbanBoard).mockResolvedValue(structuredClone(board));
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(false);
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([]);
   container = document.createElement("div");
   root = createRoot(container);
   await act(async () => root.render(<Harness />));
@@ -865,9 +865,11 @@ it("drops updates of an issue deleted while they were queued", async () => {
   expect(kanban.board!.issues).toEqual([]);
 });
 
+const acme = { id: "w1", name: "Acme" };
+
 const linearBoard: LinearKanbanBoard = {
   source: "linear",
-  teams: [{ id: "lt", key: "ENG", name: "Engineering" }],
+  teams: [{ id: "lt", key: "ENG", name: "Engineering", workspace: "Acme" }],
   team: { id: "lt", key: "ENG", name: "Engineering" },
   states: [
     {
@@ -896,6 +898,7 @@ const linearBoard: LinearKanbanBoard = {
     },
   ],
   truncated: false,
+  linkedProjectIds: [],
 };
 
 async function flush() {
@@ -905,7 +908,7 @@ async function flush() {
 }
 
 async function mountConnected(visible = true) {
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   await act(async () => root.unmount());
   root = createRoot(container);
   await act(async () =>
@@ -967,7 +970,7 @@ it("refreshes the team chosen after the first team was loaded by default", async
   vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue(
     structuredClone(linearBoard),
   );
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   await act(async () => root.unmount());
   root = createRoot(container);
   await act(async () => root.render(<Harness linearTeamId={null} />));
@@ -1282,9 +1285,9 @@ it("waits until the board is shown to load Linear", async () => {
 
 it("retries a failed key check on reload, then loads Linear", async () => {
   const failure = new Error("Trousseau indisponible.");
-  vi.mocked(api.hasLinearApiKey)
+  vi.mocked(api.listLinearWorkspaces)
     .mockRejectedValueOnce(failure)
-    .mockResolvedValue(true);
+    .mockResolvedValue([acme]);
   vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue(
     structuredClone(linearBoard),
   );
@@ -1301,24 +1304,42 @@ it("retries a failed key check on reload, then loads Linear", async () => {
 });
 
 it("does not call Linear beyond the key check when not connected", () => {
-  expect(api.hasLinearApiKey).toHaveBeenCalled();
+  expect(api.listLinearWorkspaces).toHaveBeenCalled();
   expect(api.loadLinearKanbanBoard).not.toHaveBeenCalled();
   expect(kanban).toMatchObject({ linear: null, linearConnected: false });
 });
 
-it("connects then loads Linear, and disconnecting drops its board", async () => {
-  vi.mocked(api.setLinearApiKey).mockResolvedValueOnce();
-  vi.mocked(api.clearLinearApiKey).mockResolvedValueOnce();
-  vi.mocked(api.loadLinearKanbanBoard).mockResolvedValueOnce(
+it("connects workspaces, and drops the Linear board only once the last one is disconnected", async () => {
+  const beta = { id: "w2", name: "Beta" };
+  vi.mocked(api.setLinearApiKey).mockResolvedValue();
+  vi.mocked(api.clearLinearApiKey).mockResolvedValue();
+  vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue(
     structuredClone(linearBoard),
   );
 
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   await act(async () => kanban.connectLinear("lin_api_key"));
   await flush();
   expect(api.setLinearApiKey).toHaveBeenCalledWith("lin_api_key");
   expect(kanban.issues.map(({ id }) => id)).toEqual(["i1", "L1"]);
 
-  await act(async () => kanban.disconnectLinear());
+  // Another workspace reloads the board, which lists its teams.
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme, beta]);
+  vi.mocked(api.loadLinearKanbanBoard).mockClear();
+  await act(async () => kanban.connectLinear("lin_api_beta"));
+  await flush();
+  expect(api.loadLinearKanbanBoard).toHaveBeenCalledTimes(1);
+
+  await act(async () => kanban.disconnectLinear(acme.id));
+  await flush();
+  expect(api.clearLinearApiKey).toHaveBeenCalledWith("w1");
+  expect(kanban).toMatchObject({
+    linearConnected: true,
+    linearWorkspaces: [beta],
+  });
+  expect(kanban.issues.map(({ id }) => id)).toEqual(["i1", "L1"]);
+
+  await act(async () => kanban.disconnectLinear(beta.id));
   expect(kanban).toMatchObject({ linear: null, linearConnected: false });
   expect(kanban.issues.map(({ id }) => id)).toEqual(["i1"]);
 });

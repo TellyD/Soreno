@@ -216,6 +216,8 @@ export const fr = {
   "kanban.error.linearForbidden":
     "La clé d’API Linear n’a pas le droit de faire cette action.",
   "kanban.error.linearMissingKey": "Aucune clé d’API Linear n’est configurée.",
+  "kanban.error.linearNotFound":
+    "Aucun workspace Linear connecté ne contient cet élément.",
   "kanban.error.linearNoTeam": "Cette clé d’API Linear ne voit aucune équipe.",
   "kanban.error.linearProjectNotLinked":
     "Ce projet n’est lié à aucun projet Linear.",
@@ -224,6 +226,10 @@ export const fr = {
   "kanban.error.linearRequest": "La requête Linear a échoué : {detail}",
   "kanban.error.linearUnavailable":
     "Linear est injoignable. Vérifiez la connexion puis réessayez.",
+  "kanban.error.linearWorkspaceAmbiguous":
+    "Plusieurs workspaces Linear sont connectés : liez le projet de cette session à un projet Linear.",
+  "kanban.error.linearWorkspaceAuth":
+    "Linear a refusé la clé d’API du workspace {detail}.",
   "kanban.error.openLink": "Impossible d’ouvrir le lien.",
   "kanban.error.parentNotFound":
     "L’issue parente n’existe pas dans cette équipe.",
@@ -321,23 +327,25 @@ export const fr = {
   "kanban.issue.you": "Vous",
   "kanban.issues": "Issues",
   "kanban.title": "Kanban",
+  "kanban.linear.addWorkspace": "Ajouter un workspace…",
   "kanban.linear.connect": "Connecter Linear",
   "kanban.linear.connectDialog.createKey": "Créer une clé d’API",
   "kanban.linear.connectDialog.description":
-    "Collez une clé d’API personnelle Linear pour afficher les issues d’une équipe Linear à côté des issues locales. Les modifier demande la permission Write. La clé est conservée dans le trousseau du système.",
+    "Collez une clé d’API personnelle Linear pour afficher les issues d’une équipe Linear à côté des issues locales. Chaque workspace a sa propre clé. Les modifier demande la permission Write. La clé est conservée dans le trousseau du système.",
   "kanban.linear.connectDialog.label": "Clé d’API Linear",
   "kanban.linear.connectDialog.submit": "Connecter",
   "kanban.linear.connectDialog.title": "Connecter Linear",
-  "kanban.linear.disconnect": "Déconnecter Linear",
   "kanban.linear.disconnectDialog.cancel": "Annuler",
   "kanban.linear.disconnectDialog.confirm": "Déconnecter",
   "kanban.linear.disconnectDialog.description":
-    "Votre clé d’API Linear sera retirée du trousseau de cet ordinateur. Vous devrez la saisir à nouveau pour vous reconnecter. Les issues locales, les sessions d’agent et les liens de projets restent dans Soreno.",
-  "kanban.linear.disconnectDialog.title": "Déconnecter Linear ?",
+    "La clé d’API de ce workspace sera retirée du trousseau de cet ordinateur. Vous devrez la saisir à nouveau pour vous reconnecter. Les issues locales, les sessions d’agent et les liens de projets restent dans Soreno.",
+  "kanban.linear.disconnectDialog.title": "Déconnecter {workspace} ?",
+  "kanban.linear.disconnectWorkspace": "Déconnecter {workspace}",
   "kanban.linear.error": "Impossible de charger les issues Linear : {detail}",
   "kanban.linear.open": "Ouvrir dans Linear",
   "kanban.linear.team": "Équipe Linear",
   "kanban.linear.teamValue": "Équipe Linear : {team}",
+  "kanban.linear.workspaces": "Workspaces Linear",
   "kanban.linear.truncated":
     "Seules les issues Linear mises à jour le plus récemment sont affichées.",
   "kanban.loading": "Chargement des issues…",

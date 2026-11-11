@@ -3,7 +3,7 @@ use crate::kanban::{
     KanbanComment, KanbanIssueDescriptionUpdate, KanbanLabel, KanbanLinearProjectRef,
     KanbanSubIssue, KanbanTeam, KanbanUserRef, KanbanWorkflowState,
 };
-use serde::Deserialize;
+use serde::{de::IgnoredAny, Deserialize};
 
 #[derive(Debug, Deserialize)]
 pub(super) struct GraphqlResponse<T> {
@@ -41,6 +41,33 @@ pub(super) struct TeamsData {
 }
 
 #[derive(Debug, Deserialize)]
+pub(super) struct OrganizationData {
+    pub(super) organization: RawOrganization,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct RawOrganization {
+    pub(super) id: String,
+    pub(super) name: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct OwnerData {
+    issues: Connection<IgnoredAny>,
+    teams: Connection<IgnoredAny>,
+    projects: Connection<IgnoredAny>,
+    comments: Connection<IgnoredAny>,
+}
+
+impl OwnerData {
+    pub(super) fn holds(&self) -> bool {
+        [&self.issues, &self.teams, &self.projects, &self.comments]
+            .iter()
+            .any(|connection| !connection.nodes.is_empty())
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub(super) struct ProjectsData {
     pub(super) projects: Page<RawProject>,
 }
@@ -52,14 +79,20 @@ pub(super) struct RawProject {
     pub(super) teams: Connection<KanbanTeam>,
 }
 
-impl From<RawProject> for LinearProjectSummary {
-    fn from(raw: RawProject) -> Self {
-        Self {
-            id: raw.id,
-            name: raw.name,
-            teams: raw.teams.nodes.into_iter().map(|team| team.name).collect(),
+impl RawProject {
+    pub(super) fn summary(self, workspace: &str) -> LinearProjectSummary {
+        LinearProjectSummary {
+            id: self.id,
+            name: self.name,
+            teams: self.teams.nodes.into_iter().map(|team| team.name).collect(),
+            workspace: workspace.to_owned(),
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct ProjectIdsData {
+    pub(super) projects: Connection<RawIdRef>,
 }
 
 #[derive(Debug, Deserialize)]

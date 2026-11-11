@@ -113,7 +113,7 @@ export type KanbanControllerOptions = {
   kanbanProjects: AgentProject[];
   // Group overview projects: their folder is no Git repo, so agents start there without a worktree.
   overviewProjectIds: ReadonlySet<string>;
-  // A Linear issue can only belong to a Soreno project linked to a Linear project.
+  // A change reloads Linear, whose board lists the projects linked in its workspace.
   linearProjectLinks: readonly AgentProjectLinearLink[];
   issueSessions: readonly AgentSessionKanbanIssue[];
   sessions: readonly AgentSession[];
@@ -183,6 +183,7 @@ export function useKanbanController({
     linear,
     linearConnected,
     linearError,
+    linearWorkspaces,
     loading,
     reload: reloadBoard,
     transferIssue,
@@ -206,9 +207,9 @@ export function useKanbanController({
   const linearKanbanProjects = useMemo(
     () =>
       kanbanProjects.filter((project) =>
-        linearProjectLinks.some((link) => link.projectId === project.id),
+        linear?.linkedProjectIds.includes(project.id),
       ),
-    [kanbanProjects, linearProjectLinks],
+    [kanbanProjects, linear],
   );
   const linearAvailable = linearConnected && linear !== null;
 
@@ -277,7 +278,8 @@ export function useKanbanController({
       };
       if (description.trim()) input.description = description;
       if (state) input.stateId = state.id;
-      if (linearProjectLinks.some((link) => link.projectId === projectId)) {
+      // shortcut: reads the last board load, so a project linked while its reload is pending transfers without its project; wait for the reload if users link then transfer at once.
+      if (projectId && linear.linkedProjectIds.includes(projectId)) {
         input.projectId = projectId;
       }
       let created: KanbanIssue;
@@ -306,7 +308,6 @@ export function useKanbanController({
     [
       board,
       linear,
-      linearProjectLinks,
       locale,
       onIssueTransferred,
       reloadBoard,
@@ -706,6 +707,7 @@ export function useKanbanController({
       linearConnected,
       linearError,
       linearKanbanProjects,
+      linearWorkspaces,
       loading,
       moveBoardIssue,
       onOpenProject,
@@ -756,6 +758,7 @@ export function useKanbanController({
       linearConnected,
       linearError,
       linearKanbanProjects,
+      linearWorkspaces,
       loading,
       moveBoardIssue,
       onOpenProject,

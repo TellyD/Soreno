@@ -45,7 +45,7 @@ vi.mock("../../data/kanbanApi", async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   loadKanbanBoard: vi.fn(),
   loadLinearKanbanBoard: vi.fn(),
-  hasLinearApiKey: vi.fn(),
+  listLinearWorkspaces: vi.fn(),
   setLinearApiKey: vi.fn(),
   clearLinearApiKey: vi.fn(),
   createKanbanComment: vi.fn(),
@@ -75,6 +75,8 @@ vi.mock("../../settings", () => ({
   }),
 }));
 vi.mock("../../theme", () => ({ useTheme: () => ({ theme: "light" }) }));
+
+const acme = { id: "w1", name: "Acme" };
 
 const board: KanbanBoardData = {
   source: "local",
@@ -291,7 +293,7 @@ beforeEach(async () => {
     },
   );
   vi.mocked(api.loadKanbanBoard).mockResolvedValue(structuredClone(board));
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(false);
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([]);
   storedIssue = {
     ...structuredClone(board.issues[0]),
     description: "Rendered **markdown**",
@@ -1388,8 +1390,13 @@ const transferred: KanbanIssue = {
 };
 
 async function sendToLinear() {
-  const engineering = { id: "lt1", key: "ENG", name: "Engineering" };
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  const engineering = {
+    id: "lt1",
+    key: "ENG",
+    name: "Engineering",
+    workspace: "Acme",
+  };
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   vi.mocked(api.loadKanbanBoard).mockResolvedValue({
     ...structuredClone(board),
     issues: [
@@ -1416,6 +1423,7 @@ async function sendToLinear() {
     ],
     issues: [],
     truncated: false,
+    linkedProjectIds: [],
   });
   vi.mocked(api.loadKanbanIssue).mockImplementation(async (source) =>
     source === "linear"
@@ -3145,7 +3153,7 @@ it("shows Linear issues next to local ones and moves them through Linear", async
   const linearBoard: LinearKanbanBoard = {
     source: "linear",
     team: { id: "lt1", key: "ENG", name: "Engineering" },
-    teams: [{ id: "lt1", key: "ENG", name: "Engineering" }],
+    teams: [{ id: "lt1", key: "ENG", name: "Engineering", workspace: "Acme" }],
     states: [
       {
         id: "lt-todo",
@@ -3196,8 +3204,9 @@ it("shows Linear issues next to local ones and moves them through Linear", async
       },
     ],
     truncated: false,
+    linkedProjectIds: [],
   };
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue(linearBoard);
   vi.mocked(api.updateKanbanIssue).mockResolvedValue({
     ...issueUpdate({ id: "li1", title: "Fix the login", stateId: "lt-done" }),
@@ -3264,9 +3273,19 @@ it("shows Linear issues next to local ones and moves them through Linear", async
 });
 
 it("shows and remembers the Linear team of an issue opened from another team, and closes it on a team change", async () => {
-  const engineering = { id: "lt1", key: "ENG", name: "Engineering" };
-  const operations = { id: "lt2", key: "OPS", name: "Operations" };
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  const engineering = {
+    id: "lt1",
+    key: "ENG",
+    name: "Engineering",
+    workspace: "Acme",
+  };
+  const operations = {
+    id: "lt2",
+    key: "OPS",
+    name: "Operations",
+    workspace: "Acme",
+  };
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   vi.mocked(api.loadLinearKanbanBoard).mockImplementation(async (teamId) => ({
     source: "linear",
     teams: [engineering, operations],
@@ -3275,6 +3294,7 @@ it("shows and remembers the Linear team of an issue opened from another team, an
     labels: [],
     issues: [],
     truncated: false,
+    linkedProjectIds: [],
   }));
   storedIssue = {
     ...storedIssue,
@@ -3309,9 +3329,19 @@ it("shows and remembers the Linear team of an issue opened from another team, an
 });
 
 it("follows the team of an issue opened during a Linear creation once the creation closes", async () => {
-  const engineering = { id: "lt1", key: "ENG", name: "Engineering" };
-  const operations = { id: "lt2", key: "OPS", name: "Operations" };
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  const engineering = {
+    id: "lt1",
+    key: "ENG",
+    name: "Engineering",
+    workspace: "Acme",
+  };
+  const operations = {
+    id: "lt2",
+    key: "OPS",
+    name: "Operations",
+    workspace: "Acme",
+  };
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   vi.mocked(api.loadLinearKanbanBoard).mockImplementation(async (teamId) => ({
     source: "linear",
     teams: [engineering, operations],
@@ -3320,6 +3350,7 @@ it("follows the team of an issue opened during a Linear creation once the creati
     labels: [],
     issues: [],
     truncated: false,
+    linkedProjectIds: [],
   }));
   const creation = deferred<KanbanIssue>();
   vi.mocked(api.createKanbanIssue).mockReturnValue(creation.promise);
@@ -3365,8 +3396,13 @@ it("follows the team of an issue opened during a Linear creation once the creati
 });
 
 it("does not reload the Linear board after a Linear issue's content is saved", async () => {
-  const engineering = { id: "lt1", key: "ENG", name: "Engineering" };
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  const engineering = {
+    id: "lt1",
+    key: "ENG",
+    name: "Engineering",
+    workspace: "Acme",
+  };
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue({
     source: "linear",
     teams: [engineering],
@@ -3375,6 +3411,7 @@ it("does not reload the Linear board after a Linear issue's content is saved", a
     labels: [],
     issues: [],
     truncated: false,
+    linkedProjectIds: [],
   });
   vi.mocked(api.createKanbanComment).mockImplementation(async (_, __, body) =>
     storeComment({ id: "c2", body, createdAt: "2026-09-27T10:00:00.000Z" }),
@@ -3406,7 +3443,12 @@ it("does not reload the Linear board after a Linear issue's content is saved", a
 });
 
 it("reloads an open Linear issue once the board shows it changed in Linear", async () => {
-  const engineering = { id: "lt1", key: "ENG", name: "Engineering" };
+  const engineering = {
+    id: "lt1",
+    key: "ENG",
+    name: "Engineering",
+    workspace: "Acme",
+  };
   const linearIssue: KanbanIssue = {
     ...structuredClone(board.issues[0]),
     source: "linear",
@@ -3430,8 +3472,9 @@ it("reloads an open Linear issue once the board shows it changed in Linear", asy
     labels: [],
     issues: [issue],
     truncated: false,
+    linkedProjectIds: [],
   });
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue(
     linearBoard(linearIssue),
   );
@@ -3472,8 +3515,13 @@ it("reloads an open Linear issue once the board shows it changed in Linear", asy
 });
 
 it("converts the draft to Linear when the destination changes", async () => {
-  const engineering = { id: "lt1", key: "ENG", name: "Engineering" };
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  const engineering = {
+    id: "lt1",
+    key: "ENG",
+    name: "Engineering",
+    workspace: "Acme",
+  };
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue({
     source: "linear",
     teams: [engineering],
@@ -3504,6 +3552,7 @@ it("converts the draft to Linear when the destination changes", async () => {
     labels: [{ id: "ll1", name: "Bug", color: "#e5484d" }],
     issues: [],
     truncated: false,
+    linkedProjectIds: ["sp1"],
   });
   vi.mocked(api.createKanbanIssue).mockResolvedValue(createdIssue);
   await remountBoard({
@@ -3540,15 +3589,16 @@ it("converts the draft to Linear when the destination changes", async () => {
 });
 
 it("reloads Linear when a project link changes, not when the same links are passed again", async () => {
-  vi.mocked(api.hasLinearApiKey).mockResolvedValue(true);
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([acme]);
   vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue({
     source: "linear",
-    teams: [{ id: "lt1", key: "ENG", name: "Engineering" }],
+    teams: [{ id: "lt1", key: "ENG", name: "Engineering", workspace: "Acme" }],
     team: { id: "lt1", key: "ENG", name: "Engineering" },
     states: [],
     labels: [],
     issues: [],
     truncated: false,
+    linkedProjectIds: ["sp1"],
   });
   const link = { projectId: "sp1", linearProjectId: "lp1" };
   await remountBoard({ linearProjectLinks: [link] });
@@ -3564,4 +3614,38 @@ it("reloads Linear when a project link changes, not when the same links are pass
   });
   expect(loads()).toBe(loaded + 1);
   expect(api.loadKanbanBoard).toHaveBeenCalledTimes(localLoads);
+});
+
+it("disconnects only the workspace chosen in the Linear menu", async () => {
+  vi.mocked(api.listLinearWorkspaces).mockResolvedValue([
+    acme,
+    { id: "w2", name: "Beta" },
+  ]);
+  vi.mocked(api.loadLinearKanbanBoard).mockResolvedValue({
+    source: "linear",
+    teams: [{ id: "lt1", key: "ENG", name: "Engineering", workspace: "Acme" }],
+    team: { id: "lt1", key: "ENG", name: "Engineering" },
+    states: [],
+    labels: [],
+    issues: [],
+    truncated: false,
+    linkedProjectIds: [],
+  });
+  vi.mocked(api.clearLinearApiKey).mockResolvedValue();
+  await remountBoard({});
+
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>(
+        'button[aria-label="Linear workspaces"]',
+      )!
+      .click(),
+  );
+  const item = [
+    ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((element) => element.textContent === "Disconnect Beta")!;
+  await act(async () => item.click());
+  await act(async () => deleteDialogButton("Disconnect").click());
+
+  expect(api.clearLinearApiKey).toHaveBeenCalledExactlyOnceWith("w2");
 });

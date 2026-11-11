@@ -52,7 +52,7 @@ AppImage after `chmod +x` (install `libfuse2` if it asks for FUSE). All three
 formats update automatically; for the `.deb` and `.rpm`, installing the update
 asks for the administrator password.
 
-- **Keyring**: the Linear API key is stored in the Secret Service keyring
+- **Keyring**: the Linear API keys (one per workspace) are stored in the Secret Service keyring
   (GNOME Keyring, or KWallet with Secret Service enabled). Without an accessible
   keyring, connecting to Linear fails with an explicit message; nothing is
   written elsewhere.

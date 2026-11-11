@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi, type Mock } from "vitest";
 import * as api from "../../data/agentSessionsApi";
-import { hasLinearApiKey, listLinearProjects } from "../../data/kanbanApi";
+import { listLinearProjects, listLinearWorkspaces } from "../../data/kanbanApi";
 import { clearNotifications, getNotifications } from "../../notifications";
 import type {
   AgentProject,
@@ -29,7 +29,7 @@ vi.mock("../../data/agentSessionsApi", () => ({
   scanAgentSshHost: vi.fn(),
 }));
 vi.mock("../../data/kanbanApi", () => ({
-  hasLinearApiKey: vi.fn(),
+  listLinearWorkspaces: vi.fn(),
   listLinearProjects: vi.fn(),
 }));
 vi.mock("../ui/Select", () => ({
@@ -79,7 +79,7 @@ beforeEach(() => {
     distributions: ["Ubuntu", "Debian"],
     wslError: null,
   });
-  vi.mocked(hasLinearApiKey).mockResolvedValue(false);
+  vi.mocked(listLinearWorkspaces).mockResolvedValue([]);
   onSave = vi.fn(async () => {});
   onSaveMany = vi.fn(async () => {});
   onClone = vi.fn(async () => {});
@@ -342,10 +342,17 @@ it("links a project to a Linear project only once a Linear key exists", async ()
 
   await act(async () => root.unmount());
   root = createRoot(container);
-  vi.mocked(hasLinearApiKey).mockResolvedValue(true);
+  vi.mocked(listLinearWorkspaces).mockResolvedValue([
+    { id: "w1", name: "Acme" },
+  ]);
   vi.mocked(listLinearProjects).mockResolvedValue([
-    { id: "linear-alpha", name: "Alpha", teams: ["Engineering"] },
-    { id: "linear-beta", name: "Beta", teams: [] },
+    {
+      id: "linear-alpha",
+      name: "Alpha",
+      teams: ["Engineering"],
+      workspace: "Acme",
+    },
+    { id: "linear-beta", name: "Beta", teams: [], workspace: "Acme" },
   ]);
   await render(editedProject, false, [editedProject, otherProject], {
     linkable: true,

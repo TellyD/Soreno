@@ -1,7 +1,8 @@
 use super::{
-    authorization_header, graphql, linear_client, mutations::upload_target,
-    mutations::validate_image, queries::FILE_UPLOAD_MUTATION, read_api_key, request_failed,
-    responses::FileUploadData, unavailable, Result, AUTH_ERROR_MESSAGE,
+    api_key_for, authorization_header, graphql, linear_client, mutations::upload_target,
+    mutations::validate_image, queries::FILE_UPLOAD_MUTATION, request_failed,
+    responses::FileUploadData, try_workspaces, unavailable, workspaces_for, Result,
+    AUTH_ERROR_MESSAGE,
 };
 use crate::kanban::images;
 use regex::Regex;
@@ -27,8 +28,10 @@ static LOCAL_IMAGE_PATH: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// Replaces every local Kanban image of `text` by its Linear upload: Linear cannot read local files.
-pub async fn upload_local_images(directory: &Path, text: &str) -> Result<String> {
+/// The images go to the workspace holding `owner_id`, the issue or team the text is written to.
+pub async fn upload_local_images(directory: &Path, owner_id: &str, text: &str) -> Result<String> {
     let mut uploaded: HashMap<String, String> = HashMap::new();
+    let mut destination = None;
     let mut replaced = String::with_capacity(text.len());
     let mut copied = 0;
     for found in local_image_urls(text) {
@@ -37,7 +40,16 @@ pub async fn upload_local_images(directory: &Path, text: &str) -> Result<String>
         };
         if !uploaded.contains_key(&name) {
             let (extension, bytes) = images::read_prompt_image(directory, &name)?;
-            let asset_url = upload_image(&name, content_type(&extension), bytes).await?;
+            let (client, api_key) = match &mut destination {
+                Some(destination) => destination,
+                slot @ None => {
+                    let client = linear_client()?;
+                    let api_key = api_key_for(&client, owner_id).await?;
+                    slot.insert((client, api_key))
+                }
+            };
+            let asset_url =
+                upload_image(client, api_key, &name, content_type(&extension), bytes).await?;
             uploaded.insert(name.clone(), asset_url);
         }
         replaced.push_str(&text[copied..found.start()]);
@@ -94,13 +106,17 @@ fn content_type(extension: &str) -> &'static str {
 }
 
 /// Returns the asset URL to embed in Markdown; Linear serves it only to authenticated members.
-async fn upload_image(filename: &str, content_type: &str, bytes: Vec<u8>) -> Result<String> {
+async fn upload_image(
+    client: &reqwest::Client,
+    api_key: &str,
+    filename: &str,
+    content_type: &str,
+    bytes: Vec<u8>,
+) -> Result<String> {
     validate_image(content_type, bytes.len())?;
-    let api_key = read_api_key()?;
-    let client = linear_client()?;
     let payload = graphql::<FileUploadData>(
-        &client,
-        &api_key,
+        client,
+        api_key,
         FILE_UPLOAD_MUTATION,
         json!({ "contentType": content_type, "filename": filename, "size": bytes.len() }),
     )
@@ -137,8 +153,7 @@ async fn upload_image(filename: &str, content_type: &str, bytes: Vec<u8>) -> Res
 /// The bytes of a Linear upload, which Linear serves only to authenticated members.
 pub async fn load_image(url: &str) -> Result<Vec<u8>> {
     let url = linear_upload_url(url)?;
-    let authorization = authorization_header(&read_api_key()?)?;
-    let (_, bytes) = download_image(&download_client()?, &authorization, url).await?;
+    let (_, bytes) = download_with_any_key(&download_client()?, url).await?;
     Ok(bytes)
 }
 
@@ -148,19 +163,33 @@ pub async fn download_prompt_images(urls: &[String]) -> Vec<Result<(&'static str
     if urls.is_empty() {
         return Vec::new();
     }
-    let credentials = read_api_key()
-        .and_then(|api_key| Ok((download_client()?, authorization_header(&api_key)?)));
+    let client = download_client();
     let mut downloads = Vec::with_capacity(urls.len());
     for url in urls {
-        downloads.push(match &credentials {
-            Ok((client, authorization)) => match linear_upload_url(url) {
-                Ok(url) => download_image(client, authorization, url).await,
-                Err(error) => Err(error),
-            },
-            Err(error) => Err(error.clone()),
+        downloads.push(match (&client, linear_upload_url(url)) {
+            (Ok(client), Ok(url)) => download_with_any_key(client, url).await,
+            (Err(error), _) => Err(error.clone()),
+            (_, Err(error)) => Err(error),
         });
     }
     downloads
+}
+
+/// An upload is served to members of its workspace only: each key is tried, the one that served
+/// the URL before first.
+async fn download_with_any_key(
+    client: &reqwest::Client,
+    url: Url,
+) -> Result<(&'static str, Vec<u8>)> {
+    let (workspaces, _) = workspaces_for(url.as_str())?;
+    try_workspaces(url.as_str(), workspaces, |workspace| {
+        let url = url.clone();
+        async move {
+            let authorization = authorization_header(&workspace.api_key)?;
+            download_image(client, &authorization, url).await.map(Some)
+        }
+    })
+    .await
 }
 
 async fn download_image(

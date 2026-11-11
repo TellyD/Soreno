@@ -39,6 +39,24 @@ fn links() -> ProjectLinks {
     )])
 }
 
+#[test]
+fn board_project_choices_keep_only_projects_linked_in_its_workspace() {
+    let mut links = links();
+    links.0.push((
+        "p-other-workspace".into(),
+        KanbanProjectRef {
+            id: "soreno-api".into(),
+            name: "API".into(),
+        },
+    ));
+
+    assert_eq!(links.project_ids_in(&["p-auth"]), ["soreno-web"]);
+    assert_eq!(
+        links.project_ids_in(&links.linear_project_ids()),
+        ["soreno-web", "soreno-api"]
+    );
+}
+
 fn code(error: &str) -> &str {
     error
         .strip_prefix("[Kanban/")
@@ -400,26 +418,107 @@ fn team_labels_keep_plain_labels_sorted_by_name() {
 }
 
 #[test]
-fn requested_team_is_selected_else_the_first_by_name() {
+fn requested_team_is_selected_else_the_first_by_workspace_then_name() {
+    let team = |id: &str, name: &str, workspace: &str| LinearTeam {
+        team: team(id, name),
+        workspace: workspace.into(),
+        workspace_id: workspace.into(),
+    };
     let mut teams = vec![
-        team("t-ops", "Operations"),
-        team("t-design", "design"),
-        team("t-eng", "Engineering"),
+        team("t-ops", "Operations", "acme"),
+        team("t-design", "design", "Zeta"),
+        team("t-eng", "Engineering", "acme"),
     ];
-    teams.sort_by(|left, right| kanban::compare_names(&left.name, &right.name));
+    sort_teams(&mut teams);
     assert_eq!(
-        select_team(&teams, Some("t-ops")).map(|team| team.id.as_str()),
-        Some("t-ops")
+        teams
+            .iter()
+            .map(|team| team.team.id.as_str())
+            .collect::<Vec<_>>(),
+        ["t-eng", "t-ops", "t-design"]
     );
-    assert_eq!(
-        select_team(&teams, Some("t-gone")).map(|team| team.id.as_str()),
-        Some("t-design")
-    );
-    assert_eq!(
-        select_team(&teams, None).map(|team| team.id.as_str()),
-        Some("t-design")
-    );
+    let selected = |team_id| select_team(&teams, team_id).map(|team| team.team.id.as_str());
+    assert_eq!(selected(Some("t-design")), Some("t-design"));
+    assert_eq!(selected(Some("t-gone")), Some("t-eng"));
+    assert_eq!(selected(None), Some("t-eng"));
     assert_eq!(select_team(&[], None), None);
+}
+
+fn workspace(id: &str) -> StoredWorkspace {
+    StoredWorkspace {
+        id: id.into(),
+        name: id.to_uppercase(),
+        api_key: format!("lin_api_{id}"),
+    }
+}
+
+#[test]
+fn the_single_key_of_older_versions_is_kept_as_an_unnamed_workspace() {
+    let legacy = parse_stored_workspaces("lin_api_legacy");
+    assert_eq!(legacy.len(), 1);
+    assert_eq!(
+        (legacy[0].id.as_str(), legacy[0].api_key.as_str()),
+        ("", "lin_api_legacy")
+    );
+    let stored = vec![workspace("w-a"), workspace("w-b")];
+    assert!(parse_stored_workspaces(&serde_json::to_string(&stored).unwrap()) == stored);
+}
+
+#[test]
+fn routing_skips_failing_workspaces_and_tries_the_owner_first_next_time() {
+    let id = "routing-test-issue";
+    let attempts = std::cell::RefCell::new(Vec::new());
+    let attempt = |workspace: StoredWorkspace| {
+        attempts.borrow_mut().push(workspace.id.clone());
+        async move {
+            match workspace.id.as_str() {
+                "w-a" => Err(AUTH_ERROR_MESSAGE.to_owned()),
+                "w-b" => Ok(None),
+                _ => Ok(Some(workspace.api_key)),
+            }
+        }
+    };
+    let mut workspaces = vec![workspace("w-a"), workspace("w-b"), workspace("w-c")];
+    assert_eq!(
+        tauri::async_runtime::block_on(try_workspaces(id, workspaces.clone(), attempt)),
+        Ok("lin_api_w-c".to_owned())
+    );
+    assert_eq!(*attempts.borrow(), ["w-a", "w-b", "w-c"]);
+
+    assert!(remembered_first(id, &mut workspaces));
+    assert_eq!(
+        workspaces.iter().map(|w| w.id.as_str()).collect::<Vec<_>>(),
+        ["w-c", "w-a", "w-b"]
+    );
+    assert!(!remembered_first("routing-test-unknown", &mut workspaces));
+}
+
+#[test]
+fn routing_reports_a_refused_key_by_workspace_else_that_nothing_holds_the_item() {
+    let none = |_: StoredWorkspace| async { Ok::<Option<()>, String>(None) };
+    let error = tauri::async_runtime::block_on(try_workspaces(
+        "routing-test-missing",
+        vec![workspace("w-a"), workspace("w-b")],
+        none,
+    ))
+    .unwrap_err();
+    assert_eq!(code(&error), "linearNotFound");
+
+    let refused = |workspace: StoredWorkspace| async move {
+        if workspace.id == "w-a" {
+            Err(AUTH_ERROR_MESSAGE.to_owned())
+        } else {
+            Ok::<Option<()>, String>(None)
+        }
+    };
+    assert_eq!(
+        tauri::async_runtime::block_on(try_workspaces(
+            "routing-test-refused",
+            vec![workspace("w-b"), workspace("w-a")],
+            refused,
+        )),
+        Err("[Kanban/linearWorkspaceAuth] W-A".to_owned())
+    );
 }
 
 #[test]
@@ -713,6 +812,7 @@ fn project_pages_are_merged_and_sorted_by_name_case_insensitively() {
         id: id.into(),
         name: name.into(),
         teams: Vec::new(),
+        workspace: String::new(),
     };
     let projects = sorted_projects(vec![
         vec![project("p-web", "web"), project("p-mobile", "Mobile")],

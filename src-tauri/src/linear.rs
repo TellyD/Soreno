@@ -1,5 +1,6 @@
-//! Linear issues of one team, read and written through Linear's GraphQL API and serialized in the
-//! local Kanban shapes; nothing is stored locally but the API key and the agent links.
+//! Linear issues of one team at a time, read and written through Linear's GraphQL API and
+//! serialized in the local Kanban shapes. Each connected workspace has its own API key; nothing is
+//! stored locally but those keys and the agent links.
 use crate::kanban::{
     self, KanbanBoard, KanbanComment, KanbanIssue, KanbanIssueCreateInput,
     KanbanIssueDescriptionUpdate, KanbanIssueDetail, KanbanIssueInput, KanbanIssueUpdate,
@@ -7,11 +8,12 @@ use crate::kanban::{
     KanbanSource, KanbanSubIssue, KanbanTeam,
 };
 use reqwest::header::{HeaderValue, AUTHORIZATION};
-use serde::{de::DeserializeOwned, de::IgnoredAny, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Mutex, MutexGuard, PoisonError},
+    future::Future,
+    sync::{LazyLock, Mutex, MutexGuard, PoisonError},
     time::Duration,
 };
 
@@ -25,9 +27,11 @@ const KEYRING_ACCOUNT: &str = "linear_api_key";
 const MAX_ISSUE_PAGES: usize = 5;
 const MAX_PAGES: usize = 20;
 const LABEL_BATCH_SIZE: usize = 250;
-// A keychain read can prompt on macOS, so the key is read at most once per session;
+// A keychain read can prompt on macOS, so the keys are read at most once per session;
 // holding the lock across that read keeps concurrent first calls to a single prompt.
-static API_KEY: Mutex<Option<String>> = Mutex::new(None);
+static WORKSPACES: Mutex<Option<Vec<StoredWorkspace>>> = Mutex::new(None);
+/// The workspace id holding each issue, team, project, comment or upload URL met so far.
+static OWNERS: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(Default::default);
 
 pub(crate) const MISSING_API_KEY_MESSAGE: &str =
     "[Kanban/linearMissingKey] Aucune clé d’API Linear n’est configurée.";
@@ -42,6 +46,37 @@ const NO_TEAM_MESSAGE: &str =
     "[Kanban/linearNoTeam] Aucune équipe Linear n’est accessible avec cette clé.";
 const PROJECT_NOT_LINKED_MESSAGE: &str =
     "[Kanban/linearProjectNotLinked] Ce projet n’est lié à aucun projet Linear.";
+const NOT_FOUND_MESSAGE: &str =
+    "[Kanban/linearNotFound] Aucun workspace Linear connecté ne contient cet élément.";
+const AMBIGUOUS_WORKSPACE_MESSAGE: &str = "[Kanban/linearWorkspaceAmbiguous] Plusieurs workspaces Linear sont connectés : liez le projet de cette session à un projet Linear.";
+
+/// A connected workspace as the frontend lists it; its key never leaves the backend.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LinearWorkspace {
+    pub id: String,
+    pub name: String,
+}
+
+/// No `Debug`: it holds the API key.
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredWorkspace {
+    /// Empty for the single key older versions stored, until another workspace is added.
+    id: String,
+    name: String,
+    api_key: String,
+}
+
+impl StoredWorkspace {
+    fn label(&self) -> &str {
+        if self.name.is_empty() {
+            "Linear"
+        } else {
+            &self.name
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,16 +84,29 @@ pub struct LinearProjectSummary {
     pub id: String,
     pub name: String,
     pub teams: Vec<String>,
+    pub workspace: String,
 }
 
-/// One Linear team's board in the local board shape; `teams` lists every team the key reads.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LinearTeam {
+    #[serde(flatten)]
+    pub team: KanbanTeam,
+    pub workspace: String,
+    #[serde(skip)]
+    workspace_id: String,
+}
+
+/// One Linear team's board in the local board shape; `teams` lists every team the keys read.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LinearKanbanBoard {
     #[serde(flatten)]
     pub board: KanbanBoard,
-    pub teams: Vec<KanbanTeam>,
+    pub teams: Vec<LinearTeam>,
     pub truncated: bool,
+    /// The Soreno projects linked to a Linear project of the board's workspace.
+    pub linked_project_ids: Vec<String>,
 }
 
 /// Soreno projects linked to Linear projects, keyed by Linear project id.
@@ -85,16 +133,39 @@ impl ProjectLinks {
             .map(|(linear_id, _)| linear_id.clone())
             .ok_or_else(|| PROJECT_NOT_LINKED_MESSAGE.into())
     }
-}
 
-pub fn has_api_key() -> Result<bool> {
-    match read_api_key() {
-        Ok(_) => Ok(true),
-        Err(error) if error == MISSING_API_KEY_MESSAGE => Ok(false),
-        Err(error) => Err(error),
+    fn linear_project_ids(&self) -> Vec<&str> {
+        self.0
+            .iter()
+            .map(|(linear_id, _)| linear_id.as_str())
+            .collect()
+    }
+
+    /// The Soreno projects whose Linear project is among `held`.
+    fn project_ids_in(&self, held: &[&str]) -> Vec<String> {
+        self.0
+            .iter()
+            .filter(|(linear_id, _)| held.contains(&linear_id.as_str()))
+            .map(|(_, project)| project.id.clone())
+            .collect()
     }
 }
 
+pub fn has_api_key() -> Result<bool> {
+    Ok(!stored_workspaces()?.is_empty())
+}
+
+pub fn workspaces() -> Result<Vec<LinearWorkspace>> {
+    Ok(stored_workspaces()?
+        .into_iter()
+        .map(|workspace| LinearWorkspace {
+            id: workspace.id,
+            name: workspace.name,
+        })
+        .collect())
+}
+
+/// Adds the key's workspace, or replaces the key a workspace already had.
 pub async fn set_api_key(api_key: &str) -> Result<()> {
     let api_key = api_key.trim();
     if api_key.is_empty() {
@@ -102,55 +173,81 @@ pub async fn set_api_key(api_key: &str) -> Result<()> {
     }
 
     let client = linear_client()?;
-    graphql::<IgnoredAny>(&client, api_key, VIEWER_QUERY, json!({})).await?;
-
-    let mut cached = cached_api_key();
-    *cached = None;
-    keyring_entry()?.set_password(api_key).map_err(|error| {
-        request_failed(format!(
-            "Impossible d’enregistrer la clé d’API Linear ({}).",
-            storage_detail(&error)
-        ))
-    })?;
-
-    match read_stored_api_key() {
-        Ok(saved_api_key) if saved_api_key == api_key => {
-            *cached = Some(saved_api_key);
-            Ok(())
+    let organization = graphql::<OrganizationData>(&client, api_key, ORGANIZATION_QUERY, json!({}))
+        .await?
+        .organization;
+    let mut workspaces = stored_workspaces()?;
+    // An older single key is named first, so the same workspace is never listed twice.
+    for workspace in workspaces
+        .iter_mut()
+        .filter(|workspace| workspace.id.is_empty())
+    {
+        match graphql::<OrganizationData>(
+            &client,
+            &workspace.api_key,
+            ORGANIZATION_QUERY,
+            json!({}),
+        )
+        .await
+        {
+            Ok(data) => {
+                workspace.id = data.organization.id;
+                workspace.name = data.organization.name;
+            }
+            // A revoked key is dropped, as connecting a key used to replace it; other failures keep it.
+            Err(error) if error == AUTH_ERROR_MESSAGE => workspace.api_key.clear(),
+            Err(_) => {}
         }
-        Ok(_) => Err(request_failed(
-            "La clé d’API Linear enregistrée n’a pas pu être vérifiée.",
-        )),
-        Err(error) => Err(error),
     }
+    workspaces.retain(|workspace| !workspace.api_key.is_empty() && workspace.id != organization.id);
+    workspaces.push(StoredWorkspace {
+        id: organization.id,
+        name: organization.name,
+        api_key: api_key.to_owned(),
+    });
+    store_workspaces(&mut cached_workspaces(), workspaces)
 }
 
-pub fn clear_api_key() -> Result<()> {
-    let mut cached = cached_api_key();
-    match keyring_entry()?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => {
-            *cached = None;
-            Ok(())
-        }
-        Err(error) => Err(request_failed(format!(
-            "Impossible de supprimer la clé d’API Linear ({}).",
-            storage_detail(&error)
-        ))),
-    }
+pub fn clear_api_key(workspace_id: &str) -> Result<()> {
+    let mut cached = cached_workspaces();
+    let mut workspaces = load_workspaces(&mut cached)?;
+    workspaces.retain(|workspace| workspace.id != workspace_id);
+    store_workspaces(&mut cached, workspaces)
 }
 
 pub async fn load_board(
     team_id: Option<String>,
     links: &ProjectLinks,
 ) -> Result<LinearKanbanBoard> {
-    let api_key = read_api_key()?;
+    let workspaces = stored_workspaces()?;
+    if workspaces.is_empty() {
+        return Err(MISSING_API_KEY_MESSAGE.into());
+    }
     let client = linear_client()?;
 
-    let teams_data = graphql::<TeamsData>(&client, &api_key, TEAMS_QUERY, json!({})).await?;
-    let mut teams = teams_data.teams.nodes;
-    teams.sort_by(|left, right| kanban::compare_names(&left.name, &right.name));
-    let team = select_team(&teams, team_id.as_deref())
-        .cloned()
+    let mut teams = Vec::new();
+    for workspace in &workspaces {
+        let nodes = graphql::<TeamsData>(&client, &workspace.api_key, TEAMS_QUERY, json!({}))
+            .await
+            .map_err(|error| in_workspace(error, workspace.label()))?
+            .teams
+            .nodes;
+        if workspaces.len() > 1 {
+            remember(nodes.iter().map(|team| team.id.as_str()), &workspace.id);
+        }
+        teams.extend(nodes.into_iter().map(|team| LinearTeam {
+            team,
+            workspace: workspace.name.clone(),
+            workspace_id: workspace.id.clone(),
+        }));
+    }
+    sort_teams(&mut teams);
+    let selected = select_team(&teams, team_id.as_deref()).ok_or(NO_TEAM_MESSAGE)?;
+    let team = selected.team.clone();
+    let api_key = workspaces
+        .iter()
+        .find(|workspace| workspace.id == selected.workspace_id)
+        .map(|workspace| workspace.api_key.clone())
         .ok_or(NO_TEAM_MESSAGE)?;
 
     let mut states = None;
@@ -192,6 +289,30 @@ pub async fn load_board(
             .collect(),
     )
     .await?;
+    // Spares a probe request on the first action on each card.
+    if workspaces.len() > 1 {
+        remember(
+            raw_issues.iter().map(|raw| raw.id.as_str()),
+            &selected.workspace_id,
+        );
+    }
+    let ids = links.linear_project_ids();
+    // Links outlive a disconnected workspace, so even a single one is asked which it holds.
+    let linked_project_ids = if ids.is_empty() {
+        Vec::new()
+    } else {
+        let variables = json!({ "ids": ids });
+        let held = graphql::<ProjectIdsData>(&client, &api_key, PROJECT_IDS_QUERY, variables)
+            .await?
+            .projects
+            .nodes;
+        links.project_ids_in(
+            &held
+                .iter()
+                .map(|project| project.id.as_str())
+                .collect::<Vec<_>>(),
+        )
+    };
 
     Ok(LinearKanbanBoard {
         board: KanbanBoard {
@@ -206,6 +327,7 @@ pub async fn load_board(
         },
         teams,
         truncated,
+        linked_project_ids,
     })
 }
 
@@ -215,8 +337,8 @@ pub async fn update_issue(
     links: &ProjectLinks,
 ) -> Result<KanbanIssueUpdate> {
     let input = issue_update_input(patch, links)?;
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, issue_id).await?;
     let variables = json!({ "id": issue_id, "input": input });
     let mut update =
         graphql::<IssueUpdateData>(&client, &api_key, UPDATE_ISSUE_MUTATION, variables)
@@ -234,8 +356,8 @@ pub async fn update_issue_description(
     issue_id: &str,
     description: &str,
 ) -> Result<KanbanIssueDescriptionUpdate> {
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, issue_id).await?;
     // Sent as a GraphQL variable, never interpolated into the query.
     let variables = json!({ "id": issue_id, "description": description.trim() });
     let payload = graphql::<IssueDescriptionUpdateData>(
@@ -253,12 +375,16 @@ pub async fn create_issue(
     input: KanbanIssueCreateInput,
     links: &ProjectLinks,
 ) -> Result<KanbanIssue> {
+    let team_id = input.team_id.clone();
     let input = issue_create_input(input, links)?;
-    create(input, links).await
+    let client = linear_client()?;
+    let api_key = api_key_for(&client, &team_id).await?;
+    create(&client, &api_key, input, links).await
 }
 
 /// Creates an agent's issue in the team and Linear project of `linked_issue_id`, else in
-/// `linear_project_id` and one of its teams, else in the team the board shows by default.
+/// `linear_project_id` and one of its teams, else in the team the board shows by default, which
+/// needs a single connected workspace.
 pub async fn create_requested_issue(
     linked_issue_id: Option<&str>,
     linear_project_id: Option<&str>,
@@ -266,10 +392,10 @@ pub async fn create_requested_issue(
     description: Option<&str>,
 ) -> Result<KanbanIssue> {
     let title = kanban::required_title(title)?;
-    let api_key = read_api_key()?;
     let client = linear_client()?;
-    let (team_id, project_id) = match (linked_issue_id, linear_project_id) {
+    let (api_key, team_id, project_id) = match (linked_issue_id, linear_project_id) {
         (Some(id), _) => {
+            let api_key = api_key_for(&client, id).await?;
             let placement = graphql::<IssuePlacementData>(
                 &client,
                 &api_key,
@@ -279,11 +405,13 @@ pub async fn create_requested_issue(
             .await?
             .issue;
             (
+                api_key,
                 placement.team.id,
                 placement.project.map(|project| project.id),
             )
         }
         (None, Some(id)) => {
+            let api_key = api_key_for(&client, id).await?;
             let teams = graphql::<ProjectTeamsData>(
                 &client,
                 &api_key,
@@ -295,10 +423,15 @@ pub async fn create_requested_issue(
             .teams
             .nodes;
             let team = teams.into_iter().next().ok_or(NO_TEAM_MESSAGE)?;
-            (team.id, Some(id.to_owned()))
+            (api_key, team.id, Some(id.to_owned()))
         }
         // shortcut: ignores the team picked on the board (a front-end preference), pass it here if several teams prove common.
         (None, None) => {
+            let api_key = match stored_workspaces()?.as_slice() {
+                [] => return Err(MISSING_API_KEY_MESSAGE.into()),
+                [workspace] => workspace.api_key.clone(),
+                _ => return Err(AMBIGUOUS_WORKSPACE_MESSAGE.into()),
+            };
             let teams = graphql::<TeamsData>(&client, &api_key, TEAMS_QUERY, json!({}))
                 .await?
                 .teams
@@ -307,7 +440,7 @@ pub async fn create_requested_issue(
                 .into_iter()
                 .min_by(|left, right| kanban::compare_names(&left.name, &right.name))
                 .ok_or(NO_TEAM_MESSAGE)?;
-            (team.id, None)
+            (api_key, team.id, None)
         }
     };
     let mut input = json!({ "teamId": team_id, "title": title });
@@ -317,7 +450,7 @@ pub async fn create_requested_issue(
     if let Some(project_id) = project_id {
         input["projectId"] = json!(project_id);
     }
-    create(input, &ProjectLinks::default()).await
+    create(&client, &api_key, input, &ProjectLinks::default()).await
 }
 
 /// Applies an agent's new title and/or description to its linked issue in one mutation.
@@ -333,8 +466,8 @@ pub async fn update_requested_issue(
     if let Some(description) = description {
         input["description"] = json!(description.trim());
     }
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, issue_id).await?;
     let variables = json!({ "id": issue_id, "input": input });
     let update = graphql::<IssueUpdateData>(&client, &api_key, UPDATE_ISSUE_MUTATION, variables)
         .await?
@@ -342,12 +475,15 @@ pub async fn update_requested_issue(
     applied_issue_update(update, &ProjectLinks::default()).map(drop)
 }
 
-async fn create(input: Value, links: &ProjectLinks) -> Result<KanbanIssue> {
-    let api_key = read_api_key()?;
-    let client = linear_client()?;
+async fn create(
+    client: &reqwest::Client,
+    api_key: &str,
+    input: Value,
+    links: &ProjectLinks,
+) -> Result<KanbanIssue> {
     let mut payload = graphql::<IssueCreateData>(
-        &client,
-        &api_key,
+        client,
+        api_key,
         CREATE_ISSUE_MUTATION,
         json!({ "input": input }),
     )
@@ -356,15 +492,15 @@ async fn create(input: Value, links: &ProjectLinks) -> Result<KanbanIssue> {
     if let Some(issue) = payload.issue.as_mut().filter(|_| payload.success) {
         let labels = vec![(issue.label_ids.as_slice(), &mut issue.labels.nodes)];
         // The issue already exists: an error here would invite a retry that creates a duplicate.
-        let _ = complete_labels(&client, &api_key, labels).await;
+        let _ = complete_labels(client, api_key, labels).await;
     }
     created_issue(payload, links)
 }
 
 pub async fn create_comment(issue_id: &str, body: &str) -> Result<KanbanComment> {
     let input = comment_create_input(issue_id, body)?;
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, issue_id).await?;
     let payload = graphql::<CommentCreateData>(
         &client,
         &api_key,
@@ -377,8 +513,8 @@ pub async fn create_comment(issue_id: &str, body: &str) -> Result<KanbanComment>
 }
 
 pub async fn delete_comment(comment_id: &str) -> Result<()> {
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, comment_id).await?;
     let payload = graphql::<CommentDeleteData>(
         &client,
         &api_key,
@@ -397,8 +533,8 @@ pub async fn post_issue_summary(
     summary: &str,
 ) -> Result<(KanbanComment, bool)> {
     if let Some(comment_id) = summary_comment_id {
-        let api_key = read_api_key()?;
         let client = linear_client()?;
+        let api_key = api_key_for(&client, issue_id).await?;
         let existing = graphql::<IssueConnectionData<RawIssueComment>>(
             &client,
             &api_key,
@@ -431,8 +567,8 @@ pub async fn move_issue_to_review(
     issue_id: &str,
     links: &ProjectLinks,
 ) -> Result<Option<KanbanIssueUpdate>> {
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, issue_id).await?;
     let workflow = graphql::<IssueWorkflowData>(
         &client,
         &api_key,
@@ -456,8 +592,8 @@ pub async fn move_issue_to_review(
 }
 
 pub async fn delete_issue(issue_id: &str) -> Result<()> {
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, issue_id).await?;
     let payload = graphql::<IssueDeleteData>(
         &client,
         &api_key,
@@ -472,8 +608,8 @@ pub async fn delete_issue(issue_id: &str) -> Result<()> {
 /// Reuses a team label of the same name, ignoring case, instead of creating a duplicate.
 pub async fn create_label(team_id: &str, name: &str) -> Result<KanbanLabel> {
     let name = kanban::required_label_name(name)?;
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, team_id).await?;
     let folded = name.to_lowercase();
     if let Some(label) = team_labels(&client, &api_key, team_id)
         .await?
@@ -494,8 +630,8 @@ pub async fn create_label(team_id: &str, name: &str) -> Result<KanbanLabel> {
 }
 
 pub async fn load_issue(issue_id: &str, links: &ProjectLinks) -> Result<KanbanIssueDetail> {
-    let api_key = read_api_key()?;
     let client = linear_client()?;
+    let api_key = api_key_for(&client, issue_id).await?;
     let variables = json!({ "id": issue_id });
     let mut raw = graphql::<IssueDetailData>(&client, &api_key, ISSUE_DETAIL_QUERY, variables)
         .await?
@@ -544,22 +680,38 @@ pub async fn load_issue(issue_id: &str, links: &ProjectLinks) -> Result<KanbanIs
     Ok(map_issue_detail(raw, more_children, more_comments, links))
 }
 
+/// The projects of every connected workspace, each named with its workspace.
 pub async fn list_projects() -> Result<Vec<LinearProjectSummary>> {
-    let api_key = read_api_key()?;
+    let workspaces = stored_workspaces()?;
+    if workspaces.is_empty() {
+        return Err(MISSING_API_KEY_MESSAGE.into());
+    }
     let client = linear_client()?;
     let mut pages = Vec::new();
-    let mut after: Option<String> = None;
 
-    for _ in 0..MAX_PAGES {
-        let variables = json!({ "after": after });
-        let mut page = graphql::<ProjectsData>(&client, &api_key, PROJECTS_QUERY, variables)
-            .await?
-            .projects;
-        let next_cursor = page.page_info.take_next_cursor();
-        pages.push(page.nodes.into_iter().map(Into::into).collect());
-        match next_cursor {
-            Some(cursor) => after = Some(cursor),
-            None => break,
+    for workspace in &workspaces {
+        let mut after: Option<String> = None;
+        for _ in 0..MAX_PAGES {
+            let variables = json!({ "after": after });
+            let mut page =
+                graphql::<ProjectsData>(&client, &workspace.api_key, PROJECTS_QUERY, variables)
+                    .await
+                    .map_err(|error| in_workspace(error, workspace.label()))?
+                    .projects;
+            let next_cursor = page.page_info.take_next_cursor();
+            if workspaces.len() > 1 {
+                remember(page.nodes.iter().map(|raw| raw.id.as_str()), &workspace.id);
+            }
+            pages.push(
+                page.nodes
+                    .into_iter()
+                    .map(|raw| raw.summary(&workspace.name))
+                    .collect(),
+            );
+            match next_cursor {
+                Some(cursor) => after = Some(cursor),
+                None => break,
+            }
         }
     }
 
@@ -752,9 +904,17 @@ fn sorted_projects(pages: Vec<Vec<LinearProjectSummary>>) -> Vec<LinearProjectSu
     projects
 }
 
-fn select_team<'a>(teams: &'a [KanbanTeam], team_id: Option<&str>) -> Option<&'a KanbanTeam> {
+/// Grouped by workspace, so the board's team picker lists each workspace's teams together.
+fn sort_teams(teams: &mut [LinearTeam]) {
+    teams.sort_by(|left, right| {
+        kanban::compare_names(&left.workspace, &right.workspace)
+            .then_with(|| kanban::compare_names(&left.team.name, &right.team.name))
+    });
+}
+
+fn select_team<'a>(teams: &'a [LinearTeam], team_id: Option<&str>) -> Option<&'a LinearTeam> {
     team_id
-        .and_then(|team_id| teams.iter().find(|team| team.id == team_id))
+        .and_then(|team_id| teams.iter().find(|team| team.team.id == team_id))
         .or_else(|| teams.first())
 }
 
@@ -860,30 +1020,162 @@ fn normalize_priority(priority: f64) -> u8 {
     priority.round().clamp(0.0, 4.0) as u8
 }
 
-fn read_api_key() -> Result<String> {
-    let mut cached = cached_api_key();
-    if let Some(api_key) = cached.as_ref() {
-        return Ok(api_key.clone());
+fn stored_workspaces() -> Result<Vec<StoredWorkspace>> {
+    load_workspaces(&mut cached_workspaces())
+}
+
+fn load_workspaces(cached: &mut Option<Vec<StoredWorkspace>>) -> Result<Vec<StoredWorkspace>> {
+    if let Some(workspaces) = cached.as_ref() {
+        return Ok(workspaces.clone());
     }
-    let api_key = read_stored_api_key()?;
-    *cached = Some(api_key.clone());
-    Ok(api_key)
+    let workspaces = read_stored_workspaces()?;
+    *cached = Some(workspaces.clone());
+    Ok(workspaces)
 }
 
-fn cached_api_key() -> MutexGuard<'static, Option<String>> {
-    API_KEY.lock().unwrap_or_else(PoisonError::into_inner)
+fn cached_workspaces() -> MutexGuard<'static, Option<Vec<StoredWorkspace>>> {
+    WORKSPACES.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-fn read_stored_api_key() -> Result<String> {
-    keyring_entry()?
-        .get_password()
-        .map_err(|error| match error {
-            keyring::Error::NoEntry => MISSING_API_KEY_MESSAGE.into(),
-            error => request_failed(format!(
-                "Impossible de lire la clé d’API Linear ({}).",
+fn read_stored_workspaces() -> Result<Vec<StoredWorkspace>> {
+    match keyring_entry()?.get_password() {
+        Ok(stored) => Ok(parse_stored_workspaces(&stored)),
+        Err(keyring::Error::NoEntry) => Ok(Vec::new()),
+        Err(error) => Err(request_failed(format!(
+            "Impossible de lire la clé d’API Linear ({}).",
+            storage_detail(&error)
+        ))),
+    }
+}
+
+/// Older versions stored a single bare key.
+fn parse_stored_workspaces(stored: &str) -> Vec<StoredWorkspace> {
+    serde_json::from_str(stored).unwrap_or_else(|_| {
+        vec![StoredWorkspace {
+            id: String::new(),
+            name: String::new(),
+            api_key: stored.to_owned(),
+        }]
+    })
+}
+
+// shortcut: all keys share one keychain entry (a single unlock prompt), which Windows caps at 1280 characters, about 9 workspaces; split it per workspace if users reach that.
+fn store_workspaces(
+    cached: &mut Option<Vec<StoredWorkspace>>,
+    workspaces: Vec<StoredWorkspace>,
+) -> Result<()> {
+    *cached = None;
+    let entry = keyring_entry()?;
+    if workspaces.is_empty() {
+        match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => {}
+            Err(error) => {
+                return Err(request_failed(format!(
+                    "Impossible de supprimer la clé d’API Linear ({}).",
+                    storage_detail(&error)
+                )))
+            }
+        }
+    } else {
+        let stored = serde_json::to_string(&workspaces).map_err(request_failed)?;
+        entry.set_password(&stored).map_err(|error| {
+            request_failed(format!(
+                "Impossible d’enregistrer la clé d’API Linear ({}).",
                 storage_detail(&error)
-            )),
-        })
+            ))
+        })?;
+        if read_stored_workspaces()? != workspaces {
+            return Err(request_failed(
+                "La clé d’API Linear enregistrée n’a pas pu être vérifiée.",
+            ));
+        }
+    }
+    *cached = Some(workspaces);
+    Ok(())
+}
+
+/// The key of the workspace holding `id`: an issue, team, project or comment.
+async fn api_key_for(client: &reqwest::Client, id: &str) -> Result<String> {
+    let (workspaces, known) = workspaces_for(id)?;
+    if known || workspaces.len() == 1 {
+        return Ok(workspaces[0].api_key.clone());
+    }
+    try_workspaces(id, workspaces, |workspace| async move {
+        let data =
+            graphql::<OwnerData>(client, &workspace.api_key, OWNER_QUERY, json!({ "id": id }))
+                .await?;
+        Ok(data.holds().then_some(workspace.api_key))
+    })
+    .await
+}
+
+/// The connected workspaces, the one remembered for `id` first; `true` when one is.
+fn workspaces_for(id: &str) -> Result<(Vec<StoredWorkspace>, bool)> {
+    let mut workspaces = stored_workspaces()?;
+    if workspaces.is_empty() {
+        return Err(MISSING_API_KEY_MESSAGE.into());
+    }
+    let known = remembered_first(id, &mut workspaces);
+    Ok((workspaces, known))
+}
+
+fn remembered_first(id: &str, workspaces: &mut [StoredWorkspace]) -> bool {
+    let owners = OWNERS.lock().unwrap_or_else(PoisonError::into_inner);
+    let Some(index) = owners.get(id).and_then(|owner| {
+        workspaces
+            .iter()
+            .position(|workspace| &workspace.id == owner)
+    }) else {
+        return false;
+    };
+    workspaces[..=index].rotate_right(1);
+    true
+}
+
+fn remember<'a>(ids: impl IntoIterator<Item = &'a str>, workspace_id: &str) {
+    let mut owners = OWNERS.lock().unwrap_or_else(PoisonError::into_inner);
+    for id in ids {
+        if owners.get(id).map(String::as_str) != Some(workspace_id) {
+            owners.insert(id.to_owned(), workspace_id.to_owned());
+        }
+    }
+}
+
+/// Tries each workspace in turn until one holds `id`, and remembers it. A failing workspace does
+/// not hide the others; its error is returned when none holds `id`.
+async fn try_workspaces<T, F, Fut>(
+    id: &str,
+    workspaces: Vec<StoredWorkspace>,
+    mut attempt: F,
+) -> Result<T>
+where
+    F: FnMut(StoredWorkspace) -> Fut,
+    Fut: Future<Output = Result<Option<T>>>,
+{
+    let mut failure = None;
+    for workspace in workspaces {
+        let (workspace_id, label) = (workspace.id.clone(), workspace.label().to_owned());
+        match attempt(workspace).await {
+            Ok(Some(found)) => {
+                remember([id], &workspace_id);
+                return Ok(found);
+            }
+            Ok(None) => {}
+            Err(error) => {
+                failure.get_or_insert_with(|| in_workspace(error, &label));
+            }
+        }
+    }
+    Err(failure.unwrap_or_else(|| NOT_FOUND_MESSAGE.into()))
+}
+
+/// Names the workspace whose key Linear refused, so the user knows which one to replace.
+fn in_workspace(error: String, workspace: &str) -> String {
+    if error == AUTH_ERROR_MESSAGE {
+        format!("[Kanban/linearWorkspaceAuth] {workspace}")
+    } else {
+        error
+    }
 }
 
 fn keyring_entry() -> Result<keyring::Entry> {
@@ -931,17 +1223,17 @@ use queries::{
     CREATE_COMMENT_MUTATION, CREATE_ISSUE_MUTATION, CREATE_LABEL_MUTATION, DELETE_COMMENT_MUTATION,
     DELETE_ISSUE_MUTATION, ISSUE_CHILDREN_QUERY, ISSUE_COMMENTS_QUERY, ISSUE_COMMENT_QUERY,
     ISSUE_DETAIL_QUERY, ISSUE_PLACEMENT_QUERY, ISSUE_WORKFLOW_QUERY, LABELS_BY_ID_QUERY,
-    PROJECTS_QUERY, PROJECT_TEAMS_QUERY, TEAMS_QUERY, TEAM_BOARD_QUERY, TEAM_LABELS_QUERY,
-    UPDATE_COMMENT_MUTATION, UPDATE_ISSUE_DESCRIPTION_MUTATION, UPDATE_ISSUE_MUTATION,
-    VIEWER_QUERY,
+    ORGANIZATION_QUERY, OWNER_QUERY, PROJECTS_QUERY, PROJECT_IDS_QUERY, PROJECT_TEAMS_QUERY,
+    TEAMS_QUERY, TEAM_BOARD_QUERY, TEAM_LABELS_QUERY, UPDATE_COMMENT_MUTATION,
+    UPDATE_ISSUE_DESCRIPTION_MUTATION, UPDATE_ISSUE_MUTATION,
 };
 use responses::{
     CommentCreateData, CommentDeleteData, CommentUpdateData, GraphqlResponse, IssueConnectionData,
     IssueCreateData, IssueDeleteData, IssueDescriptionUpdateData, IssueDetailData, IssueLabelsData,
     IssuePlacementData, IssueUpdateData, IssueWorkflowData, LabelCreateData, LabelNodesData,
-    ProjectTeamsData, ProjectsData, RawAttachment, RawComment, RawIssue, RawIssueChildren,
-    RawIssueComment, RawIssueComments, RawIssueDetail, RawLabel, RawUpdatedIssue, TeamBoardData,
-    TeamsData,
+    OrganizationData, OwnerData, ProjectIdsData, ProjectTeamsData, ProjectsData, RawAttachment,
+    RawComment, RawIssue, RawIssueChildren, RawIssueComment, RawIssueComments, RawIssueDetail,
+    RawLabel, RawUpdatedIssue, TeamBoardData, TeamsData,
 };
 
 #[cfg(test)]

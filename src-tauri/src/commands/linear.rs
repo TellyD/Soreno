@@ -4,26 +4,31 @@ use crate::kanban::{
     self, images, KanbanComment, KanbanIssue, KanbanIssueCreateInput, KanbanIssueDescriptionUpdate,
     KanbanIssueDetail, KanbanIssueInput, KanbanIssueUpdate, KanbanLabel,
 };
-use crate::linear::{self, LinearKanbanBoard, LinearProjectSummary, ProjectLinks};
+use crate::linear::{self, LinearKanbanBoard, LinearProjectSummary, LinearWorkspace, ProjectLinks};
 use tauri::{AppHandle, Manager};
 
 pub(super) async fn project_links(app: &AppHandle) -> Result<ProjectLinks, String> {
     blocking(app.clone(), AgentSessions::linear_project_links).await
 }
 
-/// Linear cannot read local files, so local Kanban images are uploaded to it first.
-pub(super) async fn with_linear_images(app: &AppHandle, text: &str) -> Result<String, String> {
+/// Linear cannot read local files, so local Kanban images are uploaded first, to the workspace
+/// holding `owner_id`.
+pub(super) async fn with_linear_images(
+    app: &AppHandle,
+    owner_id: &str,
+    text: &str,
+) -> Result<String, String> {
     let directory = app
         .state::<AgentSessions>()
         .kanban_images_directory()
         .to_owned();
-    linear::images::upload_local_images(&directory, text).await
+    linear::images::upload_local_images(&directory, owner_id, text).await
 }
 
 // Keyring reads may wait on an OS unlock prompt; keep them off the main thread.
 #[tauri::command]
-pub(crate) async fn has_linear_api_key() -> Result<bool, String> {
-    tauri::async_runtime::spawn_blocking(linear::has_api_key)
+pub(crate) async fn list_linear_workspaces() -> Result<Vec<LinearWorkspace>, String> {
+    tauri::async_runtime::spawn_blocking(linear::workspaces)
         .await
         .map_err(|error| error.to_string())?
 }
@@ -34,8 +39,8 @@ pub(crate) async fn set_linear_api_key(api_key: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub(crate) async fn clear_linear_api_key() -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(linear::clear_api_key)
+pub(crate) async fn clear_linear_api_key(workspace_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || linear::clear_api_key(&workspace_id))
         .await
         .map_err(|error| error.to_string())?
 }
@@ -70,7 +75,7 @@ pub(crate) async fn create_linear_issue(
     mut input: KanbanIssueCreateInput,
 ) -> Result<KanbanIssue, String> {
     if let Some(description) = &input.description {
-        input.description = Some(with_linear_images(&app, description).await?);
+        input.description = Some(with_linear_images(&app, &input.team_id, description).await?);
     }
     linear::create_issue(input, &project_links(&app).await?).await
 }
@@ -146,7 +151,7 @@ pub(crate) async fn update_linear_issue_description(
     issue_id: String,
     description: String,
 ) -> Result<KanbanIssueDescriptionUpdate, String> {
-    let description = with_linear_images(&app, &description).await?;
+    let description = with_linear_images(&app, &issue_id, &description).await?;
     linear::update_issue_description(&issue_id, &description).await
 }
 
@@ -156,7 +161,7 @@ pub(crate) async fn create_linear_comment(
     issue_id: String,
     body: String,
 ) -> Result<KanbanComment, String> {
-    let body = with_linear_images(&app, &body).await?;
+    let body = with_linear_images(&app, &issue_id, &body).await?;
     linear::create_comment(&issue_id, &body).await
 }
 
