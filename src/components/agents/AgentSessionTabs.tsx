@@ -460,6 +460,10 @@ export function AgentSessionTabs({
                 onMouseDown={(event) => {
                   if (event.button === 1) event.preventDefault();
                 }}
+                // WebKitGTK pastes PRIMARY on middle release unless mouseup is prevented.
+                onMouseUp={(event) => {
+                  if (event.button === 1) event.preventDefault();
+                }}
               >
                 <RowContextMenu
                   className={`agent-session-pane${selected && activePaneId === session.id ? " is-active" : ""}`}

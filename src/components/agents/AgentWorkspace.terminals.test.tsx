@@ -1476,6 +1476,13 @@ it("middle-click closes a non-selected tab without activating, starting it, or s
   });
   await act(async () => button("Codex tests").dispatchEvent(down));
   expect(down.defaultPrevented).toBe(true);
+  const up = new MouseEvent("mouseup", {
+    button: 1,
+    bubbles: true,
+    cancelable: true,
+  });
+  await act(async () => button("Codex tests").dispatchEvent(up));
+  expect(up.defaultPrevented).toBe(true);
   await act(async () =>
     button("Codex tests").dispatchEvent(
       new MouseEvent("auxclick", {
