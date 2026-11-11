@@ -246,6 +246,25 @@ export type AgentSessionMessage = {
   deliveredAt: string | null;
 };
 
+const SORENO_PREFIX = "Soreno(?::| comment on )";
+const SORENO_NOTICE = new RegExp(`^${SORENO_PREFIX}`);
+// Batches are joined like MESSAGE_SEPARATOR in agent_sessions/messages.rs; the lookahead keeps a description's own rule in its message.
+// shortcut: a quoted excerpt holding a blank line, ---, a blank line then a Soreno: line splits as a new notice; skip fenced code if such diffs get commented.
+const SORENO_BATCH_SEPARATOR = new RegExp(
+  `\\n\\n---\\n\\n(?=${SORENO_PREFIX})`,
+);
+
+/** The Soreno messages a delivered batch holds, each as its first line and the rest; null for a prompt the user wrote. */
+export function sorenoNotices(text: string) {
+  if (!SORENO_NOTICE.test(text)) return null;
+  return text.split(SORENO_BATCH_SEPARATOR).map((message) => {
+    const end = message.indexOf("\n");
+    return end < 0
+      ? { summary: message.trim(), details: "" }
+      : { summary: message.slice(0, end), details: message.slice(end).trim() };
+  });
+}
+
 export type AgentSessionActivity =
   "working" | "awaiting" | "waiting" | "running" | "stopped";
 

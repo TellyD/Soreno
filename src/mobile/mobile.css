@@ -712,6 +712,43 @@ a.mobile-session:active {
   background: var(--danger-bg);
 }
 
+.mobile-notices {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  min-width: 0;
+}
+.mobile-notice > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.mobile-notice > summary::-webkit-details-marker {
+  display: none;
+}
+.mobile-notice-chevron {
+  color: var(--text-faint);
+  transition: transform 120ms ease;
+}
+.mobile-notice[open] .mobile-notice-chevron {
+  transform: rotate(90deg);
+}
+/* 27px lines the text up with the summary text after its chevron. */
+.mobile-notice-line {
+  margin: 0;
+  padding: 6px 6px 6px 27px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.mobile-notice-details {
+  margin: 2px 0 4px 27px;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .mobile-awaiting {
   display: flex;
   flex: 0 0 auto;

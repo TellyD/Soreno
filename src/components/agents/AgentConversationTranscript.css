@@ -152,6 +152,21 @@
   white-space: nowrap;
 }
 
+/* Opened, a Soreno notice shows its whole first line: an issue title lives only there. */
+.agent-conversation-soreno[open] .agent-conversation-notice-summary {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The chevron stays beside the first line, centered on its 22px line box. */
+.agent-conversation-soreno[open] > summary {
+  align-items: flex-start;
+}
+
+.agent-conversation-soreno[open] > summary svg {
+  top: 3px;
+}
+
 .agent-conversation-command-output {
   margin: 0;
   max-height: 320px;
@@ -223,6 +238,13 @@
   color: var(--text-muted);
   line-height: 1.55;
   white-space: pre-wrap;
+}
+
+.agent-conversation-thinking > .agent-conversation-prose {
+  margin-top: 4px;
+  border-left: 2px solid var(--border-muted);
+  padding-left: 12px;
+  font-size: 13px;
 }
 
 .agent-conversation-tool-icon {

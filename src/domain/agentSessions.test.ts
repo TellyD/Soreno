@@ -15,6 +15,7 @@ import {
   projectSectionIds,
   reconcileProjectSectionOrder,
   sameAgentMachine,
+  sorenoNotices,
   type AgentEnvironment,
   visibleAgentPresets,
   type AgentSession,
@@ -513,3 +514,19 @@ it.each<[string, AgentEnvironment, AgentEnvironment, boolean]>([
     expect(sameAgentMachine(left, right)).toBe(same);
   },
 );
+
+it("splits a delivered batch into Soreno notices, keeping a description's own rules", () => {
+  const linked =
+    "Soreno: this session is now linked to issue SOR-1: Ship\n\nPart one\n\n---\n\nPart two";
+  expect(
+    sorenoNotices(`${linked}\n\n---\n\nSoreno: Kanban issue SOR-1 updated.`),
+  ).toEqual([
+    {
+      summary: "Soreno: this session is now linked to issue SOR-1: Ship",
+      details: "Part one\n\n---\n\nPart two",
+    },
+    { summary: "Soreno: Kanban issue SOR-1 updated.", details: "" },
+  ]);
+  expect(sorenoNotices("Soreno design request:\nA login screen")).toBeNull();
+  expect(sorenoNotices("Fix Soreno: the build")).toBeNull();
+});

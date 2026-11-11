@@ -2,6 +2,7 @@
 
 import type { AgentConversationState } from "./agentConversation";
 import { splitAgentConversationPrompt } from "./agentConversationAttachments";
+import { sorenoNotices } from "./agentSessions";
 
 /** The recalled position and text, and the draft they replaced; null while not browsing. */
 export type AgentConversationRecall = {
@@ -10,7 +11,7 @@ export type AgentConversationRecall = {
   stash: string;
 } | null;
 
-/** The texts the user sent, queued ones last, oldest first, without attached files. */
+/** The texts the user sent, queued ones last, oldest first, without attached files or Soreno's messages. */
 export function agentConversationHistory(
   state: Pick<AgentConversationState, "entries" | "queued">,
 ): string[] {
@@ -22,7 +23,8 @@ export function agentConversationHistory(
     ...state.queued.map((message) => message.text),
   ]) {
     const text = splitAgentConversationPrompt(prompt).text.trim();
-    if (text && text !== history[history.length - 1]) history.push(text);
+    if (text && !sorenoNotices(text) && text !== history[history.length - 1])
+      history.push(text);
   }
   return history;
 }

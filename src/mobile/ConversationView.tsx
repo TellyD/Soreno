@@ -19,6 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { IconButton } from "@/components/ui/IconButton";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { sorenoNotices } from "@/domain/agentSessions";
 import {
   awaitingReply,
   toolLabel,
@@ -124,6 +125,36 @@ function Entry({
           content={entry.text}
           scrollableTables={false}
         />
+        {truncated}
+      </div>
+    );
+  const notices = entry.images === 0 ? sorenoNotices(entry.text) : null;
+  if (notices)
+    return (
+      <div className="mobile-notices">
+        {notices.map((notice, index) =>
+          notice.details ? (
+            <details key={index} className="mobile-notice">
+              <summary className="mobile-tool-line">
+                <ChevronRight
+                  size={14}
+                  className="mobile-tool-icon mobile-notice-chevron"
+                  aria-hidden="true"
+                />
+                <span className="mobile-tool-text">{notice.summary}</span>
+              </summary>
+              <MarkdownContent
+                className="mobile-markdown mobile-notice-details"
+                content={notice.details}
+                scrollableTables={false}
+              />
+            </details>
+          ) : (
+            <p key={index} className="mobile-notice-line">
+              {notice.summary}
+            </p>
+          ),
+        )}
         {truncated}
       </div>
     );

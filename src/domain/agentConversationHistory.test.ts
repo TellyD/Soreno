@@ -5,7 +5,7 @@ import {
   recallAgentConversationMessage,
 } from "./agentConversationHistory";
 
-it("keeps what the user typed, without files, blanks or repeats", () => {
+it("keeps what the user typed, without files, blanks, repeats or Soreno's messages", () => {
   const user = (id: number, text: string) => ({
     id,
     role: "user" as const,
@@ -21,6 +21,7 @@ it("keeps what the user typed, without files, blanks or repeats", () => {
         ),
         { id: 2, role: "notice", notice: { kind: "aborted" } } as never,
         user(3, "  "),
+        user(6, "Soreno: Kanban issue SOR-1 updated."),
         user(4, "suite"),
         user(5, "suite"),
       ],

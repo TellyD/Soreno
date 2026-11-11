@@ -25,6 +25,7 @@ import type {
   AgentConversationTool,
 } from "../../domain/agentConversation";
 import { splitAgentConversationPrompt } from "../../domain/agentConversationAttachments";
+import { sorenoNotices } from "../../domain/agentSessions";
 import { withoutIssueSummaryTags } from "../../domain/kanbanAgent";
 import { MarkdownContent } from "../MarkdownContent";
 import { Button } from "../ui/Button";
@@ -60,6 +61,42 @@ export const ConversationEntry = memo(function ConversationEntry({
   s: Strings;
 }) {
   if (entry.role === "user") {
+    const notices = entry.images.length ? null : sorenoNotices(entry.text);
+    if (notices)
+      return (
+        <article className="agent-conversation-message">
+          {notices.map(({ summary, details }, index) =>
+            details ? (
+              <details
+                key={index}
+                className="agent-conversation-thinking agent-conversation-soreno"
+              >
+                <summary>
+                  <ChevronRight size={14} aria-hidden="true" />
+                  <span className="agent-conversation-notice-summary">
+                    {summary}
+                  </span>
+                </summary>
+                <MarkdownContent
+                  className="agent-conversation-prose"
+                  content={details}
+                />
+              </details>
+            ) : (
+              <p key={index} className="agent-conversation-notice">
+                {summary}
+              </p>
+            ),
+          )}
+          <div
+            className="agent-conversation-actions"
+            role="group"
+            aria-label={s.messageActions}
+          >
+            <CopyButton text={entry.text.trim()} onCopy={onCopy} s={s} />
+          </div>
+        </article>
+      );
     const { text, files } = splitAgentConversationPrompt(entry.text);
     return (
       <article className="agent-conversation-message is-user">
