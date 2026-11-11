@@ -1,8 +1,4 @@
-import {
-  FolderOpen,
-  GitPullRequest,
-  Trash2,
-} from "lucide-react";
+import { FolderOpen, GitPullRequest, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { openKanbanImage } from "../../data/kanbanApi";
 import {

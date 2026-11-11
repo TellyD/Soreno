@@ -233,10 +233,7 @@ export function KanbanIssueCard({
           <KanbanPriorityIcon priority={priority} size={14} />
         </span>
         {issue.assignee ? (
-          <span
-            className="kanban-chip"
-            title={t("kanban.issue.assignee")}
-          >
+          <span className="kanban-chip" title={t("kanban.issue.assignee")}>
             <KanbanUserAvatar size={14} url={issue.assignee.avatarUrl} />
             <span className="kanban-chip-label">{issue.assignee.name}</span>
           </span>
