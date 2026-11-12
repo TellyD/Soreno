@@ -443,7 +443,7 @@
 }
 .agent-project-section[data-drop]::after,
 .agent-project-section[data-project-drop]::after,
-.agent-project[data-drop]::after {
+:is(.agent-project, .agent-project-group)[data-drop]::after {
   position: absolute;
   right: 6px;
   left: 6px;
@@ -461,14 +461,14 @@
     [data-drop="before"],
     [data-project-drop="before"]
   )::after,
-.agent-project[data-drop="before"]::after {
+:is(.agent-project, .agent-project-group)[data-drop="before"]::after {
   top: -5px;
 }
 .agent-project-section:is(
     [data-drop="after"],
     [data-project-drop="after"]
   )::after,
-.agent-project[data-drop="after"]::after {
+:is(.agent-project, .agent-project-group)[data-drop="after"]::after {
   bottom: -5px;
 }
 .agent-project,
@@ -494,8 +494,15 @@
 .agent-project.is-dragging {
   opacity: 0.72;
 }
-.agent-project[data-drop]::after {
+:is(.agent-project, .agent-project-group)[data-drop]::after {
   z-index: 2;
+}
+/* Zero-height probe on the section's bottom edge: a drop below it leaves the group. */
+.agent-project-group-end {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
 }
 /* The group row highlights its whole section, member projects included. */
 .agent-project-list:not(.is-reordering)
@@ -1174,11 +1181,12 @@ body.is-resizing-services iframe {
 .agent-session-tab-item[data-drop="after"]::after {
   right: 0;
 }
-/* Short process locks and favorite saves must not dim the workspace or shift the tab labels. */
+/* Short process locks, favorite saves and group moves must not dim the workspace or shift the tab labels. */
 :is(.agent-workspace, .agent-rail):is(
     [data-launching],
     [data-closing],
-    [data-saving-favorite]
+    [data-saving-favorite],
+    [data-moving-project]
   )
   :is(.agent-session-tab, .app-icon-button, .agent-activity-session):disabled {
   opacity: 1;
@@ -1186,7 +1194,8 @@ body.is-resizing-services iframe {
 :is(.agent-workspace, .agent-rail):is(
     [data-launching],
     [data-closing],
-    [data-saving-favorite]
+    [data-saving-favorite],
+    [data-moving-project]
   )
   :is(.agent-session-tab, .app-icon-button):disabled {
   color: inherit;

@@ -146,6 +146,10 @@ it("reorders projects in both directions without selecting or collapsing them", 
     "p2",
     "p3",
   ]);
+
+  // Past the next project's header, not the middle of its whole block.
+  await dragProject("Soreno", 10, 120);
+  expect(projectNames()).toEqual(["Other", "Soreno", "Third"]);
 });
 
 it("reorders projects through the keyboard context menu", async () => {
@@ -598,7 +602,19 @@ it("creates, edits, collapses, restores, and deletes project groups", async () =
   const groupId = data.groups![0].id;
 
   projectGeometry();
+  const saveGroup = vi
+    .mocked(api.saveAgentProjectGroup)
+    .getMockImplementation()!;
+  let releaseSave!: () => void;
+  vi.mocked(api.saveAgentProjectGroup).mockImplementationOnce(async (value) => {
+    await new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    return saveGroup(value);
+  });
   await dragProject("Backoffice", 250, 100);
+  expect(projectNames()).toEqual(["Soreno", "Backoffice", "Website"]);
+  await act(async () => releaseSave());
   await vi.waitFor(() =>
     expect(data.groups![0].projectIds).toEqual(["p1", "p2", "p3"]),
   );
@@ -666,6 +682,24 @@ it("drags a project group as one block among root projects", async () => {
     "p2",
   ]);
   expect(data.groups![0].projectIds).toEqual(["p1", "p2"]);
+});
+
+it("drops a group's last project right after the group, outside it", async () => {
+  data.projects.push(
+    { ...project, id: "p2", name: "Website" },
+    { ...project, id: "p3", name: "Backoffice" },
+  );
+  data.groups = [
+    { id: "g1", name: "Suite", projectIds: ["p1", "p2"], groupProjectId: null },
+  ];
+  await render();
+  projectGeometry();
+
+  // Below the group's bottom edge, above the next project's header midpoint.
+  await dragProject("Website", 110, 205);
+
+  await vi.waitFor(() => expect(data.groups![0].projectIds).toEqual(["p1"]));
+  expect(projectNames()).toEqual(["Soreno", "Website", "Backoffice"]);
 });
 
 it("keeps the chosen section order while a group move is being saved", async () => {

@@ -78,6 +78,7 @@ type AgentProjectRailProps = {
   closing: boolean;
   serviceOperating: boolean;
   savingFavorite: boolean;
+  movingProject: boolean;
   workspace: AgentWorkspace;
   /** Rail entries after the "only with agents" filter. */
   projects: AgentProject[];
@@ -160,6 +161,7 @@ export function AgentProjectRail({
   closing,
   serviceOperating,
   savingFavorite,
+  movingProject,
   workspace,
   projects,
   groups,
@@ -1065,6 +1067,7 @@ export function AgentProjectRail({
       data-launching={startingSessionId !== null || undefined}
       data-closing={closing || undefined}
       data-saving-favorite={savingFavorite || undefined}
+      data-moving-project={movingProject || undefined}
       data-service-operating={serviceOperating || undefined}
       hidden={hidden}
       aria-label={s.projects}

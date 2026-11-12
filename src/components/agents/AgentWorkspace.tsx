@@ -290,6 +290,10 @@ export function AgentWorkspace({
   const [projectSectionOrder, setProjectSectionOrder] = useState(
     readProjectSectionOrder,
   );
+  const [pendingGroupMove, setPendingGroupMove] = useState<{
+    projectId: string;
+    groupId: string | null;
+  } | null>(null);
   const [tabOrder, setTabOrder] = useState(readTabOrder);
   const [pinnedSessionIds, setPinnedSessionIds] = useState(readPinnedTabs);
   const [terminalSplits, setTerminalSplits] = useState(readTerminalSplits);
@@ -439,10 +443,18 @@ export function AgentWorkspace({
     ),
   );
   const projectGroups: AgentProjectGroup[] = (workspace.groups ?? []).map(
-    (group) => ({
-      ...group,
-      collapsed: collapsed.has(groupCollapseKey(group.id)),
-    }),
+    (group) => {
+      const projectIds = pendingGroupMove
+        ? group.projectIds.filter((id) => id !== pendingGroupMove.projectId)
+        : group.projectIds;
+      if (pendingGroupMove?.groupId === group.id)
+        projectIds.push(pendingGroupMove.projectId);
+      return {
+        ...group,
+        projectIds,
+        collapsed: collapsed.has(groupCollapseKey(group.id)),
+      };
+    },
   );
   const orderedProjects = orderAgentItems(workspace.projects, projectOrder);
   const listedProjects = orderedProjects.filter(
@@ -2000,6 +2012,8 @@ export function AgentWorkspace({
     if (!group) return false;
     const projectIds = group.projectIds.filter((id) => id !== projectId);
     if (groupId !== null) projectIds.push(projectId);
+    // Shows the move until the save reloads the workspace, so the rail doesn't flash the old placement.
+    setPendingGroupMove({ projectId, groupId });
     return execute(async () => {
       const project = workspace.projects.find((item) => item.id === projectId);
       const anchor = workspace.projects.find(
@@ -2033,7 +2047,7 @@ export function AgentWorkspace({
         name: group.name,
         projectIds,
       });
-    });
+    }).finally(() => setPendingGroupMove(null));
   }
   async function moveProjectToGroup(projectId: string, groupId: string | null) {
     await updateProjectGroup(projectId, groupId);
@@ -2698,6 +2712,7 @@ export function AgentWorkspace({
       closing={closingSessionId !== null}
       serviceOperating={pendingServiceKeys.size > 0}
       savingFavorite={savingFavorite}
+      movingProject={pendingGroupMove !== null}
       workspace={workspace}
       projects={filteredProjects}
       groups={filteredProjectGroups}
@@ -2842,6 +2857,7 @@ export function AgentWorkspace({
         data-closing={closingSessionId !== null || undefined}
         data-service-operating={pendingServiceKeys.size > 0 || undefined}
         data-saving-favorite={savingFavorite || undefined}
+        data-moving-project={pendingGroupMove !== null || undefined}
         hidden={hidden}
         aria-label={s.title}
       >

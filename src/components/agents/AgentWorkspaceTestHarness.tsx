@@ -984,6 +984,42 @@ function projectGeometry() {
       } as DOMRect;
     });
   }
+  for (const row of container.querySelectorAll<HTMLElement>(
+    ".agent-project-row",
+  )) {
+    const block = row.parentElement!.closest<HTMLElement>(
+      ".agent-project, .agent-project-group",
+    )!;
+    vi.spyOn(row, "getBoundingClientRect").mockImplementation(() => {
+      const { top } = block.getBoundingClientRect();
+      return {
+        left: 0,
+        right: 240,
+        top,
+        bottom: top + 30,
+        width: 240,
+        height: 30,
+      } as DOMRect;
+    });
+  }
+  for (const probe of container.querySelectorAll<HTMLElement>(
+    ".agent-project-group-end",
+  )) {
+    vi.spyOn(probe, "getBoundingClientRect").mockImplementation(() => {
+      const blocks = probe.parentElement!.querySelectorAll<HTMLElement>(
+        ":scope > :is(.agent-project, .agent-project-group)",
+      );
+      const { bottom } = blocks[blocks.length - 1].getBoundingClientRect();
+      return {
+        left: 0,
+        right: 240,
+        top: bottom,
+        bottom,
+        width: 240,
+        height: 0,
+      } as DOMRect;
+    });
+  }
 }
 function terminalGeometry() {
   const stack = container.querySelector<HTMLElement>(".agent-terminal-stack")!;

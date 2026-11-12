@@ -139,6 +139,13 @@ function dropPosition(
   return undefined;
 }
 
+// Open session lists make a block tall: its midpoint would sit far below the header the user aims at.
+function dropMeasure(element: HTMLElement) {
+  return element.querySelector<HTMLElement>(".agent-project-row") ?? element;
+}
+
+const groupEndPrefix = "group-end:";
+
 export function AgentProjectList({
   projects,
   groups,
@@ -166,10 +173,13 @@ export function AgentProjectList({
     ungroupedRailProjects,
     railSections,
   } = agentRailLayout({ projects, groups, worktreeGroups, sectionOrder });
+  // A group's end slot tells "last in the group" apart from "right after the group".
   const projectDragIds = railSections.flatMap((section) => {
     const projectIds = section.projects.map((project) => project.id);
     if (!section.group) return projectIds;
-    return section.group.collapsed ? [section.id] : [section.id, ...projectIds];
+    return section.group.collapsed
+      ? [section.id]
+      : [section.id, ...projectIds, `${groupEndPrefix}${section.group.id}`];
   });
   const projectReorder = useAgentTabReorder({
     axis: "vertical",
@@ -194,6 +204,16 @@ export function AgentProjectList({
     ? railSections
         .filter((section) => section.id !== projectSectionReorder.draggingId)
         .slice(-1)[0]?.id
+    : null;
+  const groupEndDropSection = railSections.find(
+    (section) =>
+      section.group &&
+      projectReorder.dropBeforeId === `${groupEndPrefix}${section.group.id}`,
+  );
+  const groupEndDropAfterId = groupEndDropSection
+    ? (groupEndDropSection.projects
+        .filter((project) => project.id !== projectReorder.draggingId)
+        .slice(-1)[0]?.id ?? groupEndDropSection.id)
     : null;
 
   function reorderProjectSection(id: string, index: number) {
@@ -220,17 +240,14 @@ export function AgentProjectList({
     )
       return;
     const nextIds = nextItems.map((item) => item.id);
-    const movedIndex = nextIds.indexOf(id);
-    const followingGroupId = manualGroupByProjectId.get(
-      nextIds[movedIndex + 1],
-    )?.id;
-    const precedingGroupId = manualGroupByProjectId.get(
-      nextIds[movedIndex - 1],
-    )?.id;
+    const followingId = nextIds[nextIds.indexOf(id) + 1] ?? "";
     const currentGroupId = manualGroupByProjectId.get(id)?.id ?? null;
-    const targetGroupId =
-      followingGroupId ??
-      (precedingGroupId === currentGroupId ? currentGroupId : null);
+    const targetGroupId = followingId.startsWith(groupEndPrefix)
+      ? followingId.slice(groupEndPrefix.length)
+      : (manualGroupByProjectId.get(followingId)?.id ?? null);
+    const orderIds = nextIds.filter(
+      (itemId) => !itemId.startsWith(groupEndPrefix),
+    );
     let nextGroups = groups;
     if (targetGroupId !== currentGroupId) {
       nextGroups = groups
@@ -244,7 +261,7 @@ export function AgentProjectList({
     }
     onSectionOrderChange([
       ...new Set(
-        nextIds.flatMap((itemId) => {
+        orderIds.flatMap((itemId) => {
           if (itemId.startsWith("group:")) return [itemId];
           return nextGroups.some((group) => group.projectIds.includes(itemId))
             ? []
@@ -253,7 +270,7 @@ export function AgentProjectList({
       ),
     ]);
     onReorder(
-      nextIds.flatMap((itemId) => {
+      orderIds.flatMap((itemId) => {
         const section = railSections.find((item) => item.id === itemId);
         if (!section) return [itemId];
         if (!section.group?.collapsed) return [];
@@ -288,10 +305,15 @@ export function AgentProjectList({
     return (
       <div
         ref={(element) => {
-          if (element) projectReorder.itemRefs.current.set(sectionId, element);
+          if (element)
+            projectReorder.itemRefs.current.set(
+              sectionId,
+              dropMeasure(element),
+            );
           else projectReorder.itemRefs.current.delete(sectionId);
         }}
         className="agent-project-group"
+        data-drop={groupEndDropAfterId === sectionId ? "after" : undefined}
         onPointerDown={(event) => {
           if (
             event.target instanceof Element &&
@@ -390,7 +412,7 @@ export function AgentProjectList({
                 if (element)
                   projectSectionReorder.itemRefs.current.set(
                     section.id,
-                    element,
+                    dropMeasure(element),
                   );
                 else projectSectionReorder.itemRefs.current.delete(section.id);
               }}
@@ -401,10 +423,25 @@ export function AgentProjectList({
               )}
               data-project-drop={dropPosition(
                 !!section.group && projectReorder.dropBeforeId === section.id,
-                !!section.group && projectDropAfterId === section.id,
+                !!section.group &&
+                  (projectDropAfterId === section.id ||
+                    projectDropAfterId ===
+                      `${groupEndPrefix}${section.group.id}`),
               )}
               key={section.id}
             >
+              {section.group && !section.group.collapsed ? (
+                <div
+                  ref={(element) => {
+                    const id = `${groupEndPrefix}${section.group?.id}`;
+                    if (element)
+                      projectReorder.itemRefs.current.set(id, element);
+                    else projectReorder.itemRefs.current.delete(id);
+                  }}
+                  className="agent-project-group-end"
+                  aria-hidden="true"
+                />
+              ) : null}
               {section.group
                 ? projectGroupHeader(section.group, section.id)
                 : null}
@@ -426,7 +463,7 @@ export function AgentProjectList({
                       if (element)
                         projectReorder.itemRefs.current.set(
                           project.id,
-                          element,
+                          dropMeasure(element),
                         );
                       else projectReorder.itemRefs.current.delete(project.id);
                     }}
@@ -434,7 +471,8 @@ export function AgentProjectList({
                     data-project-id={project.id}
                     data-drop={dropPosition(
                       projectReorder.dropBeforeId === project.id,
-                      projectDropAfterId === project.id,
+                      projectDropAfterId === project.id ||
+                        groupEndDropAfterId === project.id,
                     )}
                     key={project.id}
                     onPointerDown={(event) => {
