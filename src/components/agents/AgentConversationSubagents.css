@@ -6,7 +6,7 @@
   border-left: 1px solid var(--border-muted);
   padding: 0 0 0 14px;
   list-style: none;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--agent-text-scale));
 }
 
 .agent-conversation-panel-list .agent-conversation-subagents {

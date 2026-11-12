@@ -211,6 +211,7 @@ export function AgentConversationComposer({
   }
 
   // Grows with its content up to the stylesheet's max height.
+  // shortcut: an agent text size change keeps a pending draft's old height until the next edit; add the scale to the deps if users notice.
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;

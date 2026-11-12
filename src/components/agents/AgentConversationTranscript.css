@@ -31,7 +31,7 @@
   padding: 9px 13px;
   color: var(--text-strong);
   background: var(--surface-active);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--agent-text-scale));
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -43,7 +43,7 @@
 }
 
 .agent-conversation-prose {
-  font-size: 14px;
+  font-size: calc(14px * var(--agent-text-scale));
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
@@ -75,13 +75,13 @@
 .agent-conversation-prose h3 {
   margin: 18px 0 6px;
   color: var(--text-heading);
-  font-size: 14px;
+  font-size: calc(14px * var(--agent-text-scale));
   font-weight: 700;
   line-height: 1.4;
 }
 
 .agent-conversation-prose h3[data-level="1"] {
-  font-size: 16px;
+  font-size: calc(16px * var(--agent-text-scale));
 }
 
 .agent-conversation-prose h3:first-child {
@@ -136,7 +136,7 @@
 .agent-conversation-notice {
   margin: 0;
   color: var(--text-meta);
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -175,7 +175,7 @@
   padding: 2px 0 2px 12px;
   color: var(--text-muted);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -185,7 +185,7 @@
 .agent-conversation-thinking,
 .agent-conversation-tool {
   min-width: 0;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--agent-text-scale));
 }
 
 /* An integer line box keeps text and icons on the same pixel rounding wherever the row lands. */
@@ -200,7 +200,7 @@
   border-radius: var(--control-radius);
   padding: 3px 8px;
   color: var(--text-meta);
-  line-height: 22px;
+  line-height: calc(22px * var(--agent-text-scale));
   cursor: pointer;
   list-style: none;
 }
@@ -244,7 +244,7 @@
   margin-top: 4px;
   border-left: 2px solid var(--border-muted);
   padding-left: 12px;
-  font-size: 13px;
+  font-size: calc(13px * var(--agent-text-scale));
 }
 
 .agent-conversation-tool-icon {
@@ -267,7 +267,7 @@
   overflow: hidden;
   color: var(--text);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -317,7 +317,7 @@
   padding: 8px 10px;
   color: var(--text);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--agent-text-scale));
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -334,7 +334,7 @@
   padding: 5px 10px;
   color: var(--text-soft);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--agent-text-scale));
 }
 
 .agent-conversation-diff pre {
@@ -342,7 +342,7 @@
   padding: 6px 0;
   color: var(--text);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--agent-text-scale));
   line-height: 1.5;
 }
 
@@ -426,7 +426,7 @@
   border-radius: 6px;
   padding: 3px 7px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
 }
 
 .agent-conversation-files span {

@@ -93,6 +93,8 @@ pub struct AppSettings {
     pub material_file_icons_enabled: bool,
     #[serde(default = "default_note_lock_minutes")]
     pub note_lock_minutes: u32,
+    #[serde(default = "default_agent_text_size")]
+    pub agent_text_size: u32,
 }
 
 fn enabled() -> bool {
@@ -101,6 +103,10 @@ fn enabled() -> bool {
 
 fn default_note_lock_minutes() -> u32 {
     10
+}
+
+fn default_agent_text_size() -> u32 {
+    100
 }
 
 // OMP bundles these commands; they stay hidden until the user shows them in the chat's `/` menu.
@@ -128,6 +134,7 @@ impl Default for AppSettings {
             agent_notifications_enabled: true,
             material_file_icons_enabled: false,
             note_lock_minutes: default_note_lock_minutes(),
+            agent_text_size: default_agent_text_size(),
         }
     }
 }
@@ -294,6 +301,7 @@ mod tests {
             agent_notifications_enabled: false,
             material_file_icons_enabled: true,
             note_lock_minutes: 30,
+            agent_text_size: 125,
         };
 
         write_settings(&dir, settings).expect("write settings");

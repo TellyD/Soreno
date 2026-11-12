@@ -1014,7 +1014,6 @@ export const AgentTerminal = memo(function AgentTerminal({
           Math.floor(host.clientHeight / cell.current.height),
         );
         const size = `${cols}:${rows}`;
-        if (!running) return;
         resize.queue = resize.queue
           .then(async () => {
             if (disposed) return;
@@ -1031,6 +1030,8 @@ export const AgentTerminal = memo(function AgentTerminal({
     };
     const observer = new ResizeObserver(fit);
     observer.observe(host);
+    // The probe resizes with the agent text size setting, the host does not.
+    if (probe.current) observer.observe(probe.current);
     fit();
     void document.fonts?.ready.then(() => {
       if (!disposed) fit();

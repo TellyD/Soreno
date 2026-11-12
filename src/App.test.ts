@@ -31,6 +31,7 @@ const state = vi.hoisted(() => ({
   isLoading: false,
   changeVault: vi.fn<() => Promise<void>>(),
   selectVault: (_id: string): Promise<void> => Promise.resolve(),
+  updateSettings: vi.fn(),
 }));
 vi.mock("./hooks/useNotesController", () => ({
   useNotesController: (options: typeof state.close) => {
@@ -74,7 +75,10 @@ vi.mock("./i18n", () => ({
   useI18n: () => ({ locale: "fr-FR", t: (key: string) => key }),
 }));
 vi.mock("./settings", () => ({
-  useAppSettings: () => ({ settings: { noteLockMinutes: 10 } }),
+  useAppSettings: () => ({
+    settings: { noteLockMinutes: 10 },
+    updateSettings: state.updateSettings,
+  }),
 }));
 vi.mock("./components/agents/AgentWorkspace", () => ({
   AgentWorkspace: ({
@@ -334,6 +338,64 @@ it("blocks native webview shortcuts without swallowing project search", async ()
     expect(projectSearch.defaultPrevented).toBe(false);
   } finally {
     await act(async () => root.unmount());
+  }
+});
+
+it("steps the agent text size within its options from the agents view only", async () => {
+  state.updateSettings.mockResolvedValue(undefined);
+  const press = (init: KeyboardEventInit, target: EventTarget = document) => {
+    const event = new KeyboardEvent("keydown", {
+      ...init,
+      bubbles: true,
+      cancelable: true,
+    });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(createElement(App)));
+    expect(press({ key: "=", ctrlKey: true })).toBe(false);
+    expect(state.updateSettings).not.toHaveBeenCalled();
+    await act(async () => root.unmount());
+
+    state.activeView = "agents";
+    const next = createRoot(container);
+    await act(async () => next.render(createElement(App)));
+    const canvas = document.createElement("div");
+    canvas.className = "design-canvas";
+    const inCanvas = canvas.appendChild(document.createElement("div"));
+    document.body.appendChild(canvas);
+    try {
+      for (const [init, from, to] of [
+        [{ key: "+", ctrlKey: true, shiftKey: true }, 100, 110],
+        [{ key: "=", ctrlKey: true }, 150, 150],
+        [{ key: "-", ctrlKey: true }, 80, 80],
+        [{ key: "-", code: "Digit6", ctrlKey: true }, 125, 110],
+        [{ key: "à", code: "Digit0", ctrlKey: true }, 150, 100],
+        [{ key: "=", ctrlKey: true, altKey: true }, null, null],
+        [{ key: "]", code: "Equal", ctrlKey: true }, null, null],
+        [{ key: "_", code: "Minus", ctrlKey: true, shiftKey: true }, null, null],
+        [{ key: "=", ctrlKey: true }, "canvas", null],
+      ] as const) {
+        state.updateSettings.mockClear();
+        const prevented = press(init, from === "canvas" ? inCanvas : document);
+        if (from === null || from === "canvas") {
+          expect(prevented).toBe(false);
+          expect(state.updateSettings).not.toHaveBeenCalled();
+          continue;
+        }
+        expect(prevented).toBe(true);
+        const patch = state.updateSettings.mock.calls[0][0];
+        expect(patch({ agentTextSize: from })).toEqual({ agentTextSize: to });
+      }
+    } finally {
+      canvas.remove();
+      await act(async () => next.unmount());
+    }
+  } finally {
+    container.remove();
   }
 });
 

@@ -82,6 +82,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     document.documentElement.dataset.terminalTheme = terminalTheme;
   }, [terminalTheme]);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--agent-text-scale",
+      String(settings.agentTextSize / 100),
+    );
+  }, [settings.agentTextSize]);
+
   const setThemePreference = useCallback(
     async (preference: ThemePreference) => {
       await updateSettings({

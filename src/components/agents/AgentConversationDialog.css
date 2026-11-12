@@ -8,7 +8,7 @@
   padding: 12px 14px;
   color: var(--text);
   background: var(--surface-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--agent-text-scale));
 }
 
 /* An approval holds the agent back: it reads as the one thing to settle now. */
@@ -28,7 +28,7 @@
   min-width: 0;
   margin: 0;
   color: var(--text-heading);
-  font-size: 13px;
+  font-size: calc(13px * var(--agent-text-scale));
   font-weight: 650;
   line-height: 1.4;
 }
@@ -37,7 +37,7 @@
   flex: none;
   margin-left: auto;
   color: var(--text-meta);
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
 }
 
 /* Long requests scroll here so the title and the answer buttons stay on screen. */
@@ -61,7 +61,7 @@
   color: var(--text-strong);
   background: var(--surface);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -82,7 +82,7 @@
 
 .agent-conversation-dialog-actions kbd {
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--agent-text-scale));
   opacity: 0.7;
 }
 
@@ -118,7 +118,7 @@
 
 .agent-conversation-dialog-option small {
   color: var(--text-meta);
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
   line-height: 1.4;
 }
 
@@ -154,7 +154,7 @@
 .agent-conversation-dialog-recommended {
   margin-left: 8px;
   color: var(--text-meta);
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
 }
 
 .agent-conversation-ask {

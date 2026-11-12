@@ -45,7 +45,7 @@
   padding: 0 4px 0 0;
   color: var(--text-strong);
   background: transparent;
-  font-size: 14px;
+  font-size: calc(14px * var(--agent-text-scale));
   line-height: 1.55;
 }
 
@@ -90,7 +90,7 @@
   overflow: hidden;
   padding: 0 4px 0 0;
   color: var(--text-strong);
-  font-size: 14px;
+  font-size: calc(14px * var(--agent-text-scale));
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -131,7 +131,7 @@
 }
 
 .agent-conversation-draft-chip span span {
-  font-size: 13px;
+  font-size: calc(13px * var(--agent-text-scale));
 }
 
 /* A marker wrapped across lines cannot hold the one-piece chip: it shows as plain text. */
@@ -193,7 +193,7 @@
 .agent-conversation-goal {
   margin-right: 4px;
   color: var(--text-meta);
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -257,7 +257,7 @@
   padding: 2px 2px 2px 6px;
   color: var(--text-muted);
   background: var(--surface-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
 }
 
 .agent-conversation-attachments img {
@@ -304,7 +304,7 @@
   color: var(--text);
   background: var(--surface-muted);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--agent-text-scale));
   line-height: 1.45;
   white-space: pre;
 }

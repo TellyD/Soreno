@@ -11,6 +11,7 @@ export function AgentConversationDraftBackdrop({
   ref: RefObject<HTMLDivElement | null>;
 }) {
   // A marker holds a space, so it may wrap: its chip would then sit over one fragment only.
+  // shortcut: an agent text size change that rewraps a marker without resizing the backdrop keeps a stale split state until the next edit; recheck on scale change if users notice.
   useLayoutEffect(() => {
     const backdrop = ref.current;
     if (!backdrop) return;

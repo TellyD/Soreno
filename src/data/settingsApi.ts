@@ -22,6 +22,8 @@ import {
 
 export const noteLockMinutesOptions = [1, 5, 10, 15, 30, 60] as const;
 export type NoteLockMinutes = (typeof noteLockMinutesOptions)[number];
+export const agentTextSizeOptions = [80, 90, 100, 110, 125, 150] as const;
+export type AgentTextSize = (typeof agentTextSizeOptions)[number];
 
 export type AppSettings = {
   codexGitModel: string | null;
@@ -39,6 +41,7 @@ export type AppSettings = {
   agentNotificationsEnabled: boolean;
   materialFileIconsEnabled: boolean;
   noteLockMinutes: NoteLockMinutes;
+  agentTextSize: AgentTextSize;
 };
 
 export const defaultAppSettings: AppSettings = {
@@ -57,6 +60,7 @@ export const defaultAppSettings: AppSettings = {
   agentNotificationsEnabled: true,
   materialFileIconsEnabled: false,
   noteLockMinutes: 10,
+  agentTextSize: 100,
 };
 
 export async function resetWindowSizes(): Promise<void> {
@@ -143,5 +147,10 @@ export function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
     )
       ? (settings.noteLockMinutes as NoteLockMinutes)
       : defaultAppSettings.noteLockMinutes,
+    agentTextSize: agentTextSizeOptions.includes(
+      settings.agentTextSize as AgentTextSize,
+    )
+      ? (settings.agentTextSize as AgentTextSize)
+      : defaultAppSettings.agentTextSize,
   };
 }

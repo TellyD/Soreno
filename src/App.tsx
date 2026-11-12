@@ -55,6 +55,8 @@ import { listenOpenSettings } from "./data/appMenuApi";
 import type { KanbanIssueSelection } from "./domain/kanban";
 import type { Note } from "./domain/notes";
 import { selectStatusBarSaveStateText } from "./domain/saveStatus";
+import { agentTextSizeOptions, defaultAppSettings } from "./data/settingsApi";
+import { notifyError } from "./notifications";
 import { useI18n } from "./i18n";
 import { useKanbanIssueRequestNotifications } from "./hooks/useKanbanIssueRequests";
 import { useNotesController } from "./hooks/useNotesController";
@@ -95,7 +97,7 @@ function App() {
   );
   const { t } = useI18n();
   const agentStrings = useAgentStrings();
-  const { settings } = useAppSettings();
+  const { settings, updateSettings } = useAppSettings();
   const notes = useNotesController({
     beforeClose: async () => {
       if (transitionInFlight.current) return false;
@@ -381,6 +383,51 @@ function App() {
     isAgentGitPanelOpen,
     isAgentGitPanelExpanded,
   ]);
+
+  useEffect(() => {
+    if (!isAgentsView || agentBoard !== null) return;
+    // Capture phase: a focused terminal would otherwise send the chord as input.
+    function changeAgentTextSize(event: KeyboardEvent) {
+      if (
+        event.isComposing ||
+        event.altKey ||
+        (isMacOS
+          ? !event.metaKey || event.ctrlKey
+          : !event.ctrlKey || event.metaKey) ||
+        document.querySelector('[aria-modal="true"]') ||
+        // A focused Design preview zooms with the same chords.
+        (event.target as Element | null)?.closest?.(".design-canvas")
+      )
+        return;
+      // Shift is allowed for "+"; physical codes only for non-ASCII keys (AZERTY's "à" for 0).
+      const key = event.key > "\x7e" ? event.code : event.key;
+      const step =
+        key === "=" || key === "+" || key === "Equal"
+          ? 1
+          : key === "-" || key === "Minus"
+            ? -1
+            : key === "0" || key === "Digit0"
+              ? 0
+              : null;
+      if (step === null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void updateSettings(({ agentTextSize }) => {
+        const index = agentTextSizeOptions.indexOf(agentTextSize) + step;
+        return {
+          agentTextSize:
+            step === 0
+              ? defaultAppSettings.agentTextSize
+              : agentTextSizeOptions[
+                  Math.min(Math.max(index, 0), agentTextSizeOptions.length - 1)
+                ],
+        };
+      }).catch(() => notifyError(t("settings.updateError")));
+    }
+    document.addEventListener("keydown", changeAgentTextSize, true);
+    return () =>
+      document.removeEventListener("keydown", changeAgentTextSize, true);
+  }, [agentBoard, isAgentsView, t, updateSettings]);
 
   useEffect(() => {
     const modalSelector = '[aria-modal="true"]';

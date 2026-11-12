@@ -39,6 +39,7 @@
     sans-serif;
   font-size: 14px;
   line-height: 1.45;
+  --agent-text-scale: 1;
   font-weight: 400;
   color: var(--text);
   background: var(--app-bg);

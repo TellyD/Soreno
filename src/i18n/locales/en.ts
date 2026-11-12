@@ -488,6 +488,9 @@ export const en = {
   "settings.appearance.terminalTheme.description":
     "Choose the appearance of agent and service terminals.",
   "settings.appearance.terminalTheme.title": "Terminal theme",
+  "settings.appearance.agentTextSize.description":
+    "Enlarge or shrink the text of agent terminals and conversations.",
+  "settings.appearance.agentTextSize.title": "Agent text size",
   "settings.terminalLog.title": "Terminal log",
   "settings.terminalLog.description":
     "Records terminal and Git read performance, and Git read errors, to help with troubleshooting.",
@@ -662,6 +665,9 @@ export const en = {
   "settings.shortcuts.attentionSession": "Next session waiting for a reply",
   "settings.shortcuts.closeTab": "Close the session tab",
   "settings.shortcuts.openSettings": "Open settings",
+  "settings.shortcuts.agentTextLarger": "Enlarge agent text",
+  "settings.shortcuts.agentTextSmaller": "Shrink agent text",
+  "settings.shortcuts.agentTextReset": "Agent text at 100%",
   "settings.shortcuts.openFile": "Open a project file",
   "settings.shortcuts.searchProject": "Search the project",
   "settings.shortcuts.searchFile": "Find in file",

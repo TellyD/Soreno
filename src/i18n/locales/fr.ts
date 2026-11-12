@@ -494,6 +494,9 @@ export const fr = {
   "settings.appearance.terminalTheme.description":
     "Choisir l’apparence des terminaux des agents et des services.",
   "settings.appearance.terminalTheme.title": "Thème du terminal",
+  "settings.appearance.agentTextSize.description":
+    "Agrandir ou réduire le texte des terminaux et des conversations des agents.",
+  "settings.appearance.agentTextSize.title": "Taille du texte des agents",
   "settings.terminalLog.title": "Journal du terminal",
   "settings.terminalLog.description":
     "Enregistre les performances du terminal et des lectures Git, ainsi que les erreurs de lecture Git, pour aider au dépannage.",
@@ -676,6 +679,9 @@ export const fr = {
     "Prochaine session qui attend une réponse",
   "settings.shortcuts.closeTab": "Fermer l’onglet de session",
   "settings.shortcuts.openSettings": "Ouvrir les paramètres",
+  "settings.shortcuts.agentTextLarger": "Agrandir le texte des agents",
+  "settings.shortcuts.agentTextSmaller": "Réduire le texte des agents",
+  "settings.shortcuts.agentTextReset": "Texte des agents à 100 %",
   "settings.shortcuts.openFile": "Ouvrir un fichier du projet",
   "settings.shortcuts.searchProject": "Rechercher dans le projet",
   "settings.shortcuts.searchFile": "Rechercher dans le fichier",

@@ -1,4 +1,5 @@
 import {
+  ALargeSmall,
   Bell,
   Bot,
   Check,
@@ -36,8 +37,10 @@ import { agentGridLogPath } from "../data/agentSessionsApi";
 import { writeClipboardText } from "../data/clipboard";
 import { openLogDirectory } from "../data/diagnosticsApi";
 import {
+  agentTextSizeOptions,
   noteLockMinutesOptions,
   resetWindowSizes,
+  type AgentTextSize,
   type NoteLockMinutes,
 } from "../data/settingsApi";
 import type { NoteEncryption } from "../hooks/useNoteEncryption";
@@ -312,6 +315,33 @@ export function SettingsModal({
                           </SegmentedControlItem>
                         ))}
                       </SegmentedControl>
+                    </div>
+                    <div className="settings-section">
+                      <SettingsIcon icon={ALargeSmall} />
+                      <div>
+                        <h5>{t("settings.appearance.agentTextSize.title")}</h5>
+                        <p>
+                          {t("settings.appearance.agentTextSize.description")}
+                        </p>
+                      </div>
+                      <Select
+                        aria-label={t(
+                          "settings.appearance.agentTextSize.title",
+                        )}
+                        popupClassName="settings-select-popup"
+                        value={String(settings.agentTextSize)}
+                        options={agentTextSizeOptions.map((size) => ({
+                          value: String(size),
+                          label: t("design.canvas.zoomLevel", {
+                            percent: size,
+                          }),
+                        }))}
+                        onValueChange={(value) =>
+                          handleSettingsPatch({
+                            agentTextSize: Number(value) as AgentTextSize,
+                          })
+                        }
+                      />
                     </div>
                   </SettingsGroup>
                   <SettingsGroup

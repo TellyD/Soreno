@@ -223,6 +223,8 @@ export class AgentGridRenderer {
     this.letterSpacing = letterSpacing;
     this.perCell = false;
     this.calibration = { settled: false, drifts: [] };
+    this.measure = undefined;
+    this.glyphFits.clear();
     this.applyScreenStyle();
     this.repaint();
     this.paintLink();
