@@ -721,7 +721,7 @@ export function AgentWorkspace({
   const quickWorktree = useQuickWorktree({
     hidden,
     isBlocked: () => closing.current || isBusy(),
-    disconnectedProjectIds: workspace.disconnectedProjectIds ?? [],
+    connectivity: workspace,
     execute,
     onCreated: (created, worktree, sourceProjectId) =>
       openWorktree(

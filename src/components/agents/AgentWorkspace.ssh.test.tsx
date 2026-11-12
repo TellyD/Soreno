@@ -33,6 +33,7 @@ import {
   requestAutomations,
 } from "./AgentWorkspaceTestHarness";
 import * as api from "../../data/agentSessionsApi";
+import * as gitApi from "../../data/projectGitApi";
 import * as automationsApi from "../../data/automationsApi";
 import { getNotifications } from "../../notifications";
 
@@ -1216,6 +1217,26 @@ it("keeps a dormant SSH project passive until launching a session connects it", 
     expect(gitPanel()?.hasAttribute("data-disconnected")).toBe(false),
   );
   expect(button("Déconnecter · Soreno", host)).not.toBeNull();
+});
+
+it("connects a dormant SSH project before reading it for a quick worktree", async () => {
+  sshStatusHost();
+  data.disconnectedProjectIds = ["p1"];
+  data.dormantProjectIds = ["p1"];
+  await render();
+
+  await click("Créer un worktree · Soreno");
+
+  await vi.waitFor(() => expect(dialog()).not.toBeNull());
+  expect(api.setAgentProjectConnected).toHaveBeenCalledExactlyOnceWith(
+    "p1",
+    true,
+  );
+  expect(
+    vi.mocked(api.setAgentProjectConnected).mock.invocationCallOrder[0],
+  ).toBeLessThan(
+    vi.mocked(gitApi.readGitRepository).mock.invocationCallOrder[0],
+  );
 });
 
 it("does not let a disconnected SSH project affect local session launches", async () => {

@@ -643,7 +643,7 @@ export function AgentProjectRail({
                 disabled={
                   disabled ||
                   branches[project.id] == null ||
-                  (workspace.disconnectedProjectIds ?? []).includes(project.id)
+                  sessionLaunchBlocked(workspace, project.id)
                 }
                 onClick={(event) => {
                   returnFocusRef.current = event.currentTarget;

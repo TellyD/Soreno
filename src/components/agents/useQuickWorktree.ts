@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { setAgentProjectConnected } from "../../data/agentSessionsApi";
 import * as gitApi from "../../data/projectGitApi";
-import type {
-  AgentProject,
-  AgentProjectWorktree,
+import {
+  sessionLaunchBlocked,
+  type AgentProject,
+  type AgentProjectWorktree,
+  type AgentWorkspace,
 } from "../../domain/agentSessions";
 import { gitErrorMessage, type GitRepository } from "../../domain/projectGit";
 import {
@@ -24,13 +27,16 @@ type QuickWorktreeDraft = {
 export function useQuickWorktree({
   hidden,
   isBlocked,
-  disconnectedProjectIds,
+  connectivity,
   execute,
   onCreated,
 }: {
   hidden: boolean;
   isBlocked: () => boolean;
-  disconnectedProjectIds: readonly string[];
+  connectivity: Pick<
+    AgentWorkspace,
+    "disconnectedProjectIds" | "dormantProjectIds"
+  >;
   execute: (work: () => Promise<void>) => Promise<boolean>;
   onCreated: (
     created: AgentProject,
@@ -56,13 +62,16 @@ export function useQuickWorktree({
     if (
       isBlocked() ||
       loadingProjectId ||
-      disconnectedProjectIds.includes(project.id)
+      sessionLaunchBlocked(connectivity, project.id)
     )
       return;
     const generation = ++readGeneration.current;
     setLoadingProjectId(project.id);
     const result: { repository: GitRepository | null } = { repository: null };
     const succeeded = await execute(async () => {
+      // Like a session launch, this explicit action may reach a server not contacted since launch.
+      if ((connectivity.dormantProjectIds ?? []).includes(project.id))
+        await setAgentProjectConnected(project.id, true);
       let repository;
       try {
         repository = await gitApi.readGitRepository(project.id);
