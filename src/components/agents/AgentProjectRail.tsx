@@ -2,6 +2,7 @@ import { ContextMenu } from "@base-ui/react/context-menu";
 import {
   ChevronRight,
   Folder,
+  FolderPlus,
   Folders,
   GitBranch,
   GitMerge,
@@ -10,7 +11,6 @@ import {
   LoaderCircle,
   Palette,
   Pencil,
-  Plus,
   Trash2,
   X,
 } from "lucide-react";
@@ -132,6 +132,10 @@ type AgentProjectRailProps = {
     transferNavigationFocus?: boolean,
   ) => Promise<void>;
   onRequestQuickWorktree: (project: AgentProject) => Promise<void>;
+  onCreateSession: (
+    project: AgentProject,
+    preset: (typeof agentPresets)[number],
+  ) => Promise<void>;
   onOpenGroupOverview: (group: AgentProjectGroup) => Promise<void>;
   onCreateGroupSession: (
     group: AgentProjectGroup,
@@ -201,6 +205,7 @@ export function AgentProjectRail({
   onDropProjectInGroup,
   onOpenExternalWorktree: openExternalWorktree,
   onRequestQuickWorktree: requestQuickWorktree,
+  onCreateSession: createSession,
   onOpenGroupOverview: openGroupOverview,
   onCreateGroupSession: createGroupSession,
   onReorderProjects,
@@ -211,9 +216,17 @@ export function AgentProjectRail({
 }: AgentProjectRailProps) {
   const s = useAgentStrings();
   const gitStrings = useGitStrings();
-  const groupSessionRefs = useRef(
+  const sessionTriggers = useRef(
     new Map<string, { current: HTMLButtonElement | null }>(),
   );
+  const sessionTrigger = (id: string) => {
+    let trigger = sessionTriggers.current.get(id);
+    if (!trigger) {
+      trigger = { current: null };
+      sessionTriggers.current.set(id, trigger);
+    }
+    return trigger;
+  };
   const [appearanceTarget, setAppearanceTarget] = useState<{
     kind: "project" | "group";
     id: string;
@@ -617,33 +630,42 @@ export function AgentProjectRail({
                 })()
               }
             />
-            <IconButton
-              className="agent-project-worktree-add"
+            {branch === null ? null : (
+              <IconButton
+                size="small"
+                aria-label={`${gitStrings.createWorktree} · ${project.name}`}
+                title={gitStrings.createWorktree}
+                aria-busy={
+                  quickWorktreeLoadingProjectId === project.id || undefined
+                }
+                disabled={
+                  disabled ||
+                  branches[project.id] == null ||
+                  (workspace.disconnectedProjectIds ?? []).includes(project.id)
+                }
+                onClick={(event) => {
+                  returnFocusRef.current = event.currentTarget;
+                  void requestQuickWorktree(project);
+                }}
+              >
+                {quickWorktreeLoadingProjectId === project.id ? (
+                  <LoaderCircle
+                    className="app-loading-spinner"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <FolderPlus aria-hidden="true" />
+                )}
+              </IconButton>
+            )}
+            <NewSessionMenu
+              projectName={project.name}
               size="small"
-              aria-label={`${gitStrings.createWorktree} · ${project.name}`}
-              title={gitStrings.createWorktree}
-              aria-busy={
-                quickWorktreeLoadingProjectId === project.id || undefined
-              }
-              disabled={
-                disabled ||
-                branches[project.id] == null ||
-                (workspace.disconnectedProjectIds ?? []).includes(project.id)
-              }
-              onClick={(event) => {
-                returnFocusRef.current = event.currentTarget;
-                void requestQuickWorktree(project);
-              }}
-            >
-              {quickWorktreeLoadingProjectId === project.id ? (
-                <LoaderCircle
-                  className="app-loading-spinner"
-                  aria-hidden="true"
-                />
-              ) : (
-                <Plus aria-hidden="true" />
-              )}
-            </IconButton>
+              disabled={disabled || sessionLaunchBlocked(workspace, project.id)}
+              returnFocusRef={returnFocusRef}
+              triggerRef={sessionTrigger(project.id)}
+              onPreset={(preset) => void createSession(project, preset)}
+            />
             <IconButton
               className="agent-project-toggle"
               size="small"
@@ -842,11 +864,6 @@ export function AgentProjectRail({
       .filter(Boolean)
       .join(" · ");
     const overviewName = `${s.groupOverview} · ${group.name}`;
-    let sessionTrigger = groupSessionRefs.current.get(group.id);
-    if (!sessionTrigger) {
-      sessionTrigger = { current: null };
-      groupSessionRefs.current.set(group.id, sessionTrigger);
-    }
     return (
       <>
         <RowContextMenu
@@ -904,7 +921,7 @@ export function AgentProjectRail({
                   sessionLaunchBlocked(workspace, groupProject.id))
               }
               returnFocusRef={returnFocusRef}
-              triggerRef={sessionTrigger}
+              triggerRef={sessionTrigger(group.id)}
               onPreset={(preset) => void createGroupSession(group, preset)}
             />
             <IconButton

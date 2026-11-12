@@ -550,18 +550,6 @@
   position: relative;
   z-index: 1;
 }
-.agent-project-worktree-add {
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
-.agent-project-row:hover .agent-project-worktree-add,
-.agent-project-row:has(:focus-visible) .agent-project-worktree-add,
-.agent-project-worktree-add[aria-busy="true"] {
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-}
 .agent-project-select > .nav-icon {
   align-self: start;
   margin-top: 2px;

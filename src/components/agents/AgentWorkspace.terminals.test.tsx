@@ -574,7 +574,10 @@ it("does not split after a failed save", async () => {
       ?.classList.contains("is-split"),
   ).toBe(false);
   expect(api.startAgentSession).not.toHaveBeenCalled();
-  await click("Nouvelle session · Soreno");
+  await click(
+    "Nouvelle session · Soreno",
+    container.querySelector(".agent-session-tabs")!,
+  );
   expect(document.querySelector('[role="menu"]')!.textContent).toContain(
     "Diviser le terminal",
   );
@@ -1543,7 +1546,10 @@ it("keeps the project selected when its last tab is closed", async () => {
     vi.waitFor(
       () =>
         expect(document.activeElement).toBe(
-          button("Nouvelle session · Soreno"),
+          button(
+            "Nouvelle session · Soreno",
+            container.querySelector(".app-empty-state")!,
+          ),
         ),
       { timeout: 500 },
     ),

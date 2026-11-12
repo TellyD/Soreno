@@ -2752,6 +2752,7 @@ export function AgentWorkspace({
       }
       onOpenExternalWorktree={openExternalWorktree}
       onRequestQuickWorktree={quickWorktree.open}
+      onCreateSession={createSession}
       onOpenGroupOverview={openGroupOverview}
       onCreateGroupSession={createGroupSession}
       onReorderProjects={reorderProjects}

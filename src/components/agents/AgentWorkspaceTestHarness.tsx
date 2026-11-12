@@ -889,14 +889,17 @@ async function splitAgent(name: string, projectName = "Soreno") {
     await act(async () =>
       container.querySelector<HTMLButtonElement>(".agent-session-tab")!.click(),
     );
-  await click(label);
+  await click(label, container.querySelector(".agent-session-tabs")!);
   await click("Diviser le terminal", document.querySelector('[role="menu"]')!);
   const menus = document.querySelectorAll('[role="menu"]');
   await click(name, menus[menus.length - 1]);
 }
 /** Detaches the secondary pane from the new-session menu, as the toolbar offers it. */
 async function detachSplit(projectName = "Soreno") {
-  const trigger = button(`Nouvelle session · ${projectName}`);
+  const trigger = button(
+    `Nouvelle session · ${projectName}`,
+    container.querySelector(".agent-session-tabs")!,
+  );
   await act(async () => trigger.click());
   // A tab drag just before swallows the next click, as after a real drag.
   if (trigger.getAttribute("aria-expanded") !== "true")
