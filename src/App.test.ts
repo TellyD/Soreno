@@ -376,7 +376,11 @@ it("steps the agent text size within its options from the agents view only", asy
         [{ key: "à", code: "Digit0", ctrlKey: true }, 150, 100],
         [{ key: "=", ctrlKey: true, altKey: true }, null, null],
         [{ key: "]", code: "Equal", ctrlKey: true }, null, null],
-        [{ key: "_", code: "Minus", ctrlKey: true, shiftKey: true }, null, null],
+        [
+          { key: "_", code: "Minus", ctrlKey: true, shiftKey: true },
+          null,
+          null,
+        ],
         [{ key: "=", ctrlKey: true }, "canvas", null],
       ] as const) {
         state.updateSettings.mockClear();
