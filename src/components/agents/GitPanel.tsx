@@ -1,11 +1,4 @@
-import { Menu } from "@base-ui/react/menu";
-import {
-  AlertTriangle,
-  ChevronDown,
-  Folder,
-  GitBranch,
-  LoaderCircle,
-} from "lucide-react";
+import { AlertTriangle, Folder, GitBranch, LoaderCircle } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -50,13 +43,13 @@ import {
 import { Button } from "../ui/Button";
 import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { EmptyState } from "../ui/EmptyState";
-import { MenuItem, MenuSurface } from "../ui/Menu";
 import type { AgentTransitionGuard } from "./AgentWorkspace";
 import { GitBranchesView } from "./GitBranchesView";
 import { GitForgeView } from "./GitForgeView";
 import { GitChangesConfirmations } from "./GitChangesConfirmations";
 import {
   GitPanelHeaderActions,
+  GitPanelViewSwitch,
   useGitFilesRatioPreference,
   useGitFileTreePreference,
   useGitFilesVisiblePreference,
@@ -825,12 +818,12 @@ export function GitPanel({
             <GitForgeView
               active={gitActive && git.draft.view === "requests"}
               git={viewGit}
-              project={project}
+              projects={[project]}
               readScope={readScope}
               loginRevision={forgeLoginRevision}
-              onRemote={(remote) => {
+              onKind={(kind) => {
                 if (readScope !== undefined)
-                  setForgeRemote({ scope: readScope, kind: remote.kind });
+                  setForgeRemote({ scope: readScope, kind });
               }}
               onLogin={onForgeLogin}
               onWorktreeCreated={onWorktreeCreated}
@@ -926,67 +919,13 @@ export function GitPanel({
       >
         <header className="agent-git-panel-header">
           <div className="git-panel-heading">
-            <Menu.Root modal={false}>
-              <h2>
-                <Menu.Trigger
-                  render={
-                    <button
-                      className="git-panel-view-trigger"
-                      type="button"
-                      aria-label={s.projectView}
-                    >
-                      {panelViewLabel(s, activePanelView, forgeKind)}
-                      <ChevronDown size={12} aria-hidden="true" />
-                    </button>
-                  }
-                />
-              </h2>
-              <Menu.Portal>
-                <Menu.Positioner
-                  className="agent-menu-positioner"
-                  sideOffset={4}
-                  align="start"
-                  collisionPadding={8}
-                >
-                  <Menu.Popup
-                    render={<MenuSurface className="git-panel-view-menu" />}
-                  >
-                    {panelViews.map((view) => (
-                      <Menu.Item
-                        key={view}
-                        disabled={transitionLocked}
-                        nativeButton
-                        render={
-                          <MenuItem
-                            selected={activePanelView === view}
-                            aria-current={
-                              activePanelView === view ? "page" : undefined
-                            }
-                          />
-                        }
-                        onClick={() => void selectPanelView(view)}
-                      >
-                        {panelViewLabel(s, view, forgeKind)}
-                      </Menu.Item>
-                    ))}
-                  </Menu.Popup>
-                </Menu.Positioner>
-              </Menu.Portal>
-            </Menu.Root>
-            <nav className="git-panel-view-tabs" aria-label={s.projectView}>
-              {panelViews.map((view) => (
-                <button
-                  className="git-panel-view-tab"
-                  key={view}
-                  type="button"
-                  disabled={transitionLocked}
-                  aria-current={activePanelView === view ? "page" : undefined}
-                  onClick={() => void selectPanelView(view)}
-                >
-                  {panelViewLabel(s, view, forgeKind)}
-                </button>
-              ))}
-            </nav>
+            <GitPanelViewSwitch
+              views={panelViews}
+              active={activePanelView}
+              disabled={transitionLocked}
+              label={(view) => panelViewLabel(s, view, forgeKind)}
+              onSelect={(view) => void selectPanelView(view)}
+            />
             {project ? (
               <p title={root ?? project.path}>
                 {branchLabel

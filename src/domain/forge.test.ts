@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { currentBranchRequestFirst, type ForgeRequestSummary } from "./forge";
+import {
+  currentBranchRequestFirst,
+  mergeForgeRequests,
+  type ForgeRequestSummary,
+} from "./forge";
 
 function request(
   number: number,
@@ -41,5 +45,42 @@ describe("currentBranchRequestFirst", () => {
         (item) => item.number,
       ),
     ).toEqual([2, 1]);
+  });
+});
+
+describe("mergeForgeRequests", () => {
+  it("lists every project's requests newest first, once per URL", () => {
+    const at = (item: ForgeRequestSummary, createdAt: string) => ({
+      ...item,
+      createdAt,
+    });
+    const merged = mergeForgeRequests([
+      {
+        projectId: "api",
+        requests: [
+          at(request(9, "a"), "2026-03-01T00:00:00Z"),
+          at(request(4, "b"), "2026-01-01T00:00:00Z"),
+        ],
+      },
+      {
+        projectId: "worktree",
+        requests: [at(request(9, "a"), "2026-03-01T00:00:00Z")],
+      },
+      {
+        projectId: "web",
+        requests: [
+          {
+            ...request(9, "c"),
+            url: "https://gitlab.com/o/web/-/merge_requests/9",
+            createdAt: "2026-02-01T00:00:00Z",
+          },
+        ],
+      },
+    ]);
+    expect(merged.map((item) => [item.projectId, item.number])).toEqual([
+      ["api", 9],
+      ["web", 9],
+      ["api", 4],
+    ]);
   });
 });

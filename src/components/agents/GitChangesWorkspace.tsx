@@ -2,6 +2,7 @@ import { Menu } from "@base-ui/react/menu";
 import {
   ArrowUpDown,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   List,
@@ -156,6 +157,86 @@ export function useGitFilesVisiblePreference() {
     gitFilesVisibleStorageKey,
     gitFilesVisibleChangeEvent,
     parseGitFilesVisible,
+  );
+}
+
+/** The panel's view: a menu in a narrow panel, tabs once it is wide enough. */
+export function GitPanelViewSwitch<View extends string>({
+  views,
+  active,
+  disabled = false,
+  label,
+  onSelect,
+}: {
+  views: readonly View[];
+  active: View;
+  disabled?: boolean;
+  label: (view: View) => string;
+  onSelect: (view: View) => void;
+}) {
+  const s = useGitStrings();
+  return (
+    <>
+      <Menu.Root modal={false}>
+        <h2>
+          <Menu.Trigger
+            render={
+              <button
+                className="git-panel-view-trigger"
+                type="button"
+                aria-label={s.projectView}
+              >
+                {label(active)}
+                <ChevronDown size={12} aria-hidden="true" />
+              </button>
+            }
+          />
+        </h2>
+        <Menu.Portal>
+          <Menu.Positioner
+            className="agent-menu-positioner"
+            sideOffset={4}
+            align="start"
+            collisionPadding={8}
+          >
+            <Menu.Popup
+              render={<MenuSurface className="git-panel-view-menu" />}
+            >
+              {views.map((view) => (
+                <Menu.Item
+                  key={view}
+                  disabled={disabled}
+                  nativeButton
+                  render={
+                    <MenuItem
+                      selected={active === view}
+                      aria-current={active === view ? "page" : undefined}
+                    />
+                  }
+                  onClick={() => onSelect(view)}
+                >
+                  {label(view)}
+                </Menu.Item>
+              ))}
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+      <nav className="git-panel-view-tabs" aria-label={s.projectView}>
+        {views.map((view) => (
+          <button
+            className="git-panel-view-tab"
+            key={view}
+            type="button"
+            disabled={disabled}
+            aria-current={active === view ? "page" : undefined}
+            onClick={() => onSelect(view)}
+          >
+            {label(view)}
+          </button>
+        ))}
+      </nav>
+    </>
   );
 }
 

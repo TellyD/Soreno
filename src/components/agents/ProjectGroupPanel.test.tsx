@@ -3,12 +3,14 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as agentApi from "../../data/agentSessionsApi";
+import * as forgeApi from "../../data/forgeApi";
 import * as api from "../../data/projectGitApi";
 import type {
   AgentProject,
   AgentSessionMessage,
 } from "../../domain/agentSessions";
 import type { DiffLineSelection } from "../../domain/diffLineComment";
+import type { ForgeRequestDetail } from "../../domain/forge";
 import type {
   GitComparison,
   GitFile,
@@ -37,6 +39,16 @@ vi.mock("../../data/agentSessionsApi", () => ({
   sendAgentSessionMessage: vi.fn(),
   listAgentSessionMessages: vi.fn(async () => []),
   listenAgentSessionMessages: vi.fn(async () => () => {}),
+}));
+vi.mock("../../data/forgeApi", () => ({
+  readForgeRemote: vi.fn(),
+  readForgeRequests: vi.fn(),
+  readForgeRequest: vi.fn(),
+  readForgeChanges: vi.fn(),
+  readForgeComparison: vi.fn(),
+  mergeForgeRequest: vi.fn(),
+  updateForgeRequest: vi.fn(),
+  checkoutForgeRequest: vi.fn(),
 }));
 vi.mock("./GitDiffView", () => ({
   default: ({
@@ -141,6 +153,7 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
+  vi.mocked(forgeApi.readForgeRemote).mockReturnValue(new Promise(() => {}));
   vi.mocked(api.readGitRepository).mockImplementation(async (projectId) =>
     projectId === "api"
       ? repository({
@@ -224,6 +237,119 @@ it("shows Changes and only members with changes", async () => {
   expect(text).toContain("1 agent actif");
   expect(text).not.toContain("Docs");
   expect(text).not.toContain("Site");
+});
+
+it("lists the members' merge requests together and acts on each one's project", async () => {
+  const mr = (projectId: string, number: number, createdAt: string) =>
+    ({
+      number,
+      title: `${projectId} change`,
+      author: "ada",
+      sourceBranch: "feature",
+      targetBranch: "main",
+      crossRepository: false,
+      draft: false,
+      state: "open",
+      checks: null,
+      review: null,
+      conflicts: false,
+      createdAt,
+      url: `https://gitlab.com/jinka/${projectId}/-/merge_requests/${number}`,
+      body: "",
+      headOid: `head-${projectId}`,
+      baseOid: "base",
+      reviewers: [],
+      labels: [],
+      checkRuns: [],
+      commits: [],
+      mergeBlockers: [],
+      mergeMethods: ["merge"],
+      deleteSourceBranch: false,
+      changedFiles: 0,
+      repository: `gitlab.com/jinka/${projectId}`,
+    }) satisfies ForgeRequestDetail;
+  const requests: Record<string, ForgeRequestDetail> = {
+    api: mr("api", 7, "2026-11-10T00:00:00Z"),
+    www: mr("www", 3, "2026-11-11T00:00:00Z"),
+  };
+  const noRemote = { code: "noRemote", message: "Pas de dépôt distant." };
+  vi.mocked(forgeApi.readForgeRemote).mockImplementation(async (projectId) => {
+    if (projectId === "docs") throw noRemote;
+    return {
+      kind: "gitlab",
+      host: "gitlab.com",
+      path: `jinka/${projectId}`,
+      remote: "origin",
+      webUrl: `https://gitlab.com/jinka/${projectId}`,
+    };
+  });
+  vi.mocked(forgeApi.readForgeRequests).mockImplementation(
+    async (projectId) => {
+      if (projectId === "docs") throw noRemote;
+      return [requests[projectId]];
+    },
+  );
+  vi.mocked(forgeApi.readForgeRequest).mockImplementation(
+    async (projectId) => requests[projectId],
+  );
+  vi.mocked(forgeApi.mergeForgeRequest).mockResolvedValue(null);
+  await render(undefined, [], []);
+
+  // Named after the members' forge before it is opened.
+  const tab = await vi.waitFor(() => {
+    const found = [
+      ...host.querySelectorAll<HTMLButtonElement>(".git-panel-view-tab"),
+    ].find((item) => item.textContent === "Merge requests");
+    expect(found).toBeDefined();
+    return found!;
+  });
+  await act(async () => tab.click());
+
+  const rows = () =>
+    [...host.querySelectorAll<HTMLButtonElement>(".git-forge-row")].map((row) =>
+      row.getAttribute("aria-label")!.split("\n").slice(0, 2),
+    );
+  await vi.waitFor(() =>
+    expect(rows()).toEqual([
+      ["www change #3", "Site · ada · feature → main"],
+      ["api change #7", "API · ada · feature → main"],
+    ]),
+  );
+  // A member without a forge remote has nothing to list, not an error.
+  expect(getNotifications()).toEqual([]);
+  await vi.waitFor(() =>
+    expect(forgeApi.readForgeRequest).toHaveBeenCalledWith("www", 3),
+  );
+
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>('.git-forge-row[aria-label^="api"]')!
+      .click(),
+  );
+  const merge = () =>
+    [
+      ...host.querySelectorAll<HTMLButtonElement>(".git-forge-actions button"),
+    ].find((item) => item.textContent === "Merger")!;
+  await vi.waitFor(() => {
+    expect(host.textContent).toContain("api change");
+    expect(merge().disabled).toBe(false);
+  });
+  await act(async () => merge().click());
+  const confirmation = document.querySelector<HTMLElement>(
+    '[role="alertdialog"]',
+  )!;
+  await act(async () =>
+    [...confirmation.querySelectorAll("button")]
+      .find((item) => item.textContent === "Merger")!
+      .click(),
+  );
+  expect(forgeApi.mergeForgeRequest).toHaveBeenCalledExactlyOnceWith(
+    "api",
+    "gitlab.com/jinka/api",
+    7,
+    "merge",
+    "head-api",
+  );
 });
 
 it("closes, hides files and persists the tree layout", async () => {

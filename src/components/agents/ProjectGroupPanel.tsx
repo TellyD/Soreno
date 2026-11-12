@@ -8,8 +8,10 @@ import {
   readPersistedGitRepository,
   writePersistedGitRepository,
 } from "../../data/gitReadCache";
+import * as forgeApi from "../../data/forgeApi";
 import * as api from "../../data/projectGitApi";
 import type { AgentProject } from "../../domain/agentSessions";
+import type { ForgeKind } from "../../domain/forge";
 import { errorMessage } from "../../domain/errors";
 import {
   canResolveGitFile,
@@ -45,11 +47,13 @@ import {
   GitFileNavigation,
   GitFileViewToggle,
   GitPanelHeaderActions,
+  GitPanelViewSwitch,
   useGitChangeOrderPreference,
   useGitFilesRatioPreference,
   useGitFileTreePreference,
   useGitFilesVisiblePreference,
 } from "./GitChangesWorkspace";
+import { GitForgeView } from "./GitForgeView";
 import { ProjectGroupMemberChanges } from "./ProjectGroupMemberChanges";
 import type { GitDiffCommentTarget } from "./GitDiffLineComment";
 import { LoadingState } from "../ui/LoadingState";
@@ -90,6 +94,10 @@ type ProjectGroupPanelProps = {
   onSelectProject: (projectId: string) => void;
   /** Running agents of the group project and its members; each diff offers the group's and its repository's. */
   commentTargets?: readonly GitDiffCommentTarget[];
+  /** Opens a terminal signing the forge CLI in. */
+  onForgeLogin?: (kind: ForgeKind) => void;
+  /** Bumped when a forge sign-in succeeded: the requests tab reads again. */
+  forgeLoginRevision?: number;
 };
 
 const groupReadCache = createGitReadCache({ maxScopes: 64 });
@@ -125,10 +133,16 @@ export function ProjectGroupPanel({
   onBranchRead,
   onSelectProject,
   commentTargets,
+  onForgeLogin,
+  forgeLoginRevision,
 }: ProjectGroupPanelProps) {
   const s = useAgentStrings();
   const g = useGitStrings();
   const fileListId = useId();
+  const [view, setView] = useState<"changes" | "requests">("changes");
+  // The requests view mounts on first use, then keeps its list and selection.
+  const [requestsOpened, setRequestsOpened] = useState(false);
+  const [forgeKind, setForgeKind] = useState<ForgeKind | null>(null);
   const [storedReads, setReads] = useState<Record<string, MemberRead>>(() =>
     Object.fromEntries(
       members.flatMap((member) => {
@@ -288,6 +302,24 @@ export function ProjectGroupPanel({
     for (const scope of activeScopesRef.current)
       if (!scopes.has(scope)) groupReadCache.invalidate(scope);
     activeScopesRef.current = scopes;
+  }, [connectedKey]);
+  // The requests tab is named after the members' forge before it is opened.
+  // shortcut: this read failing after the opened view's read succeeded resets the label to the generic one; drop it once the view publishes if that shows up.
+  useEffect(() => {
+    let current = true;
+    void Promise.allSettled(
+      connected.map((member) => forgeApi.readForgeRemote(member.id)),
+    ).then((results) => {
+      const kinds = new Set(
+        results.flatMap((result) =>
+          result.status === "fulfilled" ? [result.value.kind] : [],
+        ),
+      );
+      if (current) setForgeKind(kinds.size === 1 ? [...kinds][0] : null);
+    });
+    return () => {
+      current = false;
+    };
   }, [connectedKey]);
   useEffect(() => {
     mountedRef.current = true;
@@ -904,16 +936,24 @@ export function ProjectGroupPanel({
       >
         <header className="agent-git-panel-header">
           <div className="git-panel-heading">
-            <h2>{g.changesView}</h2>
-            <nav className="git-panel-view-tabs" aria-label={g.projectView}>
-              <span className="git-panel-view-tab" aria-current="page">
-                {g.changesView}
-              </span>
-            </nav>
+            <GitPanelViewSwitch
+              views={["changes", "requests"] as const}
+              active={view}
+              label={(current) =>
+                current === "changes"
+                  ? g.changesView
+                  : g.forgeRequests(forgeKind)
+              }
+              onSelect={(next) => {
+                setView(next);
+                if (next === "requests") setRequestsOpened(true);
+              }}
+            />
             <p title={groupName}>{groupName}</p>
           </div>
           <GitPanelHeaderActions
             busy={
+              view === "changes" &&
               (loading || mutationBusy) &&
               !waiting &&
               // The commit button already spins next to its action.
@@ -922,185 +962,207 @@ export function ProjectGroupPanel({
             busyLabel={g.operationPending}
             filesVisible={filesVisible}
             listId={fileListId}
-            showFilesToggle
+            showFilesToggle={view === "changes"}
             expanded={expanded}
             onExpandedChange={onExpandedChange}
             onToggleFiles={() => setFilesVisible(!filesVisible)}
             onClose={onClose}
           />
         </header>
-        {waiting ? (
-          <LoadingState className="git-panel-centered-status">
-            {s.groupRepositoriesLoading}
-          </LoadingState>
-        ) : (
-          <GitChangesWorkspace
-            filePane={{
-              defaultRatio: 40,
-              listId: fileListId,
-              maxRatio: 80,
-              minRatio: 15,
-              ratio: filesRatio,
-              visible: filesVisible,
-              onRatioChange: setFilesRatio,
-            }}
-            sidebarLabel={s.groupRepositories}
-            sidebar={
-              <div className="git-change-list">
-                <div className="git-file-list-toolbar">
-                  <div className="git-commit-actions">
-                    <Button
-                      className="git-commit-toggle"
-                      size="small"
-                      disabled={mutationBusy || commitBlocked}
-                      aria-label={`${g.commit} · ${groupName}`}
-                      title={
-                        committing
-                          ? g.quickCommitting
-                          : (commitBlockedTitle ?? g.groupQuickCommit)
-                      }
-                      startIcon={
-                        committing ? (
-                          <LoaderCircle className="app-loading-spinner" />
-                        ) : (
-                          <Sparkles />
-                        )
-                      }
-                      onClick={() => void commitAll()}
-                    >
-                      {g.commit}
-                    </Button>
-                  </div>
-                  <span className="git-file-list-actions">
-                    <GitChangeOrderMenu order={order} onChange={setOrder} />
-                    <GitFileViewToggle
-                      tree={tree}
-                      onToggle={toggleFileLayout}
-                    />
-                  </span>
-                </div>
-                {totalChanges.length ? (
-                  <div className="project-group-changes-summary">
-                    <strong>
-                      {g.changesView} {totalChanges.length}
-                    </strong>
-                    <span className="git-change-group-actions is-visible">
-                      <span className="git-file-stats git-change-group-total">
-                        {additions > 0 ? (
-                          <span className="git-lines-added">+{additions}</span>
-                        ) : null}
-                        {deletions > 0 ? (
-                          <span className="git-lines-deleted">
-                            −{deletions}
-                          </span>
-                        ) : null}
-                      </span>
-                      {stageTargets.length ? (
-                        <IconButton
-                          size="small"
-                          disabled={mutationBusy || stageBlocked}
-                          aria-label={`${g.stageAll} · ${groupName}`}
-                          title={
-                            stageBlocked ? g.actionUnavailable : g.stageAll
-                          }
-                          onClick={() => void stageAll()}
-                        >
-                          <Plus />
-                        </IconButton>
-                      ) : null}
+        {requestsOpened ? (
+          <div
+            hidden={view !== "requests"}
+            style={{ display: view === "requests" ? "contents" : "none" }}
+          >
+            <GitForgeView
+              active={visible && view === "requests"}
+              projects={connected}
+              readScope={connectedKey}
+              loginRevision={forgeLoginRevision}
+              onKind={setForgeKind}
+              onLogin={onForgeLogin}
+            />
+          </div>
+        ) : null}
+        <div
+          hidden={view !== "changes"}
+          style={{ display: view === "changes" ? "contents" : "none" }}
+        >
+          {waiting ? (
+            <LoadingState className="git-panel-centered-status">
+              {s.groupRepositoriesLoading}
+            </LoadingState>
+          ) : (
+            <GitChangesWorkspace
+              filePane={{
+                defaultRatio: 40,
+                listId: fileListId,
+                maxRatio: 80,
+                minRatio: 15,
+                ratio: filesRatio,
+                visible: filesVisible,
+                onRatioChange: setFilesRatio,
+              }}
+              sidebarLabel={s.groupRepositories}
+              sidebar={
+                <div className="git-change-list">
+                  <div className="git-file-list-toolbar">
+                    <div className="git-commit-actions">
+                      <Button
+                        className="git-commit-toggle"
+                        size="small"
+                        disabled={mutationBusy || commitBlocked}
+                        aria-label={`${g.commit} · ${groupName}`}
+                        title={
+                          committing
+                            ? g.quickCommitting
+                            : (commitBlockedTitle ?? g.groupQuickCommit)
+                        }
+                        startIcon={
+                          committing ? (
+                            <LoaderCircle className="app-loading-spinner" />
+                          ) : (
+                            <Sparkles />
+                          )
+                        }
+                        onClick={() => void commitAll()}
+                      >
+                        {g.commit}
+                      </Button>
+                    </div>
+                    <span className="git-file-list-actions">
+                      <GitChangeOrderMenu order={order} onChange={setOrder} />
+                      <GitFileViewToggle
+                        tree={tree}
+                        onToggle={toggleFileLayout}
+                      />
                     </span>
                   </div>
-                ) : null}
-                <div className="git-change-groups">
-                  {visibleMembers.length === 0 ? (
-                    <EmptyState
-                      description={
-                        members.length === 0 ? s.groupEmpty : g.noChanges
-                      }
-                      size="compact"
-                    />
+                  {totalChanges.length ? (
+                    <div className="project-group-changes-summary">
+                      <strong>
+                        {g.changesView} {totalChanges.length}
+                      </strong>
+                      <span className="git-change-group-actions is-visible">
+                        <span className="git-file-stats git-change-group-total">
+                          {additions > 0 ? (
+                            <span className="git-lines-added">
+                              +{additions}
+                            </span>
+                          ) : null}
+                          {deletions > 0 ? (
+                            <span className="git-lines-deleted">
+                              −{deletions}
+                            </span>
+                          ) : null}
+                        </span>
+                        {stageTargets.length ? (
+                          <IconButton
+                            size="small"
+                            disabled={mutationBusy || stageBlocked}
+                            aria-label={`${g.stageAll} · ${groupName}`}
+                            title={
+                              stageBlocked ? g.actionUnavailable : g.stageAll
+                            }
+                            onClick={() => void stageAll()}
+                          >
+                            <Plus />
+                          </IconButton>
+                        ) : null}
+                      </span>
+                    </div>
                   ) : null}
-                  {visibleMembers.map((member) => (
-                    <ProjectGroupMemberChanges
-                      key={member.id}
-                      member={member}
-                      read={reads[member.id]}
-                      memberChanges={changesOf(member.id)}
-                      groups={groupsOf(member.id)}
-                      agents={
-                        workingSessions.filter(
-                          (session) => session.projectId === member.id,
-                        ).length
-                      }
-                      tree={tree}
-                      order={order}
-                      selection={selection}
-                      isCollapsed={collapsed.has(member.id)}
-                      actionBlocked={actionBlockedFor(member.id)}
-                      restoreBlocked={restoreBlockedFor(member.id)}
-                      setSelection={setSelection}
-                      setCollapsed={setCollapsed}
-                      requestAction={requestAction}
-                      requestRestore={requestRestore}
-                      requestResolve={requestResolve}
-                      onSelectProject={onSelectProject}
-                    />
-                  ))}
+                  <div className="git-change-groups">
+                    {visibleMembers.length === 0 ? (
+                      <EmptyState
+                        description={
+                          members.length === 0 ? s.groupEmpty : g.noChanges
+                        }
+                        size="compact"
+                      />
+                    ) : null}
+                    {visibleMembers.map((member) => (
+                      <ProjectGroupMemberChanges
+                        key={member.id}
+                        member={member}
+                        read={reads[member.id]}
+                        memberChanges={changesOf(member.id)}
+                        groups={groupsOf(member.id)}
+                        agents={
+                          workingSessions.filter(
+                            (session) => session.projectId === member.id,
+                          ).length
+                        }
+                        tree={tree}
+                        order={order}
+                        selection={selection}
+                        isCollapsed={collapsed.has(member.id)}
+                        actionBlocked={actionBlockedFor(member.id)}
+                        restoreBlocked={restoreBlockedFor(member.id)}
+                        setSelection={setSelection}
+                        setCollapsed={setCollapsed}
+                        requestAction={requestAction}
+                        requestRestore={requestRestore}
+                        requestResolve={requestResolve}
+                        onSelectProject={onSelectProject}
+                      />
+                    ))}
+                  </div>
                 </div>
+              }
+            >
+              <div className="git-diff-area" role="region" aria-label={g.files}>
+                <GitChangesDiffContent
+                  comparison={shownDiff?.comparison}
+                  loading={shownDiff?.loading ?? false}
+                  fileActions={fileActions}
+                  navigation={fileNavigation}
+                  side={selection?.side}
+                  commentTargets={commentTargets?.filter(
+                    (target) =>
+                      target.projectId === selectedMember?.id ||
+                      !members.some((member) => member.id === target.projectId),
+                  )}
+                  commentRepository={
+                    selectedMember && selectedGitRoot
+                      ? { name: selectedMember.name, path: selectedGitRoot }
+                      : undefined
+                  }
+                  commentGitRoot={selectedGitRoot}
+                  commentFiles={selectedRepo?.files}
+                >
+                  {shownDiff?.error ? (
+                    <EmptyState
+                      actions={
+                        <Button
+                          size="small"
+                          onClick={() => setDiffRetry({ key: shownDiff.key })}
+                        >
+                          {g.retry}
+                        </Button>
+                      }
+                      description={shownDiff.error}
+                      fill
+                      role="alert"
+                    />
+                  ) : errorMembers.length ? (
+                    <EmptyState
+                      description={reads[errorMembers[0].id]?.error}
+                      fill
+                      role="alert"
+                    />
+                  ) : (
+                    <EmptyState
+                      fill
+                      icon={<CheckCircle2 />}
+                      title={g.cleanTitle}
+                    />
+                  )}
+                </GitChangesDiffContent>
               </div>
-            }
-          >
-            <div className="git-diff-area" role="region" aria-label={g.files}>
-              <GitChangesDiffContent
-                comparison={shownDiff?.comparison}
-                loading={shownDiff?.loading ?? false}
-                fileActions={fileActions}
-                navigation={fileNavigation}
-                side={selection?.side}
-                commentTargets={commentTargets?.filter(
-                  (target) =>
-                    target.projectId === selectedMember?.id ||
-                    !members.some((member) => member.id === target.projectId),
-                )}
-                commentRepository={
-                  selectedMember && selectedGitRoot
-                    ? { name: selectedMember.name, path: selectedGitRoot }
-                    : undefined
-                }
-                commentGitRoot={selectedGitRoot}
-                commentFiles={selectedRepo?.files}
-              >
-                {shownDiff?.error ? (
-                  <EmptyState
-                    actions={
-                      <Button
-                        size="small"
-                        onClick={() => setDiffRetry({ key: shownDiff.key })}
-                      >
-                        {g.retry}
-                      </Button>
-                    }
-                    description={shownDiff.error}
-                    fill
-                    role="alert"
-                  />
-                ) : errorMembers.length ? (
-                  <EmptyState
-                    description={reads[errorMembers[0].id]?.error}
-                    fill
-                    role="alert"
-                  />
-                ) : (
-                  <EmptyState
-                    fill
-                    icon={<CheckCircle2 />}
-                    title={g.cleanTitle}
-                  />
-                )}
-              </GitChangesDiffContent>
-            </div>
-          </GitChangesWorkspace>
-        )}
+            </GitChangesWorkspace>
+          )}
+        </div>
       </section>
       {visible && restoreTarget
         ? createPortal(

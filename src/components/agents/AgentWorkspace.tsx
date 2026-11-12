@@ -47,6 +47,7 @@ import {
   worktreeName,
 } from "../../domain/agentWorkspaceView";
 import { pruneRecentProjectFiles } from "../../domain/recentProjectFiles";
+import type { ForgeKind } from "../../domain/forge";
 import type { KanbanIssueSelection } from "../../domain/kanban";
 import type { GitMergeConflict } from "../../domain/mergeConflictAgent";
 import {
@@ -1608,6 +1609,9 @@ export function AgentWorkspace({
       gitPanelExpanded,
       onGitPanelExpandedChange,
     });
+  function startSelectedForgeLogin(kind: ForgeKind) {
+    if (selectedProject) void startForgeLogin(selectedProject.id, kind);
+  }
 
   useEffect(() => {
     writeStoredJson(terminalTitlesKey, terminalTitles);
@@ -3378,10 +3382,7 @@ export function AgentWorkspace({
                   });
                 }}
                 forgeLoginRevision={forgeLoginRevision}
-                onForgeLogin={(kind) => {
-                  if (selectedProject)
-                    void startForgeLogin(selectedProject.id, kind);
-                }}
+                onForgeLogin={startSelectedForgeLogin}
               />
               {selectedProjectGroup ? (
                 <ProjectGroupPanel
@@ -3428,6 +3429,8 @@ export function AgentWorkspace({
                     );
                     if (target) selectProject(target);
                   }}
+                  forgeLoginRevision={forgeLoginRevision}
+                  onForgeLogin={startSelectedForgeLogin}
                 />
               ) : null}
               {issueShown && issuePanelSession ? (

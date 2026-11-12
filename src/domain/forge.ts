@@ -105,10 +105,10 @@ export function forgeStateError(reason: unknown): ForgeStateError | null {
 }
 
 /** The request of the checked-out branch comes first; a fork's branch only shares its name. */
-export function currentBranchRequestFirst(
-  requests: readonly ForgeRequestSummary[],
+export function currentBranchRequestFirst<T extends ForgeRequestSummary>(
+  requests: readonly T[],
   branch: string | null,
-): { requests: ForgeRequestSummary[]; current: number | null } {
+): { requests: T[]; current: number | null } {
   const index = branch
     ? requests.findIndex(
         (request) =>
@@ -121,6 +121,27 @@ export function currentBranchRequestFirst(
     requests: [current, ...requests.filter((_, item) => item !== index)],
     current: current.number,
   };
+}
+
+export type ForgeListedRequest = ForgeRequestSummary & { projectId: string };
+
+/** Requests of several projects, newest first; one listed by two projects sharing a remote keeps the first. */
+export function mergeForgeRequests(
+  lists: readonly {
+    projectId: string;
+    requests: readonly ForgeRequestSummary[];
+  }[],
+): ForgeListedRequest[] {
+  const seen = new Set<string>();
+  return lists
+    .flatMap(({ projectId, requests }) =>
+      requests.flatMap((request) => {
+        if (seen.has(request.url)) return [];
+        seen.add(request.url);
+        return [{ ...request, projectId }];
+      }),
+    )
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 }
 
 export function forgeLoginSession(kind: ForgeKind) {

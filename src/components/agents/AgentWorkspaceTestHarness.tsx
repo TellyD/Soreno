@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, vi } from "vitest";
 import * as api from "../../data/agentSessionsApi";
 import * as designApi from "../../data/designApi";
+import * as forgeApi from "../../data/forgeApi";
 import * as gitApi from "../../data/projectGitApi";
 import * as projectFilesApi from "../../data/projectFilesApi";
 import type {
@@ -62,6 +63,9 @@ vi.mock("../../data/projectGitApi", () => ({
   readGitWorktrees: vi.fn(),
   mergeGitWorktree: vi.fn(),
   removeGitWorktree: vi.fn(),
+}));
+vi.mock("../../data/forgeApi", () => ({
+  readForgeRemote: vi.fn(),
 }));
 vi.mock("../../data/projectFilesApi", () => ({
   readProjectFile: vi.fn(),
@@ -359,6 +363,7 @@ beforeEach(() => {
   runtime.titles.clear();
   runtime.worktreeRemovalRestore = null;
   vi.mocked(designApi.loadDesignBoards).mockResolvedValue([]);
+  vi.mocked(forgeApi.readForgeRemote).mockReturnValue(new Promise(() => {}));
   vi.mocked(designApi.loadDesignFrames).mockResolvedValue([]);
   vi.mocked(designApi.listenDesignFramesChanged).mockResolvedValue(() => {});
   vi.mocked(api.listAgentSessionMessages).mockResolvedValue([]);

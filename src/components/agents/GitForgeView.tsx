@@ -32,14 +32,14 @@ import {
   currentBranchRequestFirst,
   forgeErrorCode,
   forgeStateError,
+  mergeForgeRequests,
   type ForgeChanges,
   type ForgeCheckout,
   type ForgeFilter,
   type ForgeKind,
+  type ForgeListedRequest,
   type ForgeMergeMethod,
-  type ForgeRemote,
   type ForgeRequestDetail,
-  type ForgeRequestSummary,
   type ForgeStateError,
   type ForgeUpdateAction,
 } from "../../domain/forge";
@@ -143,14 +143,33 @@ function remember<T>(cache: Map<string, T>, key: string, value: T) {
   if (cache.size > cacheSize) cache.delete(cache.keys().next().value!);
 }
 
+const withoutForge = (reason: unknown) => {
+  const code = forgeStateError(reason);
+  return (
+    code === "noRemote" ||
+    code === "unrecognizedRemote" ||
+    code === "unsupportedForge"
+  );
+};
+
+/** The failure worth showing when every project failed: one with a forge beats one without. */
+function mainFailure(results: readonly PromiseSettledResult<unknown>[]) {
+  const reasons = results.flatMap((result) =>
+    result.status === "rejected" ? [result.reason as unknown] : [],
+  );
+  return reasons.find((reason) => !withoutForge(reason)) ?? reasons[0];
+}
+
 type GitForgeViewProps = {
   active: boolean;
-  git: GitState;
-  project: AgentProject;
+  /** One repository, or a group overview's members listed together. */
+  projects: readonly AgentProject[];
+  /** The single repository's Git state; without it (group overview) checkout actions are hidden. */
+  git?: GitState;
   readScope?: string;
   /** Bumped when a forge sign-in terminal exits successfully. */
   loginRevision?: number;
-  onRemote?: (remote: ForgeRemote) => void;
+  onKind?: (kind: ForgeKind) => void;
   onLogin?: (kind: ForgeKind) => void;
   onWorktreeCreated?: (
     project: AgentProject,
@@ -160,28 +179,32 @@ type GitForgeViewProps = {
 
 export function GitForgeView({
   active,
+  projects,
   git,
-  project,
   readScope,
   loginRevision,
-  onRemote,
+  onKind,
   onLogin,
   onWorktreeCreated,
 }: GitForgeViewProps) {
   const s = useGitStrings();
   const agentStrings = useAgentStrings();
   const { locale } = useI18n();
-  const projectId = project.id;
-  const scope = readScope ?? projectId;
+  const projectsKey = projects.map((project) => project.id).join("\n");
+  const projectsRef = useRef(projects);
+  projectsRef.current = projects;
+  // Checkout and worktree target; only used with `git`, which comes with a single repository.
+  const project = projects[0];
+  const scope = readScope ?? projectsKey;
   const remoteGeneration = useRef(0);
   const listGeneration = useRef(0);
   const detailGeneration = useRef(0);
   const changesGeneration = useRef(0);
   const diffGeneration = useRef(0);
-  const onRemoteRef = useRef(onRemote);
-  onRemoteRef.current = onRemote;
-  // Earlier answers per [scope, list key] and [scope, number], shown while re-reading.
-  const listCache = useRef(new Map<string, ForgeRequestSummary[]>());
+  const onKindRef = useRef(onKind);
+  onKindRef.current = onKind;
+  // Earlier answers per [scope, list key] and [scope, project, number], shown while re-reading.
+  const listCache = useRef(new Map<string, ForgeListedRequest[]>());
   const detailCache = useRef(new Map<string, ForgeRequestDetail>());
   // Files and diffs per [scope, key], with the refresh/login revision they were read in.
   const changesCache = useRef(
@@ -196,12 +219,12 @@ export function GitForgeView({
   const [refreshToken, setRefreshToken] = useState(0);
   const [remote, setRemote] = useState<{
     scope: string;
-    value: ForgeRemote;
+    kind: ForgeKind;
   } | null>(null);
   const [list, setList] = useState<{
     scope: string;
     key: string;
-    requests: ForgeRequestSummary[];
+    requests: ForgeListedRequest[];
   } | null>(null);
   const [failure, setFailure] = useState<{
     scope: string;
@@ -218,10 +241,12 @@ export function GitForgeView({
   } | null>(null);
   const [selection, setSelection] = useState<{
     scope: string;
+    projectId: string;
     number: number;
   } | null>(null);
   const [detail, setDetail] = useState<{
     scope: string;
+    projectId: string;
     revision: string;
     read: number;
     value: ForgeRequestDetail;
@@ -246,6 +271,7 @@ export function GitForgeView({
   const [acting, setActing] = useState(false);
   const [mergeRequest, setMergeRequest] = useState<{
     scope: string;
+    projectId: string;
     repository: string;
     number: number;
     headOid: string;
@@ -263,7 +289,7 @@ export function GitForgeView({
   const listId = useId();
   const mainRef = useRef<HTMLDivElement>(null);
 
-  const kind = remote?.scope === scope ? remote.value.kind : null;
+  const kind = remote?.scope === scope ? remote.kind : null;
   const listKey = JSON.stringify([filter, search]);
   const shownRequests =
     list?.scope === scope && list.key === listKey
@@ -271,7 +297,7 @@ export function GitForgeView({
       : (listCache.current.get(JSON.stringify([scope, listKey])) ?? null);
   const hasListRef = useRef(false);
   hasListRef.current = shownRequests !== null;
-  const branch = git.repo?.branch ?? null;
+  const branch = git?.repo?.branch ?? null;
   const ordered = useMemo(
     () => currentBranchRequestFirst(shownRequests ?? [], branch),
     [branch, shownRequests],
@@ -280,18 +306,24 @@ export function GitForgeView({
   const listFailed = listError?.scope === scope && listError.key === listKey;
   const shownNotice = notice?.scope === scope ? notice.code : null;
   const selectedNumber = selection?.scope === scope ? selection.number : null;
+  const selectedProjectId =
+    selection?.scope === scope ? selection.projectId : null;
   const revision = `${refreshToken}:${loginRevision}`;
   const detailRead =
-    detail?.scope === scope && detail.value.number === selectedNumber;
+    detail?.scope === scope &&
+    detail.projectId === selectedProjectId &&
+    detail.value.number === selectedNumber;
   const shownDetail = detailRead
     ? detail.value
-    : (detailCache.current.get(JSON.stringify([scope, selectedNumber])) ??
-      null);
+    : (detailCache.current.get(
+        JSON.stringify([scope, selectedProjectId, selectedNumber]),
+      ) ?? null);
   // Merging acts on what the dialog shows, so it needs the latest successful read, not the cache.
   const detailFresh =
     detailRead && detail.revision === revision && detail.read === detailReadId;
   const changesKey = shownDetail
     ? JSON.stringify([
+        selectedProjectId,
         shownDetail.number,
         shownDetail.baseOid,
         shownDetail.headOid,
@@ -310,7 +342,12 @@ export function GitForgeView({
     null;
   const diffKey =
     shownChanges && selectedPath
-      ? JSON.stringify([shownChanges.base, shownChanges.head, selectedPath])
+      ? JSON.stringify([
+          selectedProjectId,
+          shownChanges.base,
+          shownChanges.head,
+          selectedPath,
+        ])
       : null;
   const diffBase = shownChanges?.base;
   const diffHead = shownChanges?.head;
@@ -372,37 +409,64 @@ export function GitForgeView({
   useEffect(() => {
     if (!active) return;
     const request = ++remoteGeneration.current;
-    forgeApi.readForgeRemote(projectId).then(
-      (value) => {
-        if (request !== remoteGeneration.current) return;
-        setRemote({ scope, value });
-        onRemoteRef.current?.(value);
-      },
-      (reason) => {
-        // Other failures recur in the list read, which re-detects the remote and reports them.
-        if (request === remoteGeneration.current && forgeStateError(reason))
-          reportRef.current(reason, true);
-      },
-    );
+    void Promise.allSettled(
+      projectsRef.current.map((project) =>
+        forgeApi.readForgeRemote(project.id),
+      ),
+    ).then((results) => {
+      if (request !== remoteGeneration.current) return;
+      const kinds = new Set(
+        results.flatMap((result) =>
+          result.status === "fulfilled" ? [result.value.kind] : [],
+        ),
+      );
+      // Mixed forges keep the generic labels.
+      // shortcut: in a mixed GitHub/GitLab group, errors name gh and hide the sign-in button; keep each member's kind with its failure if such groups appear.
+      if (kinds.size === 1) {
+        const [value] = kinds;
+        setRemote({ scope, kind: value });
+        onKindRef.current?.(value);
+        return;
+      }
+      const reason = kinds.size ? null : mainFailure(results);
+      // Other failures recur in the list read, which re-detects the remote and reports them.
+      if (reason && forgeStateError(reason)) reportRef.current(reason, true);
+    });
     return () => {
       remoteGeneration.current++;
     };
-  }, [active, loginRevision, projectId, refreshToken, scope]);
+  }, [active, loginRevision, projectsKey, refreshToken, scope]);
 
   useEffect(() => {
     if (!active) return;
     lastRefresh.current = Date.now();
     const request = ++listGeneration.current;
+    const sources = projectsRef.current;
     setLoading(true);
     setListError(null);
     void (async () => {
       try {
-        const requests = await forgeApi.readForgeRequests(
-          projectId,
-          filter,
-          search,
+        const results = await Promise.allSettled(
+          sources.map((project) =>
+            forgeApi.readForgeRequests(project.id, filter, search),
+          ),
         );
         if (request !== listGeneration.current) return;
+        const lists = results.flatMap((result, index) =>
+          result.status === "fulfilled"
+            ? [{ projectId: sources[index].id, requests: result.value }]
+            : [],
+        );
+        if (sources.length && !lists.length) throw mainFailure(results);
+        // A member without a forge remote simply has nothing to list.
+        results.forEach((result, index) => {
+          if (result.status === "rejected" && !withoutForge(result.reason))
+            notifyError(
+              `${sources[index].name}: ${errorTextRef.current(result.reason)}`,
+              { key: `git-forge:${scope}:${sources[index].id}` },
+            );
+        });
+        const requests = mergeForgeRequests(lists);
         remember(listCache.current, JSON.stringify([scope, listKey]), requests);
         setList({ scope, key: listKey, requests });
         setFailure(null);
@@ -426,7 +490,7 @@ export function GitForgeView({
     filter,
     listKey,
     loginRevision,
-    projectId,
+    projectsKey,
     refreshToken,
     scope,
     search,
@@ -440,26 +504,35 @@ export function GitForgeView({
     const first = ordered.requests[0];
     if (!active || !first) return;
     setSelection((current) =>
-      current?.scope === scope ? current : { scope, number: first.number },
+      current?.scope === scope
+        ? current
+        : { scope, projectId: first.projectId, number: first.number },
     );
   }, [active, ordered.requests, scope]);
 
   useEffect(() => {
-    if (!active || selectedNumber === null) return;
+    if (!active || selectedNumber === null || selectedProjectId === null)
+      return;
     const request = ++detailGeneration.current;
     setDetailReadId(request);
     setDetailLoading(true);
     forgeApi
-      .readForgeRequest(projectId, selectedNumber)
+      .readForgeRequest(selectedProjectId, selectedNumber)
       .then(
         (value) => {
           if (request !== detailGeneration.current) return;
           remember(
             detailCache.current,
-            JSON.stringify([scope, value.number]),
+            JSON.stringify([scope, selectedProjectId, value.number]),
             value,
           );
-          setDetail({ scope, revision, read: request, value });
+          setDetail({
+            scope,
+            projectId: selectedProjectId,
+            revision,
+            read: request,
+            value,
+          });
         },
         (reason) => {
           if (request !== detailGeneration.current) return;
@@ -473,7 +546,7 @@ export function GitForgeView({
     return () => {
       detailGeneration.current++;
     };
-  }, [active, projectId, revision, scope, selectedNumber]);
+  }, [active, revision, scope, selectedNumber, selectedProjectId]);
 
   useEffect(() => {
     const detail = shownDetailRef.current;
@@ -482,6 +555,7 @@ export function GitForgeView({
       !active ||
       tab !== "files" ||
       !detail ||
+      selectedProjectId === null ||
       changesKey === null ||
       changesShown ||
       changesCache.current.get(changesCacheKey)?.revision === revision
@@ -492,7 +566,7 @@ export function GitForgeView({
     const request = ++changesGeneration.current;
     setChangesLoading(true);
     forgeApi
-      .readForgeChanges(projectId, detail)
+      .readForgeChanges(selectedProjectId, detail)
       .then(
         (value) => {
           if (request !== changesGeneration.current) return;
@@ -515,7 +589,7 @@ export function GitForgeView({
     changesCacheKey,
     changesKey,
     changesShown,
-    projectId,
+    selectedProjectId,
     revision,
     scope,
     tab,
@@ -528,6 +602,7 @@ export function GitForgeView({
       diffBase === undefined ||
       diffHead === undefined ||
       !selectedPath ||
+      selectedProjectId === null ||
       diffKey === null ||
       comparisonShown ||
       comparisonCache.current.get(comparisonCacheKey)?.revision === revision
@@ -538,7 +613,7 @@ export function GitForgeView({
     const request = ++diffGeneration.current;
     setDiffLoading(true);
     forgeApi
-      .readForgeComparison(projectId, diffBase, diffHead, selectedPath)
+      .readForgeComparison(selectedProjectId, diffBase, diffHead, selectedPath)
       .then(
         (value) => {
           if (request !== diffGeneration.current) return;
@@ -566,7 +641,7 @@ export function GitForgeView({
     diffBase,
     diffHead,
     diffKey,
-    projectId,
+    selectedProjectId,
     revision,
     scope,
     selectedPath,
@@ -574,7 +649,7 @@ export function GitForgeView({
   ]);
 
   useEffect(() => {
-    if (!pendingCheckout || git.busy) return;
+    if (!pendingCheckout || !git || git.busy) return;
     setPendingCheckout(null);
     const repo = git.repo;
     if (pendingCheckout.scope !== scope || !repo) return;
@@ -582,7 +657,7 @@ export function GitForgeView({
     if (pendingCheckout.kind === "switch") {
       void git.mutate(() =>
         api.switchGitBranch(
-          projectId,
+          project.id,
           checkout.name,
           checkout.remote,
           repo.version,
@@ -602,22 +677,14 @@ export function GitForgeView({
         }),
         version: repo.version,
       });
-  }, [
-    git.busy,
-    git.mutate,
-    git.repo,
-    pendingCheckout,
-    project,
-    projectId,
-    scope,
-  ]);
+  }, [git, pendingCheckout, project, scope]);
 
   useEffect(() => {
-    if (!active && !git.busy) {
+    if (!active && !git?.busy) {
       setMergeRequest(null);
       setWorktreeRequest(null);
     }
-  }, [active, git.busy]);
+  }, [active, git?.busy]);
 
   const refresh = () => setRefreshToken((value) => value + 1);
 
@@ -641,7 +708,7 @@ export function GitForgeView({
     if (!request || request.scope !== scope) return;
     await runAction(() =>
       forgeApi.mergeForgeRequest(
-        projectId,
+        request.projectId,
         request.repository,
         request.number,
         request.method,
@@ -652,6 +719,8 @@ export function GitForgeView({
   }
 
   function update(request: ForgeRequestDetail, action: ForgeUpdateAction) {
+    const projectId = selectedProjectId;
+    if (projectId === null) return;
     void runAction(() =>
       forgeApi.updateForgeRequest(
         projectId,
@@ -666,13 +735,13 @@ export function GitForgeView({
     request: ForgeRequestDetail,
     target: "worktree" | "switch",
   ) {
-    const repo = git.repo;
-    if (!repo || git.isBusy()) return;
+    const repo = git?.repo;
+    if (!git || !repo || git.isBusy()) return;
     let forgeFailure: unknown = null;
     const result = await git.mutate(async () => {
       try {
         return await forgeApi.checkoutForgeRequest(
-          projectId,
+          project.id,
           request,
           repo.version,
         );
@@ -689,6 +758,7 @@ export function GitForgeView({
   }
 
   const worktreeBlocked =
+    !git ||
     git.busy ||
     !!git.error?.uncertain ||
     !!git.repo?.limited ||
@@ -696,14 +766,15 @@ export function GitForgeView({
     !git.repo?.head;
   const worktreeChanged =
     !!worktreeRequest &&
-    (worktreeRequest.projectId !== projectId ||
-      worktreeRequest.version !== git.repo?.version);
+    (worktreeRequest.projectId !== project?.id ||
+      worktreeRequest.version !== git?.repo?.version);
 
   async function createWorktree() {
     const request = worktreeRequest;
     if (
+      !git ||
       !request ||
-      request.projectId !== projectId ||
+      request.projectId !== project.id ||
       request.version !== git.repo?.version ||
       worktreeBlocked ||
       git.isBusy() ||
@@ -713,7 +784,7 @@ export function GitForgeView({
     setCreatingWorktree(true);
     try {
       const created = await git.mutate(() =>
-        api.createGitWorktree(projectId, {
+        api.createGitWorktree(project.id, {
           id: request.id,
           name: request.name,
           parentPath: request.parentPath.trim(),
@@ -743,11 +814,11 @@ export function GitForgeView({
     void openUrl(url).catch(() => notifyError(agentStrings.urlOpenError));
   }
 
-  const switchBlocker = git.repo?.files.length
+  const switchBlocker = git?.repo?.files.length
     ? s.forgeCheckoutDirty
-    : git.repo?.operation
+    : git?.repo?.operation
       ? s.operationBlocksMutation
-      : git.busy
+      : git?.busy
         ? s.operationPending
         : null;
   const mainStyle = {
@@ -793,24 +864,50 @@ export function GitForgeView({
       ) : null,
     [selectedPath, shownChanges],
   );
-  const requestRows = useMemo(
-    () => (
+  // Rows name their project once several are listed together.
+  const projectNamesKey =
+    projects.length > 1
+      ? JSON.stringify(projects.map((project) => [project.id, project.name]))
+      : "";
+  const requestRows = useMemo(() => {
+    const names = projectNamesKey
+      ? new Map(
+          projectsRef.current.map((project) => [project.id, project.name]),
+        )
+      : null;
+    return (
       <ul>
         {ordered.requests.map((request) => (
-          <li key={request.number}>
+          <li key={`${request.projectId}:${request.number}`}>
             <ForgeRequestRow
               request={request}
+              project={names?.get(request.projectId)}
               current={request.number === ordered.current}
-              selected={request.number === selectedNumber}
+              selected={
+                request.projectId === selectedProjectId &&
+                request.number === selectedNumber
+              }
               date={formatCompactDate(request.createdAt, locale)?.value ?? ""}
-              onSelect={() => setSelection({ scope, number: request.number })}
+              onSelect={() =>
+                setSelection({
+                  scope,
+                  projectId: request.projectId,
+                  number: request.number,
+                })
+              }
             />
           </li>
         ))}
       </ul>
-    ),
-    [locale, ordered, scope, selectedNumber],
-  );
+    );
+  }, [
+    locale,
+    ordered,
+    projectNamesKey,
+    scope,
+    selectedNumber,
+    selectedProjectId,
+  ]);
   const stateMessage = stateError ? s.forgeStateErrors(kind)[stateError] : null;
   const tabCounts: Partial<Record<DetailTab, number>> | null = shownDetail
     ? {
@@ -819,7 +916,11 @@ export function GitForgeView({
         files: shownDetail.changedFiles,
       }
     : null;
-  const activeMerge = mergeRequest?.scope === scope ? mergeRequest : null;
+  const activeMerge =
+    mergeRequest?.scope === scope &&
+    mergeRequest.projectId === selectedProjectId
+      ? mergeRequest
+      : null;
 
   const barRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -1103,15 +1204,17 @@ export function GitForgeView({
                           shownDetail.mergeBlockers.length > 0 ||
                           !shownDetail.mergeMethods.length
                         }
-                        onClick={() =>
-                          setMergeRequest({
-                            scope,
-                            repository: shownDetail.repository,
-                            number: shownDetail.number,
-                            headOid: shownDetail.headOid,
-                            method: shownDetail.mergeMethods[0],
-                          })
-                        }
+                        onClick={() => {
+                          if (selectedProjectId !== null)
+                            setMergeRequest({
+                              scope,
+                              projectId: selectedProjectId,
+                              repository: shownDetail.repository,
+                              number: shownDetail.number,
+                              headOid: shownDetail.headOid,
+                              method: shownDetail.mergeMethods[0],
+                            });
+                        }}
                       >
                         {s.forgeMerge}
                       </Button>
@@ -1159,7 +1262,7 @@ export function GitForgeView({
                                   <MenuSurface className="git-forge-menu" />
                                 }
                               >
-                                {shownDetail.state === "open" ? (
+                                {shownDetail.state === "open" && git ? (
                                   <>
                                     <Menu.Item
                                       nativeButton
@@ -1395,7 +1498,7 @@ export function GitForgeView({
             document.body,
           )
         : null}
-      {worktreeRequest && active
+      {worktreeRequest && active && git
         ? createPortal(
             <GitWorktreeDialog
               request={worktreeRequest}

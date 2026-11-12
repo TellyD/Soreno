@@ -38,12 +38,15 @@ export function ForgeStatusIcon({
 
 export function ForgeRequestRow({
   request,
+  project,
   current,
   selected,
   date,
   onSelect,
 }: {
   request: ForgeRequestSummary;
+  /** Set when the list mixes several projects. */
+  project?: string;
   current: boolean;
   selected: boolean;
   date: string;
@@ -59,7 +62,13 @@ export function ForgeRequestRow({
   ].filter(Boolean);
   const description = [
     `${request.title} #${request.number}`,
-    `${request.author} · ${request.sourceBranch} → ${request.targetBranch}`,
+    [
+      project,
+      request.author,
+      `${request.sourceBranch} → ${request.targetBranch}`,
+    ]
+      .filter(Boolean)
+      .join(" · "),
     ...signals,
     date,
   ].join("\n");
@@ -81,6 +90,7 @@ export function ForgeRequestRow({
             {s.forgeCurrentBranch}
           </span>
         ) : null}
+        {project ? <span>{project}</span> : null}
         <span>#{request.number}</span>
         <span>{request.author}</span>
         <span className="git-forge-row-branch">
