@@ -1,6 +1,6 @@
 use super::{
-    claim_images, comment_row, issue_team, new_id, sql, touch, trimmed, KanbanComment, Result,
-    EMPTY_COMMENT_MESSAGE,
+    claim_images, comment_row, issue_team, new_id, sql, touch, trimmed, update_description,
+    KanbanComment, Result, EMPTY_COMMENT_MESSAGE,
 };
 use rusqlite::{Connection, OptionalExtension};
 
@@ -40,6 +40,27 @@ fn comment(db: &Connection, comment_id: &str) -> Result<KanbanComment> {
         comment_row,
     )
     .map_err(sql)
+}
+
+/// Replaces the description on an agent's behalf; `comment` says what changed.
+pub(crate) fn replace_description(
+    db: &Connection,
+    issue_id: &str,
+    description: &str,
+    comment: &str,
+) -> Result<()> {
+    issue_team(db, issue_id)?;
+    let previous: Option<String> = db
+        .query_row(
+            "SELECT description FROM kanban_issues WHERE id=?1",
+            [issue_id],
+            |row| row.get(0),
+        )
+        .map_err(sql)?;
+    if update_description(db, issue_id, description)?.description != previous {
+        create_comment(db, issue_id, comment)?;
+    }
+    Ok(())
 }
 
 /// The signed summary closes the comment, so the previous trailing signature is dropped.

@@ -39,6 +39,7 @@ import {
 import {
   kanbanIssueAgents,
   kanbanIssueAssignment,
+  kanbanIssueDescriptionUpdate,
   kanbanIssueRelease,
   type KanbanIssueAgentRequest,
   type KanbanIssueAgentTarget,
@@ -53,6 +54,8 @@ import { useKanbanIssueRequests } from "./useKanbanIssueRequests";
 import { useStoredPreference } from "./useStoredPreference";
 
 const keepStored = (stored: string | null) => stored;
+// Autosave fires while typing; one notice per pause keeps the agent from a turn per keystroke burst.
+const DESCRIPTION_NOTICE_DELAY_MS = 5000;
 /** Last agent preset started on an issue or a Design board, shared by both. */
 export const useLastAgentPreset = () =>
   useStoredPreference(
@@ -628,10 +631,63 @@ export function useKanbanController({
     },
     [reloadBoard],
   );
+
+  // The agent edits the description from its own copy: it gets the user's text once they pause.
+  const issueAgentsRef = useRef(issueAgents);
+  issueAgentsRef.current = issueAgents;
+  const descriptionTimers = useRef(new Map<string, number>());
+  useEffect(() => {
+    const timers = descriptionTimers.current;
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+  // shortcut: a pending notice is dropped if Soreno closes within the delay; send it on close if users lose updates.
+  // shortcut: a notice already queued in the backend (agent busy), or scheduled by a save whose response arrives after an agent edit, still lands after that edit; check the description revision at delivery if agents get confused.
+  const issueDescriptionSaved = useCallback(
+    (
+      issue: { id: string; identifier: string; title: string },
+      description: string | null,
+    ) => {
+      const sessionId = issueAgentsRef.current.live.get(issue.id)?.session.id;
+      if (!sessionId) return;
+      const timers = descriptionTimers.current;
+      window.clearTimeout(timers.get(issue.id));
+      timers.set(
+        issue.id,
+        window.setTimeout(() => {
+          timers.delete(issue.id);
+          // Unlinked meanwhile: the text is no longer its issue's.
+          if (
+            issueAgentsRef.current.live.get(issue.id)?.session.id !== sessionId
+          )
+            return;
+          // shortcut: catch covers queuing only; a queued notice lost because the session stopped is unreported (like attach/release); follow it with useAgentSessionMessage if users miss it.
+          sendAgentSessionMessage(
+            sessionId,
+            crypto.randomUUID(),
+            kanbanIssueDescriptionUpdate({ ...issue, description }),
+          ).catch((error: unknown) =>
+            notifyError(
+              t("kanban.error.agentDescription", {
+                identifier: issue.identifier,
+                detail: formatError(error),
+              }),
+            ),
+          );
+        }, DESCRIPTION_NOTICE_DELAY_MS),
+      );
+    },
+    [formatError, t],
+  );
   useKanbanIssueRequests(({ issue, updated }) => {
     if (!issue) return;
-    // issueContentSaved reloads the local board and the views showing the issue.
-    if (updated) issueContentSaved(issue);
+    if (updated) {
+      // The agent's edit supersedes the user's pending description notice.
+      // shortcut: a title-only agent edit cancels it too, the event not telling what changed; report description changes in the event if notices go missing.
+      window.clearTimeout(descriptionTimers.current.get(issue.id));
+      descriptionTimers.current.delete(issue.id);
+      // issueContentSaved reloads the local board and the views showing the issue.
+      issueContentSaved(issue);
+    }
     if (!updated || issue.source === "linear") reloadBoard(issue.source);
   });
 
@@ -690,6 +746,7 @@ export function useKanbanController({
       createBoardIssue,
       issueAgents,
       issueContentSaved,
+      issueDescriptionSaved,
       issueRevisions,
       issues,
       kanbanProjects,
@@ -741,6 +798,7 @@ export function useKanbanController({
       createBoardIssue,
       issueAgents,
       issueContentSaved,
+      issueDescriptionSaved,
       issueRevisions,
       issues,
       kanbanProjects,

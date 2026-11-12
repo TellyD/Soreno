@@ -36,6 +36,7 @@ const errorKeys = {
   requestInvalidJson: "kanban.error.requestInvalidJson",
   requestNotRegular: "kanban.error.requestNotRegular",
   requestProject: "kanban.error.requestProject",
+  requestSummary: "kanban.error.requestSummary",
   requestTooLarge: "kanban.error.requestTooLarge",
   sessionHasIssue: "kanban.error.sessionHasIssue",
   sessionNotLinked: "kanban.error.sessionNotLinked",

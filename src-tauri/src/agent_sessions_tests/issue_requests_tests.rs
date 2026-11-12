@@ -740,7 +740,7 @@ fn an_update_request_edits_the_linked_issue_and_never_creates_one() {
     let write = || {
         std::fs::write(
             &request,
-            r#"{"update": true, "title": " Renamed ", "description": " New steps "}"#,
+            r#"{"update": true, "title": " Renamed ", "description": " New steps ", "summary": " Rewrote the steps. "}"#,
         )
         .unwrap()
     };
@@ -792,12 +792,11 @@ fn an_update_request_edits_the_linked_issue_and_never_creates_one() {
         (detail.title.as_str(), detail.description.as_deref()),
         ("Renamed", Some("New steps"))
     );
-    // A local issue has no history: the replaced text survives in a comment.
+    // A local issue has no history: the agent's signed summary says what changed.
     assert_eq!(detail.comments.len(), 1);
-    assert!(
-        detail.comments[0].body.ends_with("\n\nOld steps"),
-        "{}",
-        detail.comments[0].body
+    assert_eq!(
+        detail.comments[0].body,
+        "Rewrote the steps.\n\n— claude via Soreno"
     );
     assert_eq!(agent.board_issues().len(), 1);
     assert_eq!(
@@ -806,6 +805,27 @@ fn an_update_request_edits_the_linked_issue_and_never_creates_one() {
             "Soreno: the linked Kanban issue could not be updated: Cette session d’agent n’est liée à aucune issue.",
             "Soreno: Kanban issue SOR-1 updated.",
         ]
+    );
+
+    // A description change without its summary is refused whole.
+    std::fs::write(
+        &request,
+        r#"{"update": true, "title": "Lost", "description": "Other steps"}"#,
+    )
+    .unwrap();
+    // Refused at parsing, so only reported once the agent had time to finish the file.
+    for _ in 0..2 {
+        agent.state.scan_issue_request(&mut watcher).unwrap();
+    }
+    let missing = agent.handle(&mut watcher).event.error.unwrap();
+    assert!(missing.starts_with("[Kanban/requestSummary] "), "{missing}");
+    let unchanged = agent
+        .state
+        .kanban(|db, _| kanban::load_issue(db, &linked.id))
+        .unwrap();
+    assert_eq!(
+        (unchanged.title.as_str(), unchanged.description.as_deref()),
+        ("Renamed", Some("New steps"))
     );
 
     // The agent's `image-N` placeholders get their original images back.
@@ -818,7 +838,7 @@ fn an_update_request_edits_the_linked_issue_and_never_creates_one() {
     };
     std::fs::write(
         &request,
-        r#"{"update": true, "description": "See ![x](image-1) and ![x](<image-1.png> \"t\") ![x](image-1\u00a0\"t\")"}"#,
+        r#"{"update": true, "summary": "Linked the shot.", "description": "See ![x](image-1) and ![x](<image-1.png> \"t\") ![x](image-1\u00a0\"t\")"}"#,
     )
     .unwrap();
     assert!(agent.handle(&mut watcher).event.error.is_none());
@@ -826,7 +846,7 @@ fn an_update_request_edits_the_linked_issue_and_never_creates_one() {
     assert_eq!(load_description().as_deref(), Some(resolved.as_str()));
     std::fs::write(
         &request,
-        r#"{"update": true, "title": "Lost", "description": "![y](image-2)"}"#,
+        r#"{"update": true, "title": "Lost", "summary": "Lost.", "description": "![y](image-2)"}"#,
     )
     .unwrap();
     let unknown = agent.handle(&mut watcher).event.error.unwrap();
@@ -1018,7 +1038,13 @@ fn a_linear_key_read_error_is_told_to_a_linear_linked_session_instead_of_a_local
 fn an_update_of_a_linked_linear_issue_goes_to_linear_and_fails_without_a_key() {
     let agent = linear_agent("linear-update");
     let request = agent.private_directory().join("kanban-issue-linear.json");
-    let write = || std::fs::write(&request, r#"{"update": true, "description": ""}"#).unwrap();
+    let write = || {
+        std::fs::write(
+            &request,
+            r#"{"update": true, "description": "", "summary": "Cleared it."}"#,
+        )
+        .unwrap()
+    };
     write();
     let requests = std::cell::RefCell::new(Vec::new());
     let update = |request: issue_requests::LinearIssueRequest| {

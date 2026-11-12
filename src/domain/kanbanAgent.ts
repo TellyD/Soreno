@@ -360,6 +360,23 @@ export function kanbanIssueAssignment(issue: {
   ].join("\n");
 }
 
+/** Agent-facing text sent when the user changes the description of the session's issue: the agent edits it from its own copy. */
+export function kanbanIssueDescriptionUpdate(issue: {
+  identifier: string;
+  title: string;
+  description: string | null;
+}): string {
+  // shortcut: same image and 64 KiB limits as kanbanIssueAssignment.
+  const description = issue.description?.trim();
+  return [
+    `Soreno: the user updated the description of issue ${issue.identifier}: ${issue.title}`,
+    "",
+    description || "(The description is now empty.)",
+    "",
+    "This is now the issue's description: base any later edit of it on this text. Reply with one short acknowledgement; do not change your work until the user asks.",
+  ].join("\n");
+}
+
 /** Agent-facing text sent once a session is unlinked from its issue: its summaries would go nowhere. */
 export function kanbanIssueRelease(identifier: string): string {
   return [
@@ -389,7 +406,8 @@ export function kanbanAgentComment(body: string): KanbanAgentComment | null {
   if (!match) return null;
   const name = match[1].trim();
   return {
-    name,
+    // The backend signs with the provider's executable name, e.g. `omp`.
+    name: agentProviderLabel(name),
     executable:
       agentPresets.find((preset) => preset.name === name)?.executable ?? name,
     body: body.slice(0, match.index).trimEnd(),

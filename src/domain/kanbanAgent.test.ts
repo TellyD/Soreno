@@ -402,6 +402,17 @@ describe("agent summary signature", () => {
     });
   });
 
+  it("labels comments the backend signs with an executable name", () => {
+    expect(kanbanAgentComment("Rewrote it.\n\n— claude via Soreno")).toEqual({
+      name: "Claude Code",
+      executable: "claude",
+      body: "Rewrote it.",
+    });
+    expect(
+      kanbanAgentComment("Rewrote it.\n\n— omp-conversation via Soreno")?.name,
+    ).toBe("Chat (OMP)");
+  });
+
   it("survives whitespace normalization but ignores a mid-body mention", () => {
     expect(kanbanAgentComment("Done.\n— Pi via Soreno\n")?.name).toBe("Pi");
     expect(kanbanAgentComment("See\n— Pi via Soreno\nfor details")).toBeNull();

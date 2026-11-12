@@ -31,8 +31,7 @@ const PARSE_ATTEMPTS: u8 = 3;
 const APPEND_SYSTEM_PROMPT: &str = "--append-system-prompt";
 const STOPPED: &str = "Session arrêtée avant le traitement de la demande.";
 const NOT_REGULAR: &str = "[Kanban/requestNotRegular] La demande n’est pas un fichier ordinaire.";
-const REPLACED_DESCRIPTION: &str =
-    "Description remplacée à la demande d’un agent. Texte précédent :";
+const MISSING_SUMMARY: &str = "[Kanban/requestSummary] Une modification de description demande summary, une phrase courte sur ce qui a changé : rien n’a été modifié.";
 // `![alt](image-N)`, `![alt](image-N.ext)` or `![alt](<image-N>)`, as the agent's prompt names
 // the issue's images; the alt text may hold escaped brackets.
 static IMAGE_PLACEHOLDER: LazyLock<Regex> = LazyLock::new(|| {
@@ -43,7 +42,7 @@ static IMAGE_PLACEHOLDER: LazyLock<Regex> = LazyLock::new(|| {
 /// Launch-time instruction telling the agent how to ask Soreno to create or edit a Kanban issue.
 pub(super) fn instruction(directory: &str) -> String {
     format!(
-        "Soreno: only on explicit user request, never on your own initiative: to create a Kanban issue, write kanban-issue-<name>.json (name: letters, digits, . - _) into {directory} with title, optional description (Markdown), optional linear (true if user asks for Linear); update: true with title and/or description edits the issue linked to this session (the description replaces all text; keep image-N refs). Soreno replies with the result (identifier or error); report it to the user."
+        "Soreno: only on explicit user request, never on your own initiative: to create a Kanban issue, write kanban-issue-<name>.json (name: letters, digits, . - _) into {directory} with title, optional description (Markdown), optional linear (true if user asks); update: true with title and/or description edits the linked issue (description replaces all text; keep image-N refs; summary: what changed, one sentence). Soreno replies with the result; report it to the user."
     )
 }
 
@@ -164,6 +163,8 @@ struct RequestFile {
     update: bool,
     #[serde(default)]
     project: Option<String>,
+    #[serde(default)]
+    summary: Option<String>,
 }
 
 struct IssueContent {
@@ -175,9 +176,11 @@ struct IssueContent {
 }
 
 /// New title and/or description of the session's linked issue; an empty description clears it.
+/// `summary` says what the description change does.
 struct IssueEdit {
     title: Option<String>,
     description: Option<String>,
+    summary: String,
 }
 
 enum Request {
@@ -206,9 +209,14 @@ fn parse_request(bytes: &[u8]) -> Result<Request> {
         if file.title.is_none() && description.is_none() {
             return Err(kanban::EMPTY_UPDATE_MESSAGE.into());
         }
+        let summary = file.summary.as_deref().map(str::trim).unwrap_or_default();
+        if description.is_some() && summary.is_empty() {
+            return Err(MISSING_SUMMARY.into());
+        }
         return Ok(Request::Update(IssueEdit {
             title: file.title.as_deref().map(valid_title).transpose()?,
             description,
+            summary: summary.to_owned(),
         }));
     }
     Ok(Request::Create(IssueContent {
@@ -828,16 +836,23 @@ impl AgentSessions {
         request: IssueRequest,
         linear: Result<Option<LinearIssueCreator<'_>>>,
     ) -> Result<Option<IssueRequestOutcome>> {
-        let (session_name, project_id, linked_linear_issue, message_id) = {
+        let (session_name, project_id, linked_linear_issue, message_id, agent) = {
             let store = lock(&self.store)?;
             let session = require_session(&store, &watcher.session_id)?;
             let message_id =
                 crate::sqlite::random_id(&store.db).map_err(|error| error.to_string())?;
+            // Signs the agent's comments as the front reads them; watched runs are always agents.
+            let agent = if session.kind == conversation::KIND {
+                conversation::EXECUTABLE
+            } else {
+                conversations::provider(&session.executable).map_or("agent", Provider::as_str)
+            };
             (
                 session.display_name().to_owned(),
                 session.project_id,
                 kanban_issue_sessions::linked_linear_issue(&store.db, &watcher.session_id)?,
                 message_id,
+                agent,
             )
         };
         let content = match watcher.claim(&request.name, &message_id) {
@@ -861,9 +876,13 @@ impl AgentSessions {
                 content,
                 linear,
             ),
-            Request::Update(edit) => {
-                self.update_linked_issue(&watcher.session_id, edit, &watcher.image_targets, linear)
-            }
+            Request::Update(edit) => self.update_linked_issue(
+                &watcher.session_id,
+                agent,
+                edit,
+                &watcher.image_targets,
+                linear,
+            ),
         });
         let sent = self.send_message(
             &watcher.session_id,
@@ -986,6 +1005,7 @@ impl AgentSessions {
     fn update_linked_issue(
         &self,
         session_id: &str,
+        agent: &str,
         edit: IssueEdit,
         image_targets: &[String],
         update_linear: Result<Option<LinearIssueCreator<'_>>>,
@@ -1015,18 +1035,13 @@ impl AgentSessions {
                 )?;
             }
             if let Some(description) = description {
-                // A local issue keeps no history: the agent could otherwise erase the user's text.
-                if let Some(previous) = kanban::load_issue(db, &issue.id)?
-                    .description
-                    .filter(|previous| previous.trim() != description.trim())
-                {
-                    kanban::create_comment(
-                        db,
-                        &issue.id,
-                        &format!("{REPLACED_DESCRIPTION}\n\n{previous}"),
-                    )?;
-                }
-                kanban::update_description(db, &issue.id, &description)?;
+                // A local issue keeps no history: the signed comment says what the agent changed.
+                kanban::replace_description(
+                    db,
+                    &issue.id,
+                    &description,
+                    &format!("{}\n\n— {agent} via Soreno", edit.summary),
+                )?;
             }
             Ok(issue)
         })

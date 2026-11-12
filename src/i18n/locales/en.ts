@@ -184,6 +184,8 @@ export const en = {
   "kanban.created": "Created {date}",
   "kanban.error.agentAssign":
     "{identifier} is linked, but its agent could not be told: {detail}",
+  "kanban.error.agentDescription":
+    "The new description of {identifier} could not be sent to its agent: {detail}",
   "kanban.error.agentRelease":
     "{identifier} is unlinked, but its agent could not be told: {detail}",
   "kanban.error.agentStart":
@@ -241,6 +243,8 @@ export const en = {
     "The agent must name the project of the group this issue concerns ({detail}).",
   "kanban.error.requestTooLarge":
     "The agent’s request is too large (64 KiB maximum).",
+  "kanban.error.requestSummary":
+    "The agent changed the description without saying what it changed; nothing was changed.",
   "kanban.error.sessionHasIssue":
     "This agent session is already linked to an issue.",
   "kanban.error.sessionNotLinked":

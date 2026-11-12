@@ -1194,6 +1194,54 @@ it("autosaves the description once typing pauses", async () => {
   );
 });
 
+it("sends the description to the issue's agent once the user's edits pause", async () => {
+  vi.mocked(api.updateKanbanIssueDescription).mockImplementation(
+    saveDescription,
+  );
+  vi.mocked(agentApi.sendAgentSessionMessage).mockResolvedValue(
+    {} as AgentSessionMessage,
+  );
+  await remountBoard({
+    issueSessions: [issueLink()],
+    sessions: [linkedSession],
+  });
+  await tapCard();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  const editor = descriptionEditor();
+
+  await act(async () => setEditorText(editor, "Draft"));
+  await act(() => vi.advanceTimersByTimeAsync(3000));
+  await act(async () => setEditorText(editor, "Final steps"));
+  await act(() => vi.advanceTimersByTimeAsync(3000));
+  expect(agentApi.sendAgentSessionMessage).not.toHaveBeenCalled();
+  await act(() => vi.advanceTimersByTimeAsync(3000));
+
+  expect(agentApi.sendAgentSessionMessage).toHaveBeenCalledOnce();
+  const [sessionId, , body] = vi.mocked(agentApi.sendAgentSessionMessage).mock
+    .calls[0];
+  expect(sessionId).toBe("s1");
+  expect(body).toContain("Final steps");
+  expect(body).not.toContain("Draft");
+
+  // The agent's own edit supersedes a notice still pending.
+  await act(async () => setEditorText(editor, "Mine"));
+  await act(() => vi.advanceTimersByTimeAsync(1000));
+  await act(async () =>
+    issueRequestListeners.forEach((listener) =>
+      listener({
+        sessionId: "s1",
+        sessionName: "ACM-1 · Codex",
+        title: "Ship",
+        updated: true,
+        issue: { id: "i1", identifier: "ACM-1", source: "local" },
+        error: null,
+      }),
+    ),
+  );
+  await act(() => vi.advanceTimersByTimeAsync(6000));
+  expect(agentApi.sendAgentSessionMessage).toHaveBeenCalledOnce();
+});
+
 it("shows an outside description received during an edit once the edit is undone", async () => {
   vi.mocked(api.createKanbanComment).mockImplementation(async (_, __, body) =>
     storeComment({ id: "c2", body, createdAt: "2026-09-27T10:00:00.000Z" }),

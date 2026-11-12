@@ -407,6 +407,7 @@ export function KanbanIssueView({
           onSaveDescription={async (description) => {
             const stored = await updateDescription(description);
             contentSaved(selection);
+            kanban.issueDescriptionSaved(boardIssue ?? detail, stored);
             return stored;
           }}
           onOpenIssue={onOpenIssue}

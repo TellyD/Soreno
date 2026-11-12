@@ -185,6 +185,8 @@ export const fr = {
   "kanban.created": "Créée le {date}",
   "kanban.error.agentAssign":
     "{identifier} est liée, mais son agent n’a pas pu être prévenu : {detail}",
+  "kanban.error.agentDescription":
+    "La nouvelle description de {identifier} n’a pas pu être envoyée à son agent : {detail}",
   "kanban.error.agentRelease":
     "{identifier} est déliée, mais son agent n’a pas pu être prévenu : {detail}",
   "kanban.error.agentStart":
@@ -246,6 +248,8 @@ export const fr = {
     "L’agent doit nommer le projet du groupe concerné par cette issue ({detail}).",
   "kanban.error.requestTooLarge":
     "La demande de l’agent est trop volumineuse (64 Kio maximum).",
+  "kanban.error.requestSummary":
+    "L’agent a modifié la description sans dire ce qu’il a changé ; rien n’a été modifié.",
   "kanban.error.sessionHasIssue":
     "Cette session d’agent est déjà liée à une issue.",
   "kanban.error.sessionNotLinked":

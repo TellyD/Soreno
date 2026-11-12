@@ -18,7 +18,9 @@ mod pull_requests;
 mod reading;
 
 use branch_name::branch_name;
-pub(crate) use comments::{appended_summary, create_comment, delete_comment, post_summary};
+pub(crate) use comments::{
+    appended_summary, create_comment, delete_comment, post_summary, replace_description,
+};
 use labels::team_labels;
 pub(crate) use labels::{create_label, required_label_name};
 pub(crate) use pull_requests::extract_pull_requests;
