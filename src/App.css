@@ -368,6 +368,12 @@ button:disabled:not(.app-button) {
 .app-loading-spinner {
   display: inline-flex;
   color: var(--primary);
+  overflow: visible;
+}
+
+/* Rotating the svg box lets WebKit snap its layer origin to device pixels, so the ring orbits. */
+.app-loading-spinner > path {
+  transform-box: view-box;
   transform-origin: center;
   animation: app-loading-spin 900ms linear infinite normal;
 }
@@ -382,7 +388,7 @@ button:disabled:not(.app-button) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-loading-spinner {
+  .app-loading-spinner > path {
     animation: none;
   }
 }

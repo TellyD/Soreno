@@ -550,9 +550,11 @@ function App() {
       <main className="app-shell app-shell-loading" aria-busy="true">
         <AppTitleBar />
         <div className="app-loading" role="status" aria-live="polite">
-          <span className="app-loading-spinner" aria-hidden="true">
-            <LoaderCircle size={22} />
-          </span>
+          <LoaderCircle
+            size={22}
+            className="app-loading-spinner"
+            aria-hidden="true"
+          />
           <span>{t("notes.loading")}</span>
         </div>
       </main>
