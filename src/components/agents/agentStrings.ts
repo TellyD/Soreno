@@ -110,7 +110,7 @@ const en = {
   statusReadError: "Unable to read session statuses.",
   conversationLinkError: "Unable to link this session to its conversation.",
   outdatedCli:
-    "This CLI version does not report its activity: update Claude Code (2.1.295 or later) or Codex (0.163 or later).",
+    "This CLI does not report its activity: update Claude Code (2.1.295 or later) or Codex (0.163 or later). If Claude Code is up to date, remove CLAUDE_CODE_DISABLE_TERMINAL_TITLE from its environment or settings.json.",
   starting: "Starting process…",
   startingShort: "Starting…",
   working: "Agent working…",
@@ -667,7 +667,7 @@ const fr: typeof en = {
   conversationLinkError:
     "Impossible de relier cette session à sa conversation.",
   outdatedCli:
-    "Cette version du CLI ne signale pas son activité : mettez à jour Claude Code (2.1.295 ou plus) ou Codex (0.163 ou plus).",
+    "Ce CLI ne signale pas son activité : mettez à jour Claude Code (2.1.295 ou plus) ou Codex (0.163 ou plus). Si Claude Code est à jour, retirez CLAUDE_CODE_DISABLE_TERMINAL_TITLE de son environnement ou de settings.json.",
   starting: "Démarrage du processus…",
   startingShort: "Démarrage…",
   working: "Agent en cours…",
