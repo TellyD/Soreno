@@ -178,6 +178,10 @@
   padding-inline-start: var(--md-list-hang);
   text-indent: calc(-1 * var(--md-list-hang));
 }
+/* The list hang replaces the quote's 12px inset; add it back. */
+.markdown-editor-preview .cm-md-quote.cm-md-bullet-line {
+  padding-inline-start: calc(var(--md-list-hang) + 12px);
+}
 .markdown-editor-preview .cm-md-bullet {
   display: inline-block;
   box-sizing: border-box;
@@ -185,6 +189,7 @@
   padding-inline-end: 0.6em;
   text-align: end;
   text-indent: 0;
+  font-variant-numeric: tabular-nums;
 }
 .markdown-editor-preview .cm-md-ordered-line {
   --md-list-hang: calc(
