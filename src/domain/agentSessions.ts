@@ -518,6 +518,13 @@ export function isAgentProvider(value: unknown): value is AgentProvider {
   return agentLaunchPresets.some(({ executable }) => executable === value);
 }
 
+export function defaultAgentArgs(
+  byProvider: Partial<Record<AgentProvider, string[]>>,
+  executable: string,
+): string[] {
+  return (isAgentProvider(executable) && byProvider[executable]) || [];
+}
+
 export function visibleAgentPresets(hidden: readonly AgentProvider[]) {
   return agentPresets.filter(
     ({ executable }) =>

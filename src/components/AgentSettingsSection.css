@@ -53,6 +53,11 @@
   font-size: 11.5px;
 }
 
+/* Aligned with the title: row padding, badge and gap. */
+.settings-agent-args {
+  padding: 0 16px 12px 58px;
+}
+
 .settings-agent-note {
   display: flex;
   align-items: flex-start;

@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import { isAgentProvider, type AgentProvider } from "../domain/agentSessions";
+import {
+  isAgentProvider,
+  ompConversationExecutable,
+  type AgentProvider,
+} from "../domain/agentSessions";
 import {
   isCommitMessageStyle,
   isUsableCodexModel,
@@ -26,6 +30,7 @@ export type AppSettings = {
   codexUsageAccountId: string | null;
   claudeUsageAccountId: string | null;
   hiddenAgentPresets: AgentProvider[];
+  agentPresetArgs: Partial<Record<AgentProvider, string[]>>;
   hiddenChatCommands: string[];
   languagePreference: LanguagePreference;
   themePreference: ThemePreference;
@@ -43,6 +48,7 @@ export const defaultAppSettings: AppSettings = {
   codexUsageAccountId: null,
   claudeUsageAccountId: null,
   hiddenAgentPresets: [],
+  agentPresetArgs: {},
   hiddenChatCommands: ["autoresearch", "green", "annotate"],
   languagePreference: "system",
   themePreference: "system",
@@ -95,6 +101,20 @@ export function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
     hiddenAgentPresets: Array.isArray(settings.hiddenAgentPresets)
       ? [...new Set(settings.hiddenAgentPresets.filter(isAgentProvider))]
       : defaultAppSettings.hiddenAgentPresets,
+    agentPresetArgs: Object.fromEntries(
+      Object.entries(
+        typeof settings.agentPresetArgs === "object" && settings.agentPresetArgs
+          ? settings.agentPresetArgs
+          : {},
+      ).flatMap(([provider, args]) =>
+        // The OMP chat runs over RPC and does not take session arguments.
+        isAgentProvider(provider) &&
+        provider !== ompConversationExecutable &&
+        Array.isArray(args)
+          ? [[provider, args.filter((arg) => typeof arg === "string" && arg)]]
+          : [],
+      ),
+    ),
     hiddenChatCommands: Array.isArray(settings.hiddenChatCommands)
       ? [
           ...new Set(

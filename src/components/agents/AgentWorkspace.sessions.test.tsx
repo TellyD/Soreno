@@ -1081,11 +1081,12 @@ it("starts only an inactive split child when its parent is already running", asy
 });
 
 it.each([
-  ["Codex", "codex"],
-  ["Terminal", ""],
+  ["Codex", "codex", ["--search"]],
+  ["Terminal", "", []],
 ])(
   "creates %s directly, names duplicates distinctly, and retains all running terminals",
-  async (name, executable) => {
+  async (name, executable, args) => {
+    runtime.settings.agentPresetArgs = { codex: ["--search"] };
     await render();
     await newAgent(name);
     expect(dialog()).toBeNull();
@@ -1093,7 +1094,7 @@ it.each([
     expect(saved).toMatchObject({
       name,
       executable,
-      args: [],
+      args,
       projectId: "p1",
     });
     expect(api.startAgentSession).toHaveBeenCalledWith(saved.id);

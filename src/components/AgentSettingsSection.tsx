@@ -11,14 +11,17 @@ import { useI18n } from "../i18n";
 import { AgentProviderIcon } from "./agents/AgentProviderIcon";
 import { Switch } from "./ui/Switch";
 import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
 import "./AgentSettingsSection.css";
 
 export function AgentSettingsSection({
   hiddenAgentPresets,
+  agentPresetArgs,
   hiddenChatCommands,
   onUpdateSettings,
 }: {
   hiddenAgentPresets: AppSettings["hiddenAgentPresets"];
+  agentPresetArgs: AppSettings["agentPresetArgs"];
   hiddenChatCommands: AppSettings["hiddenChatCommands"];
   onUpdateSettings: (patch: AppSettingsPatch) => void;
 }) {
@@ -77,6 +80,31 @@ export function AgentSettingsSection({
                 }
               />
             </label>
+            {executable !== ompConversationExecutable && (
+              <div className="settings-agent-args">
+                <Input
+                  size="small"
+                  spellCheck={false}
+                  autoComplete="off"
+                  aria-label={t("settings.agents.args", { agent: name })}
+                  placeholder={t("settings.agents.argsPlaceholder")}
+                  defaultValue={agentPresetArgs[executable]?.join(" ")}
+                  // onChange, not onBlur: Escape closes the modal without a blur event.
+                  onChange={(event) => {
+                    // shortcut: split on whitespace, so one argument cannot contain a space; add quoting if users need it.
+                    const args = event.currentTarget.value
+                      .split(/\s+/)
+                      .filter(Boolean);
+                    onUpdateSettings((current) => ({
+                      agentPresetArgs: {
+                        ...current.agentPresetArgs,
+                        [executable]: args,
+                      },
+                    }));
+                  }}
+                />
+              </div>
+            )}
           </li>
         ))}
       </ul>

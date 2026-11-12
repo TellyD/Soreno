@@ -15,6 +15,7 @@ import {
   agentSessionDisplayName,
   agentSessionTitle,
   closedAgentSessionIds,
+  defaultAgentArgs,
   groupCollapseKey,
   moveAgentItem,
   ompConversationExecutable,
@@ -64,6 +65,7 @@ import { usePersistedValue } from "../../hooks/usePersistedValue";
 import { KanbanControllerProvider } from "../../hooks/useKanbanController";
 import { useRemoteSessionLabels } from "../../hooks/useRemoteSessionLabels";
 import { notifyWarning, useNotification } from "../../notifications";
+import { useAppSettings } from "../../settings";
 import { AutomationsBoard } from "../automations/AutomationsBoard";
 import { KanbanBoard } from "../kanban/KanbanBoard";
 import { KanbanIssuePanel } from "../kanban/KanbanIssuePanel";
@@ -219,6 +221,7 @@ export function AgentWorkspace({
   registerTransitionGuard,
 }: AgentWorkspaceProps) {
   const s = useAgentStrings();
+  const { settings } = useAppSettings();
   const gitStrings = useGitStrings();
   const selectedProjectIdRef = useRef<string | null>(null);
   const {
@@ -2217,7 +2220,7 @@ export function AgentWorkspace({
         projectId: project.id,
         name,
         executable: preset.executable,
-        args: [],
+        args: defaultAgentArgs(settings.agentPresetArgs, preset.executable),
         ...(preset.executable === ompConversationExecutable && {
           kind: "conversation" as const,
         }),
@@ -2240,7 +2243,7 @@ export function AgentWorkspace({
       name,
       customName: name,
       executable,
-      args: [],
+      args: defaultAgentArgs(settings.agentPresetArgs, executable),
       createdAt: new Date().toISOString(),
       favorite: true,
     };

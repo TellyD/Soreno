@@ -33,6 +33,7 @@ const runtime = vi.hoisted(() => ({
   titles: new Map<string, (title: string) => void>(),
   settings: {
     hiddenAgentPresets: [] as AgentProvider[],
+    agentPresetArgs: {} as Partial<Record<AgentProvider, string[]>>,
     agentNotificationsEnabled: false,
   },
   showWorkspace: vi.fn(),
@@ -363,6 +364,7 @@ beforeEach(() => {
   vi.mocked(api.listAgentSessionMessages).mockResolvedValue([]);
   vi.mocked(api.listenAgentSessionMessages).mockResolvedValue(() => {});
   runtime.settings.hiddenAgentPresets = [];
+  runtime.settings.agentPresetArgs = {};
   runtime.settings.agentNotificationsEnabled = false;
   localStorage.clear();
   data = {

@@ -542,6 +542,7 @@ export function SettingsModal({
               {activeSection === "agents" ? (
                 <AgentSettingsSection
                   hiddenAgentPresets={settings.hiddenAgentPresets}
+                  agentPresetArgs={settings.agentPresetArgs}
                   hiddenChatCommands={settings.hiddenChatCommands}
                   onUpdateSettings={handleSettingsPatch}
                 />

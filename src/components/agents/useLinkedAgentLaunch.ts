@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import * as api from "../../data/agentSessionsApi";
 import * as designApi from "../../data/designApi";
 import {
+  defaultAgentArgs,
   ompConversationExecutable,
   sessionLaunchBlocked,
   type AgentProject,
@@ -18,6 +19,7 @@ import {
   type DesignAgentRequest,
 } from "../../domain/design";
 import { errorMessage } from "../../domain/errors";
+import { useAppSettings } from "../../settings";
 import { kanbanErrorCode } from "../../domain/kanban";
 import {
   kanbanIssueLaunch,
@@ -67,6 +69,7 @@ export function useLinkedAgentLaunch({
 }) {
   const s = useAgentStrings();
   const gitStrings = useGitStrings();
+  const { settings } = useAppSettings();
 
   // Rejects with localized text, or a coded Kanban error the board translates: the board shows
   // it instead of the workspace notification.
@@ -128,7 +131,7 @@ export function useLinkedAgentLaunch({
       projectId,
       name,
       executable,
-      args: [],
+      args: defaultAgentArgs(settings.agentPresetArgs, executable),
       ...(executable === ompConversationExecutable && {
         kind: "conversation" as const,
       }),

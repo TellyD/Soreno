@@ -619,6 +619,8 @@ export const fr = {
   "settings.agents.ompConversation":
     "OMP dans une vue de conversation, sans terminal (commande omp)",
   "settings.agents.toggle": "Afficher {agent}",
+  "settings.agents.args": "Arguments par défaut pour {agent}",
+  "settings.agents.argsPlaceholder": "Arguments ajoutés aux nouvelles sessions",
   "settings.agents.installNote":
     "Soreno n’installe pas les agents : chacun doit déjà être installé dans l’environnement du projet, en local, dans WSL ou sur l’hôte SSH.",
   "settings.agents.chatCommands.title": "Commandes du chat OMP",

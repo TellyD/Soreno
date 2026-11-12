@@ -519,6 +519,7 @@ impl AgentSessions {
             service_id: None,
             working_directory: None,
             executable: executable.into(),
+            // Not the user's default agent arguments: they could undo `restrict_launch` (e.g. bypass permissions).
             args: Vec::new(),
             created_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
             favorite: false,

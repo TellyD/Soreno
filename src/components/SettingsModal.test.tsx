@@ -11,6 +11,7 @@ import { SettingsModal } from "./SettingsModal";
 import { writeClipboardText } from "../data/clipboard";
 import { recordChatCommandCatalog } from "../domain/agentConversationCommands";
 import { deferred } from "../testing/deferred";
+import { setInputValue } from "./ui/testInput";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("../data/clipboard", () => ({ writeClipboardText: vi.fn() }));
@@ -249,6 +250,26 @@ it("lists the last chat's commands and the hidden ones it lacked, and shows one 
   expect(
     patch({ ...defaultAppSettings, hiddenChatCommands: ["green", "x"] }),
   ).toEqual({ hiddenChatCommands: ["x"] });
+});
+
+it("saves an agent's default arguments while typing, without waiting for blur", async () => {
+  const updateSettings = vi.fn();
+  runtime.updateSettings = updateSettings;
+  await renderSettingsModal();
+  await act(async () =>
+    [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Agents")!
+      .click(),
+  );
+  const input = container.querySelector<HTMLInputElement>(
+    'input[aria-label="Arguments par défaut pour Codex"]',
+  )!;
+  await act(async () => setInputValue(input, "--search --model o3"));
+  const patch = updateSettings.mock.lastCall![0];
+  expect(
+    patch({ ...defaultAppSettings, agentPresetArgs: { claude: ["-c"] } })
+      .agentPresetArgs,
+  ).toEqual({ claude: ["-c"], codex: ["--search", "--model", "o3"] });
 });
 
 it("lights up only the exact key combination being held in the shortcuts list", async () => {

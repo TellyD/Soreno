@@ -1,6 +1,7 @@
 import { useEffect, useState, type RefObject } from "react";
 import * as api from "../../data/agentSessionsApi";
 import {
+  defaultAgentArgs,
   ompConversationExecutable,
   sessionLaunchBlocked,
   type AgentSession,
@@ -112,7 +113,7 @@ export function useRecoveryAgentLaunch({
         s.mergeConflictSessionName(agent.name),
       ),
       executable: agent.executable,
-      args: [],
+      args: defaultAgentArgs(settings.agentPresetArgs, agent.executable),
       ...(agent.executable === ompConversationExecutable && {
         kind: "conversation" as const,
       }),

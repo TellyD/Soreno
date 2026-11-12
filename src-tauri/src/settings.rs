@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
     fs::{self, File},
     io::Write,
     path::{Path, PathBuf},
@@ -83,6 +84,8 @@ pub struct AppSettings {
     #[serde(default = "default_hidden_chat_commands")]
     pub hidden_chat_commands: Vec<String>,
     #[serde(default)]
+    pub agent_preset_args: BTreeMap<String, Vec<String>>,
+    #[serde(default)]
     pub terminal_log_enabled: bool,
     #[serde(default = "enabled")]
     pub agent_notifications_enabled: bool,
@@ -120,6 +123,7 @@ impl Default for AppSettings {
             claude_usage_account_id: None,
             hidden_agent_presets: Vec::new(),
             hidden_chat_commands: default_hidden_chat_commands(),
+            agent_preset_args: BTreeMap::new(),
             terminal_log_enabled: false,
             agent_notifications_enabled: true,
             material_file_icons_enabled: false,
@@ -285,6 +289,7 @@ mod tests {
             claude_usage_account_id: Some("source:local".into()),
             hidden_agent_presets: vec!["pi".into()],
             hidden_chat_commands: Vec::new(),
+            agent_preset_args: BTreeMap::new(),
             terminal_log_enabled: true,
             agent_notifications_enabled: false,
             material_file_icons_enabled: true,
