@@ -99,20 +99,8 @@
   margin-left: auto;
 }
 
-.kanban-refresh-spinning {
-  animation: kanban-spin 0.9s linear infinite;
-}
-
-@keyframes kanban-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kanban-refresh-spinning {
-    animation: none;
-  }
+.kanban-board-actions .app-loading-spinner {
+  color: currentColor;
 }
 
 .kanban-columns {

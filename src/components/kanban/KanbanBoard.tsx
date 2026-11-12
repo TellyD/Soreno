@@ -472,9 +472,7 @@ function KanbanBoardContent({
               title={t("kanban.refresh")}
             >
               <RefreshCw
-                className={
-                  kanban.loading ? "kanban-refresh-spinning" : undefined
-                }
+                className={kanban.loading ? "app-loading-spinner" : undefined}
                 size={14}
               />
             </IconButton>
