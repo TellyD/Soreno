@@ -130,7 +130,7 @@ function textButton(text: string, scope: ParentNode = document) {
   return value;
 }
 
-it("opens and acknowledges a file requested by quick navigation", async () => {
+it("opens, reveals in the tree and acknowledges a requested file", async () => {
   const onOpenFileRequestHandled = vi.fn();
   await render();
   await act(async () =>
@@ -152,6 +152,20 @@ it("opens and acknowledges a file requested by quick navigation", async () => {
     ),
   );
   expect(onOpenFileRequestHandled).toHaveBeenCalledWith(1);
+  await act(async () =>
+    vi.waitFor(() =>
+      expect(
+        container
+          .querySelector('[data-entry-path="src/App.tsx"]')
+          ?.getAttribute("aria-current"),
+      ).toBe("page"),
+    ),
+  );
+  expect(
+    container
+      .querySelector('[data-entry-path="src"]')
+      ?.getAttribute("aria-expanded"),
+  ).toBe("true");
 });
 
 it("acknowledges a quick-open request cancelled by the discard guard", async () => {

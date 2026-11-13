@@ -176,6 +176,7 @@ export function ProjectExplorer({
   const [focusRequest, setFocusRequest] = useState<{
     path: string;
     toolbarFallback?: boolean;
+    scrollOnly?: boolean;
   } | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   const refreshRef = useRef<HTMLButtonElement>(null);
@@ -355,7 +356,7 @@ export function ProjectExplorer({
   );
 
   const openFile = useCallback(
-    async (path: string) => {
+    async (path: string): Promise<boolean> => {
       const generation = ++fileGeneration.current;
       loadingFile.current = path;
       current.current.locked = true;
@@ -371,6 +372,7 @@ export function ProjectExplorer({
             original: value.content,
             value: value.content,
           });
+          return true;
         }
       } catch (reason) {
         const { code } = projectFileError(reason);
@@ -386,6 +388,7 @@ export function ProjectExplorer({
           setFileLoading(false);
         }
       }
+      return false;
     },
     [closeLocked, project.id],
   );
@@ -403,15 +406,12 @@ export function ProjectExplorer({
     setFileLoading(false);
   }
 
-  async function selectFile(entry: ProjectFileEntry) {
-    if (
-      (!entry.editable && !entry.previewable) ||
-      document?.path === entry.path
-    )
-      return;
-    if (!(await prepare())) return;
+  async function selectFile(entry: ProjectFileEntry): Promise<boolean> {
+    if (!entry.editable && !entry.previewable) return false;
+    if (document?.path === entry.path) return true;
+    if (!(await prepare())) return false;
     discard();
-    await openFile(entry.path);
+    return openFile(entry.path);
   }
 
   function openFromExplorer(entry: ProjectFileEntry) {
@@ -441,7 +441,13 @@ export function ProjectExplorer({
       kind: "file",
       name: projectFileName(request.path),
       path: request.path,
-    }).finally(() => onOpenFileRequestHandled?.(request.id));
+    })
+      .then((opened) => {
+        // The editor keeps the focus; the tree only scrolls to the file.
+        // shortcut: a slow reveal finishing after a newer request scrolls back to the older file; track the request if remote listings make it visible.
+        if (opened) void revealPath(request.path, true);
+      })
+      .finally(() => onOpenFileRequestHandled?.(request.id));
   }, [openFileRequest?.id, onOpenFileRequestHandled, project.id]);
 
   async function reloadFile() {
@@ -563,7 +569,7 @@ export function ProjectExplorer({
     );
   }
 
-  async function revealPath(path: string) {
+  async function revealPath(path: string, scrollOnly = false) {
     const ancestors = projectFileAncestors(path);
     const parent = listingsRef.current.get(projectFileParent(path));
     setExpanded((value) => new Set([...value, ...ancestors]));
@@ -576,7 +582,7 @@ export function ProjectExplorer({
       return known ? parentStale : true;
     });
     await Promise.all(directories.map((directory) => loadDirectory(directory)));
-    if (alive.current) setFocusRequest({ path });
+    if (alive.current) setFocusRequest({ path, scrollOnly });
   }
 
   useEffect(() => {
@@ -591,7 +597,10 @@ export function ProjectExplorer({
       row ?? (focusRequest.toolbarFallback ? refreshRef.current : null);
     if (!target) return;
     row?.scrollIntoView?.({ block: "nearest" });
-    if (!window.document.querySelector('[aria-modal="true"]'))
+    if (
+      !focusRequest.scrollOnly &&
+      !window.document.querySelector('[aria-modal="true"]')
+    )
       target.focus({ preventScroll: true });
   }, [expanded, focusRequest, listings, loadingDirectories]);
 
