@@ -1076,7 +1076,12 @@ export function AgentProjectRail({
         <h2>{embedded ? s.projects : s.title}</h2>
         <div className="agent-rail-actions">
           <IconButton
-            aria-label={s.priorityView}
+            className="agent-priority-toggle"
+            aria-label={
+              priority.toHandle.length > 0
+                ? `${s.priorityView} · ${s.toHandle} · ${priority.toHandle.length}`
+                : s.priorityView
+            }
             aria-pressed={priorityView}
             title={s.priorityView}
             selected={priorityView}
@@ -1086,6 +1091,18 @@ export function AgentProjectRail({
             }}
           >
             <Inbox aria-hidden="true" />
+            {priority.toHandle.length > 0 ? (
+              <span
+                className="agent-priority-count"
+                // Awaiting sessions come first, so the first mark is the most urgent.
+                data-attention={attentionOf(priority.toHandle[0].id)}
+                aria-hidden="true"
+              >
+                {priority.toHandle.length > 99
+                  ? "99+"
+                  : priority.toHandle.length}
+              </span>
+            ) : null}
           </IconButton>
           {priorityView ||
           (hasLoaded && orderedProjects.length === 0) ? null : (

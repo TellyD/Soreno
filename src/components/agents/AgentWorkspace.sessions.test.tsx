@@ -73,7 +73,10 @@ it("ranks sessions from the priority toggle and remembers it", async () => {
   data.statuses[1].awaiting = true;
   await act(async () => vi.advanceTimersByTimeAsync(1000));
   await act(async () => vi.advanceTimersByTimeAsync(1000));
-  const toggle = () => button("Vue par priorités");
+  const toggle = () =>
+    container.querySelector<HTMLButtonElement>(
+      'button[title="Vue par priorités"]',
+    )!;
   const sections = () =>
     [...container.querySelectorAll(".agent-rail section")].map((section) => [
       section.querySelector("h3")?.textContent,
@@ -82,6 +85,9 @@ it("ranks sessions from the priority toggle and remembers it", async () => {
       ),
     ]);
 
+  expect(toggle().getAttribute("aria-label")).toBe(
+    "Vue par priorités · À traiter · 1",
+  );
   expect(toggle().getAttribute("aria-pressed")).toBe("false");
   await act(async () => toggle().click());
   expect(sections()).toEqual([

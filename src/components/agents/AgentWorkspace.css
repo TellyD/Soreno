@@ -914,6 +914,34 @@
   color: var(--primary-hover);
   stroke-width: 2.75;
 }
+.agent-priority-toggle {
+  position: relative;
+}
+.agent-priority-count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 7px;
+  padding: 0 3px;
+  color: var(--danger-action-text);
+  background: var(--warning-accent);
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+.agent-priority-count[data-attention="awaiting"] {
+  background: var(--danger-action);
+}
+:root:not([data-theme="dark"])
+  .agent-priority-count:not([data-attention="awaiting"]) {
+  color: var(--text-strong);
+}
 .agent-priority-name {
   min-width: 0;
 }
