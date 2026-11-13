@@ -543,6 +543,7 @@ beforeEach(() => {
           sessionId,
           issueId: issue.id,
           issueIdentifier: issue.identifier,
+          issueTitle: issue.title,
           sessionName: linked.name,
           executable: linked.executable,
           projectName: project.name,

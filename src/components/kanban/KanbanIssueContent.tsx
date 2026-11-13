@@ -62,10 +62,11 @@ type KanbanIssueDetailProps = {
   agentStarting: boolean;
   // Shown beside the issue's own session: comments go to that agent or nowhere, and it needs no open button.
   besideSession: boolean;
-  // All agent sessions, statuses and terminal titles: comments go to the issue's or its project's agents.
+  // All agent sessions, statuses, terminal titles and issue links: comments go to the issue's or its project's agents.
   sessions: readonly AgentSession[];
   statuses: readonly AgentSessionStatus[];
   terminalTitles: Readonly<Record<string, string>>;
+  issueSessions: readonly AgentSessionKanbanIssue[];
   // Last agent of the issue once its session was deleted.
   endedAgent: AgentSessionKanbanIssue | undefined;
   // The board copy is the source of truth for editable fields when the issue is on it.
@@ -106,6 +107,7 @@ export function KanbanIssueContent({
   sessions,
   statuses,
   terminalTitles,
+  issueSessions,
   endedAgent,
   boardIssue,
   detail,
@@ -142,6 +144,7 @@ export function KanbanIssueContent({
     sessions,
     statuses,
     terminalTitles,
+    issueSessions,
   );
   const commentTargets = besideSession
     ? projectTargets.filter(({ linkedToIssue }) => linkedToIssue)

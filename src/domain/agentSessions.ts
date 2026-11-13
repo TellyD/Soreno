@@ -294,6 +294,8 @@ export type AgentSessionKanbanIssue = {
   source: KanbanSource;
   issueId: string;
   issueIdentifier: string;
+  /** Empty for a Linear link made before titles were kept. */
+  issueTitle: string;
   sessionId: string | null;
   sessionName: string;
   executable: string;
@@ -673,10 +675,23 @@ export function agentImagePasteSequence(
 }
 
 export function agentSessionDisplayName(
-  session: Pick<AgentSession, "name" | "customName">,
+  session: Pick<AgentSession, "name" | "customName" | "executable">,
   automaticName?: string | null,
+  issue?: Pick<AgentSessionKanbanIssue, "issueIdentifier" | "issueTitle">,
 ): string {
-  return session.customName || automaticName || session.name;
+  if (session.customName) return session.customName;
+  const issueName =
+    issue &&
+    [issue.issueIdentifier, issue.issueTitle].filter(Boolean).join(" · ");
+  const provider = agentProviderOf(session.executable);
+  // OMP retitles as the work moves and a Pi name is set on purpose; Claude and Codex titles guess from the first messages.
+  return (
+    (provider === "pi" ||
+    provider === "omp" ||
+    provider === ompConversationExecutable
+      ? automaticName || issueName
+      : issueName || automaticName) || session.name
+  );
 }
 
 export function agentSessionTitle(

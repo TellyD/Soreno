@@ -44,18 +44,6 @@ export type KanbanIssueAgents = {
   ended: ReadonlyMap<string, AgentSessionKanbanIssue>;
 };
 
-// Same name as the session's tab: OMP reports its title in the status, other CLIs in the terminal title.
-function sessionName(
-  session: AgentSession,
-  status: AgentSessionStatus | undefined,
-  terminalTitles: Readonly<Record<string, string>>,
-) {
-  return agentSessionDisplayName(
-    session,
-    status?.conversation?.name || terminalTitles[session.id],
-  );
-}
-
 export function kanbanIssueAgents(
   links: readonly AgentSessionKanbanIssue[],
   sessions: readonly AgentSession[],
@@ -81,7 +69,12 @@ export function kanbanIssueAgents(
     if (session)
       live.set(link.issueId, {
         session,
-        name: sessionName(session, status, terminalTitles),
+        // Same name as the session's tab: OMP reports its title in the status, other CLIs in the terminal title.
+        name: agentSessionDisplayName(
+          session,
+          status?.conversation?.name || terminalTitles[session.id],
+          link,
+        ),
         activity: agentSessionActivity(status),
         closed: closedSessionIds.has(session.id),
         projectName: link.projectName,
@@ -108,6 +101,7 @@ export function kanbanCommentTargets(
   sessions: readonly AgentSession[],
   statuses: readonly AgentSessionStatus[],
   terminalTitles: Readonly<Record<string, string>>,
+  issueSessions: readonly AgentSessionKanbanIssue[],
 ): KanbanCommentTarget[] {
   const statusesById = new Map(
     statuses.map((status) => [status.sessionId, status]),
@@ -134,7 +128,12 @@ export function kanbanCommentTargets(
     )
     .map((session) => ({
       sessionId: session.id,
-      name: sessionName(session, statusesById.get(session.id), terminalTitles),
+      name: agentSessionDisplayName(
+        session,
+        statusesById.get(session.id)?.conversation?.name ||
+          terminalTitles[session.id],
+        issueSessions.find((link) => link.sessionId === session.id),
+      ),
       executable: session.executable,
       linkedToIssue: false,
     }));

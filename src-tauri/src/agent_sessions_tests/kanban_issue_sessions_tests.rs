@@ -109,6 +109,7 @@ fn linked_sessions_are_listed_with_a_snapshot_of_the_session() {
             source: kanban::KanbanSource::Local,
             issue_id: issues[0].clone(),
             issue_identifier: "SOR-1".into(),
+            issue_title: "Issue 1".into(),
             session_id: Some("a".into()),
             session_name: "Shell".into(),
             executable: "/bin/sh".into(),
@@ -311,7 +312,7 @@ fn unlinking_frees_the_session_and_the_issue_and_reopens_a_closed_session() {
     save_session(&state, "b");
     state.link_session_kanban_issue("a", &issues[0]).unwrap();
     state
-        .link_session_linear_issue("b", "lin-1", "ENG-1")
+        .link_session_linear_issue("b", "lin-1", "ENG-1", "Issue")
         .unwrap();
     state.set_session_closed("a", true).unwrap();
     assert!(state
@@ -366,10 +367,10 @@ fn a_summary_claimed_on_one_source_is_never_offered_after_relinking_to_the_other
     state.complete_kanban_issue("a", "turn-1", "Done.").unwrap();
     state.unlink_session_issue("a").unwrap();
     state
-        .link_session_linear_issue("a", "lin-1", "ENG-1")
+        .link_session_linear_issue("a", "lin-1", "ENG-1", "Issue")
         .unwrap();
     state
-        .link_session_linear_issue("b", "lin-2", "ENG-2")
+        .link_session_linear_issue("b", "lin-2", "ENG-2", "Issue")
         .unwrap();
     state.claim_linear_issue_summary("b", "turn-3").unwrap();
     state.unlink_session_issue("b").unwrap();

@@ -147,6 +147,7 @@ it("shows the active agent session's issue, or a way to link one, in place of Gi
       source: "local",
       issueId: "issue-1",
       issueIdentifier: "TEL-1",
+      issueTitle: "Fix login",
       sessionId: "s2",
       sessionName: "Codex tests",
       executable: "codex",
@@ -181,7 +182,7 @@ it("shows the active agent session's issue, or a way to link one, in place of Gi
   const linkButton = () => button("Lier une issue");
   expect(() => issueButton()).toThrow();
 
-  await click("Codex tests");
+  await click("TEL-1 · Fix login");
   expect(issueButton().getAttribute("aria-pressed")).toBe("false");
   expect(board.props).toBeNull();
 
@@ -208,7 +209,7 @@ it("shows the active agent session's issue, or a way to link one, in place of Gi
   expect(linkButton().getAttribute("aria-pressed")).toBe("true");
   expect(gitShown()).toBe(false);
 
-  await click("Codex tests");
+  await click("TEL-1 · Fix login");
   expect(issueButton().getAttribute("aria-pressed")).toBe("true");
   await click("Outils du projet");
   expect(issueButton().getAttribute("aria-pressed")).toBe("false");
@@ -216,7 +217,7 @@ it("shows the active agent session's issue, or a way to link one, in place of Gi
   expect(gitShown()).toBe(true);
   await click("OMP chat");
   expect(linkButton().getAttribute("aria-pressed")).toBe("true");
-  await click("Codex tests");
+  await click("TEL-1 · Fix login");
   expect(issueButton().getAttribute("aria-pressed")).toBe("false");
   expect(gitShown()).toBe(true);
 
@@ -267,6 +268,7 @@ it("closes the tools with the issue only if they were closed for it since they l
       source: "local",
       issueId: "issue-1",
       issueIdentifier: "TEL-1",
+      issueTitle: "Fix login",
       sessionId: "s2",
       sessionName: "Codex tests",
       executable: "codex",
@@ -287,7 +289,7 @@ it("closes the tools with the issue only if they were closed for it since they l
   const show = (visible: boolean) =>
     render(false, null, gitPanel, visible, onVisibleChange);
   await show(false);
-  await click("Codex tests");
+  await click("TEL-1 · Fix login");
   await click("Issue TEL-1");
   expect(issuePressed()).toBe(true);
   // Closed by the shortcut, then Git reopened before the issue.
@@ -316,7 +318,7 @@ it("closes the tools with the issue only if they were closed for it since they l
   expect(gitPanel.querySelector<HTMLElement>(".agent-git-panel")!.hidden).toBe(
     false,
   );
-  await click("Codex tests");
+  await click("TEL-1 · Fix login");
   expect(issuePressed()).toBe(true);
 });
 
@@ -337,6 +339,7 @@ it("starts a linked agent on the chosen project with the issue prompt, then open
     source: "local",
     id: "issue-1",
     identifier: "TEL-1",
+    title: "Fix login",
   });
   expect(api.startAgentSession).toHaveBeenCalledWith(
     saved.id,
@@ -363,9 +366,8 @@ it("starts a linked agent on the chosen project with the issue prompt, then open
     }),
   ]);
   expect(kanbanPane().hidden).toBe(true);
-  expect(button("TEL-1 · Claude Code").getAttribute("aria-current")).toBe(
-    "page",
-  );
+  // The tab names the linked issue rather than the launcher.
+  expect(button("TEL-1 · Fix login").getAttribute("aria-current")).toBe("page");
 });
 
 it("starts and links a background agent on a Linear issue without leaving the Kanban", async () => {
@@ -379,14 +381,13 @@ it("starts and links a background agent on a Linear issue without leaving the Ka
     source: "linear",
     id: "issue-1",
     identifier: "TEL-1",
+    title: "Fix login",
   });
   expect(board.props!.issueSessions).toEqual([
     expect.objectContaining({ sessionId: saved.id }),
   ]);
   expect(kanbanPane().hidden).toBe(false);
-  expect(button("TEL-1 · Claude Code").hasAttribute("aria-current")).toBe(
-    false,
-  );
+  expect(button("TEL-1 · Fix login").hasAttribute("aria-current")).toBe(false);
   expect(
     container.querySelector<HTMLElement>(`[data-terminal="${saved.id}"]`)
       ?.hidden,
@@ -634,7 +635,7 @@ it("rejects when the workspace cannot reload after the agent started", async () 
 
   expect(api.linkAgentSessionKanbanIssue).toHaveBeenCalledWith(
     savedSession().id,
-    { source: "local", id: "issue-1", identifier: "TEL-1" },
+    { source: "local", id: "issue-1", identifier: "TEL-1", title: "Fix login" },
   );
   expect(kanbanPane().hidden).toBe(false);
 });
@@ -691,12 +692,12 @@ it("keeps a closed issue session linked, then reopens and relaunches it from the
   await startIssueAgent();
   const saved = savedSession();
 
-  await click("Fermer l’onglet · TEL-1 · Claude Code");
+  await click("Fermer l’onglet · TEL-1 · Fix login");
 
   expect(api.stopAgentSession).toHaveBeenCalledWith(saved.id);
   expect(api.setAgentSessionClosed).toHaveBeenCalledWith(saved.id, true);
   expect(api.deleteAgentSession).not.toHaveBeenCalled();
-  expect(tabNames()).not.toContain("TEL-1 · Claude Code");
+  expect(tabNames()).not.toContain("TEL-1 · Fix login");
   expect(board.props!.sessions.map((session) => session.id)).toContain(
     saved.id,
   );
@@ -708,9 +709,7 @@ it("keeps a closed issue session linked, then reopens and relaunches it from the
   expect(api.setAgentSessionClosed).toHaveBeenLastCalledWith(saved.id, false);
   expect(api.startAgentSession).toHaveBeenCalledWith(saved.id);
   expect(kanbanPane().hidden).toBe(true);
-  expect(button("TEL-1 · Claude Code").getAttribute("aria-current")).toBe(
-    "page",
-  );
+  expect(button("TEL-1 · Fix login").getAttribute("aria-current")).toBe("page");
 });
 
 it("does not reopen a closed issue session while its project is disconnected", async () => {
@@ -718,7 +717,7 @@ it("does not reopen a closed issue session while its project is disconnected", a
   await startIssueAgent();
   const saved = savedSession();
   data.disconnectedProjectIds = ["p1"];
-  await click("Fermer l’onglet · TEL-1 · Claude Code");
+  await click("Fermer l’onglet · TEL-1 · Fix login");
 
   vi.mocked(api.startAgentSession).mockClear();
   vi.mocked(api.setAgentSessionClosed).mockClear();
@@ -726,7 +725,7 @@ it("does not reopen a closed issue session while its project is disconnected", a
 
   expect(api.setAgentSessionClosed).not.toHaveBeenCalled();
   expect(api.startAgentSession).not.toHaveBeenCalled();
-  expect(tabNames()).not.toContain("TEL-1 · Claude Code");
+  expect(tabNames()).not.toContain("TEL-1 · Fix login");
   expect(board.props!.closedSessionIds).toEqual(new Set([saved.id]));
 });
 
@@ -738,11 +737,12 @@ async function deleteIssue() {
 it("shows a closed issue session again once its issue is deleted", async () => {
   await renderBoard();
   await startIssueAgent();
-  await click("Fermer l’onglet · TEL-1 · Claude Code");
-  expect(tabNames()).not.toContain("TEL-1 · Claude Code");
+  await click("Fermer l’onglet · TEL-1 · Fix login");
+  expect(tabNames()).not.toContain("TEL-1 · Fix login");
 
   await deleteIssue();
 
+  // Without its issue, the tab falls back to its launcher name.
   expect(tabNames()).toContain("TEL-1 · Claude Code");
   expect(board.props!.issueSessions).toEqual([]);
 });

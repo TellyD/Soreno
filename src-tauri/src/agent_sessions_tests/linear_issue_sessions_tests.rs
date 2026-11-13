@@ -25,7 +25,7 @@ fn linear_links_are_listed_after_local_ones_with_their_source() {
     save_session(&state, "a");
     save_session(&state, "b");
     state
-        .link_session_linear_issue("b", "lin-1", "ENG-1")
+        .link_session_linear_issue("b", "lin-1", "ENG-1", "Cache assets")
         .unwrap();
     state.link_session_kanban_issue("a", &local[0]).unwrap();
 
@@ -36,12 +36,13 @@ fn linear_links_are_listed_after_local_ones_with_their_source() {
             .iter()
             .map(|record| (
                 record["source"].as_str(),
-                record["issueIdentifier"].as_str()
+                record["issueIdentifier"].as_str(),
+                record["issueTitle"].as_str()
             ))
             .collect::<Vec<_>>(),
         [
-            (Some("local"), Some("SOR-1")),
-            (Some("linear"), Some("ENG-1"))
+            (Some("local"), Some("SOR-1"), Some("Issue 1")),
+            (Some("linear"), Some("ENG-1"), Some("Cache assets"))
         ]
     );
     assert_eq!(linear_links(&state), [live("lin-1", "ENG-1", "b")]);
@@ -55,14 +56,14 @@ fn a_session_works_on_one_issue_across_both_sources() {
     save_session(&state, "b");
     state.link_session_kanban_issue("a", &local[0]).unwrap();
     state
-        .link_session_linear_issue("b", "lin-1", "ENG-1")
+        .link_session_linear_issue("b", "lin-1", "ENG-1", "Issue")
         .unwrap();
 
     let session_has_issue =
         "[Kanban/sessionHasIssue] Cette session d’agent est déjà liée à une issue.";
     assert_eq!(
         state
-            .link_session_linear_issue("a", "lin-2", "ENG-2")
+            .link_session_linear_issue("a", "lin-2", "ENG-2", "Issue")
             .unwrap_err(),
         session_has_issue
     );
@@ -75,7 +76,7 @@ fn a_session_works_on_one_issue_across_both_sources() {
     save_session(&state, "c");
     assert_eq!(
         state
-            .link_session_linear_issue("c", "lin-1", "ENG-1")
+            .link_session_linear_issue("c", "lin-1", "ENG-1", "Issue")
             .unwrap_err(),
         "[Kanban/issueHasSession] Cette issue a déjà une session d’agent."
     );
@@ -92,7 +93,7 @@ fn a_linear_link_survives_reinitialization_and_reopening_the_store() {
         state.save_project(project()).unwrap();
         save_session(&state, "a");
         state
-            .link_session_linear_issue("a", "lin-1", "ENG-1")
+            .link_session_linear_issue("a", "lin-1", "ENG-1", "Issue")
             .unwrap();
         state
             .set_project_linear_link_with("project", Some("lin-project"), |_| {
@@ -122,7 +123,7 @@ fn deleting_the_session_ends_its_linear_link() {
     let state = state();
     save_session(&state, "a");
     state
-        .link_session_linear_issue("a", "lin-1", "ENG-1")
+        .link_session_linear_issue("a", "lin-1", "ENG-1", "Issue")
         .unwrap();
     state.delete_session("a").unwrap();
 
@@ -144,7 +145,7 @@ fn a_linear_link_keeps_its_session_closed_until_the_issue_is_forgotten() {
     let state = state();
     save_session(&state, "a");
     state
-        .link_session_linear_issue("a", "lin-1", "ENG-1")
+        .link_session_linear_issue("a", "lin-1", "ENG-1", "Issue")
         .unwrap();
     state.set_session_closed("a", true).unwrap();
     assert_eq!(state.workspace().unwrap().closed_session_ids, ["a"]);
@@ -159,7 +160,7 @@ fn a_linear_summary_is_claimed_once_and_its_comment_recorded_for_the_live_sessio
     let state = state();
     save_session(&state, "a");
     state
-        .link_session_linear_issue("a", "lin-1", "ENG-1")
+        .link_session_linear_issue("a", "lin-1", "ENG-1", "Issue")
         .unwrap();
 
     assert_eq!(

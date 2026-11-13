@@ -147,6 +147,7 @@ type BoardProps = {
   kanbanProjects?: AgentProject[];
   linearProjectLinks?: AgentProjectLinearLink[];
   onOpenSession?: (sessionId: string) => void;
+  onLinkedIssueRenamed?: () => void;
   onStartIssueAgent?: (request: KanbanIssueAgentRequest) => Promise<void>;
   overviewProjectIds?: ReadonlySet<string>;
   projects?: AgentProject[];
@@ -181,6 +182,7 @@ function issueLink(
     sessionId: "s1",
     issueId: "i1",
     issueIdentifier: "ACM-1",
+    issueTitle: "Agent issue",
     sessionName: "ACM-1 · Codex",
     executable: "codex",
     projectName: "Website",
@@ -204,6 +206,7 @@ async function renderBoard(props: BoardProps = {}) {
           linearProjectLinks={props.linearProjectLinks ?? []}
           onOpenProject={vi.fn()}
           onOpenSession={props.onOpenSession ?? vi.fn()}
+          onLinkedIssueRenamed={props.onLinkedIssueRenamed}
           onStartIssueAgent={props.onStartIssueAgent ?? vi.fn()}
           onLinkSessionIssue={props.onLinkSessionIssue ?? vi.fn()}
           onUnlinkSessionIssue={props.onUnlinkSessionIssue ?? vi.fn()}
@@ -725,6 +728,42 @@ it("renames the issue on Enter and cancels the edit on Escape without leaving th
   expect(titleButton().textContent).toBe("Ship the editor");
   expect(document.activeElement).toBe(titleButton());
   expect(api.updateKanbanIssue).toHaveBeenCalledTimes(1);
+});
+
+it("reports a renamed issue only while a session is linked to it", async () => {
+  vi.mocked(api.updateKanbanIssue).mockResolvedValue(
+    issueUpdate({ title: "Ship the editor" }),
+  );
+  const onLinkedIssueRenamed = vi.fn();
+  await remountBoard({ onLinkedIssueRenamed });
+  await tapCard();
+  await pressKey(await editTitle("Ship the editor"), "Enter");
+  expect(onLinkedIssueRenamed).not.toHaveBeenCalled();
+
+  await remountBoard({
+    issueSessions: [issueLink()],
+    sessions: [linkedSession],
+    onLinkedIssueRenamed,
+  });
+  await tapCard();
+  await chooseOption(detailStateSelect(), "Done");
+  expect(onLinkedIssueRenamed).not.toHaveBeenCalled();
+  await pressKey(await editTitle("Ship the docs"), "Enter");
+  expect(onLinkedIssueRenamed).toHaveBeenCalledOnce();
+
+  await act(async () =>
+    issueRequestListeners.forEach((listener) =>
+      listener({
+        sessionId: "s1",
+        sessionName: "ACM-1 · Codex",
+        title: "Ship",
+        updated: true,
+        issue: { id: "i1", identifier: "ACM-1", source: "local" },
+        error: null,
+      }),
+    ),
+  );
+  expect(onLinkedIssueRenamed).toHaveBeenCalledTimes(2);
 });
 
 it("keeps editing the title when Enter confirms an IME composition", async () => {
@@ -1596,6 +1635,7 @@ it("links an existing issue to a session from the panel, starts it and tells its
   expect(onLinkSessionIssue).toHaveBeenCalledExactlyOnceWith("s1", {
     id: "i1",
     identifier: "ACM-1",
+    title: "Ship the detail view",
     source: "local",
   });
   expect(api.updateKanbanIssue).toHaveBeenCalledWith("local", "i1", {
@@ -1637,6 +1677,7 @@ it("creates the session's issue in its project from the panel, then links it", a
   expect(onLinkSessionIssue).toHaveBeenCalledExactlyOnceWith("s1", {
     id: "i2",
     identifier: "ACM-2",
+    title: "Write the docs",
     source: "local",
   });
   expect(createDialog()).toBeNull();
@@ -2878,7 +2919,7 @@ it("shows the linked agent session activity on the card and opens it from the de
       .querySelector(".kanban-chip-agent")!;
 
   expect(indicator().getAttribute("aria-label")).toBe(
-    "Agent session: ACM-1 · Codex · Idle",
+    "Agent session: ACM-1 · Agent issue · Idle",
   );
 
   await renderBoard({
@@ -2888,7 +2929,7 @@ it("shows the linked agent session activity on the card and opens it from the de
     ],
   });
   expect(indicator().getAttribute("aria-label")).toBe(
-    "Agent session: ACM-1 · Codex · Working",
+    "Agent session: ACM-1 · Agent issue · Working",
   );
   await tapCard();
 
@@ -3008,7 +3049,7 @@ it("sends a comment to the running agent linked to the issue", async () => {
   expect(
     detailView()!.querySelector(".kanban-issue-comment-agent-status")
       ?.textContent,
-  ).toBe("Sent to “ACM-1 · Codex” · read when its turn ends");
+  ).toBe("Sent to “ACM-1 · Agent issue” · read when its turn ends");
 
   // The session stops before the agent read the comment: the failure must still show.
   stored = [{ ...stored[0], status: "failed", error: "session stopped" }];
@@ -3024,7 +3065,7 @@ it("sends a comment to the running agent linked to the issue", async () => {
   expect(
     detailView()!.querySelector(".kanban-issue-comment-agent-status")
       ?.textContent,
-  ).toBe("Not delivered to “ACM-1 · Codex”: session stopped");
+  ).toBe("Not delivered to “ACM-1 · Agent issue”: session stopped");
   expect(toAgent()).toBeUndefined();
 });
 

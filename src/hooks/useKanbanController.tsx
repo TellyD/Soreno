@@ -132,11 +132,13 @@ export type KanbanControllerOptions = {
   onIssueDeleted?: (issueId: string) => void;
   // Runs once the local issue is sent to Linear; its agent session link moved to the Linear issue.
   onIssueTransferred?: (localIssueId: string) => void;
+  // Runs once a linked local issue's title may have changed; the session names show it.
+  onLinkedIssueRenamed?: () => void;
   onStartIssueAgent: (request: KanbanIssueAgentRequest) => Promise<void>;
   // Links a session started without an issue; rejects with a displayable error.
   onLinkSessionIssue: (
     sessionId: string,
-    issue: KanbanIssueSelection,
+    issue: KanbanIssueSelection & { title: string },
   ) => Promise<void>;
   // Forgets the session's issue link; rejects with a displayable error.
   onUnlinkSessionIssue: (sessionId: string) => Promise<void>;
@@ -164,6 +166,7 @@ export function useKanbanController({
   onOpenSession,
   onIssueDeleted,
   onIssueTransferred,
+  onLinkedIssueRenamed,
   onStartIssueAgent,
   onLinkSessionIssue,
   onUnlinkSessionIssue,
@@ -227,6 +230,8 @@ export function useKanbanController({
       ),
     [issueSessions, sessions, statuses, closedSessionIds, terminalTitles],
   );
+  const issueAgentsRef = useRef(issueAgents);
+  issueAgentsRef.current = issueAgents;
 
   const formatError = useKanbanErrorFormatter();
 
@@ -239,11 +244,19 @@ export function useKanbanController({
 
   const updateBoardIssue = useCallback(
     (issue: KanbanIssue, patch: KanbanIssuePatch) => {
-      void updateIssue(issue, patch).catch((error: unknown) =>
-        notifyError(formatError(error)),
+      void updateIssue(issue, patch).then(
+        () => {
+          if (
+            patch.title !== undefined &&
+            issue.source === "local" &&
+            issueAgentsRef.current.live.has(issue.id)
+          )
+            onLinkedIssueRenamed?.();
+        },
+        (error: unknown) => notifyError(formatError(error)),
       );
     },
-    [formatError, updateIssue],
+    [formatError, onLinkedIssueRenamed, updateIssue],
   );
 
   // Deleted issues map to null, transferred ones to their Linear issue, so every open view follows.
@@ -570,6 +583,7 @@ export function useKanbanController({
       await onLinkSessionIssue(sessionId, {
         id: issue.id,
         identifier: issue.identifier,
+        title: issue.title,
         source: issue.source,
       });
       const latest = latestBoardRef.current;
@@ -633,8 +647,6 @@ export function useKanbanController({
   );
 
   // The agent edits the description from its own copy: it gets the user's text once they pause.
-  const issueAgentsRef = useRef(issueAgents);
-  issueAgentsRef.current = issueAgents;
   const descriptionTimers = useRef(new Map<string, number>());
   useEffect(() => {
     const timers = descriptionTimers.current;
@@ -687,6 +699,8 @@ export function useKanbanController({
       descriptionTimers.current.delete(issue.id);
       // issueContentSaved reloads the local board and the views showing the issue.
       issueContentSaved(issue);
+      if (issue.source === "local" && issueAgentsRef.current.live.has(issue.id))
+        onLinkedIssueRenamed?.();
     }
     if (!updated || issue.source === "linear") reloadBoard(issue.source);
   });
@@ -745,6 +759,7 @@ export function useKanbanController({
       detachSessionIssue,
       createBoardIssue,
       issueAgents,
+      issueSessions,
       issueContentSaved,
       issueDescriptionSaved,
       issueRevisions,
@@ -797,6 +812,7 @@ export function useKanbanController({
       detachSessionIssue,
       createBoardIssue,
       issueAgents,
+      issueSessions,
       issueContentSaved,
       issueDescriptionSaved,
       issueRevisions,

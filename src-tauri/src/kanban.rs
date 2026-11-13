@@ -326,7 +326,7 @@ pub(crate) fn initialize(db: &mut Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS kanban_images (id TEXT PRIMARY KEY, issue_id TEXT REFERENCES kanban_issues(id) ON DELETE CASCADE, file_name TEXT NOT NULL UNIQUE, content_type TEXT NOT NULL, size INTEGER NOT NULL, created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS agent_kanban_issue_sessions (issue_id TEXT PRIMARY KEY REFERENCES kanban_issues(id) ON DELETE CASCADE, session_id TEXT UNIQUE REFERENCES agent_sessions(id) ON DELETE SET NULL, session_name TEXT NOT NULL, executable TEXT NOT NULL, project_name TEXT NOT NULL, started_at TEXT NOT NULL, ended_at TEXT, end_reason TEXT CHECK (end_reason IN ('session','project','worktree','merged')), merged_into TEXT, summary_comment_id TEXT REFERENCES kanban_comments(id) ON DELETE SET NULL);
         CREATE TABLE IF NOT EXISTS agent_kanban_issue_summaries (summary_id TEXT PRIMARY KEY, issue_id TEXT NOT NULL REFERENCES agent_kanban_issue_sessions(issue_id) ON DELETE CASCADE);
-        CREATE TABLE IF NOT EXISTS agent_linear_issue_sessions (linear_issue_id TEXT PRIMARY KEY, linear_issue_identifier TEXT NOT NULL, session_id TEXT UNIQUE REFERENCES agent_sessions(id) ON DELETE SET NULL, session_name TEXT NOT NULL, executable TEXT NOT NULL, project_name TEXT NOT NULL, started_at TEXT NOT NULL, ended_at TEXT, end_reason TEXT CHECK (end_reason IN ('session','project','worktree','merged')), merged_into TEXT, summary_comment_id TEXT);
+        CREATE TABLE IF NOT EXISTS agent_linear_issue_sessions (linear_issue_id TEXT PRIMARY KEY, linear_issue_identifier TEXT NOT NULL, linear_issue_title TEXT NOT NULL DEFAULT '', session_id TEXT UNIQUE REFERENCES agent_sessions(id) ON DELETE SET NULL, session_name TEXT NOT NULL, executable TEXT NOT NULL, project_name TEXT NOT NULL, started_at TEXT NOT NULL, ended_at TEXT, end_reason TEXT CHECK (end_reason IN ('session','project','worktree','merged')), merged_into TEXT, summary_comment_id TEXT);
         CREATE TABLE IF NOT EXISTS agent_linear_issue_summaries (summary_id TEXT PRIMARY KEY, linear_issue_id TEXT NOT NULL REFERENCES agent_linear_issue_sessions(linear_issue_id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS agent_project_linear_links (project_id TEXT PRIMARY KEY REFERENCES agent_projects(id) ON DELETE CASCADE, linear_project_id TEXT NOT NULL UNIQUE);
         CREATE INDEX IF NOT EXISTS kanban_issues_parent ON kanban_issues(parent_id);
@@ -356,6 +356,15 @@ pub(crate) fn initialize(db: &mut Connection) -> Result<()> {
     {
         tx.execute_batch(
             "ALTER TABLE agent_linear_issue_sessions ADD COLUMN summary_comment_id TEXT;",
+        )
+        .map_err(sql)?;
+    }
+    // Links made before session tabs showed the issue title keep an empty one.
+    if !table_column_exists(&tx, "agent_linear_issue_sessions", "linear_issue_title")
+        .map_err(sql)?
+    {
+        tx.execute_batch(
+            "ALTER TABLE agent_linear_issue_sessions ADD COLUMN linear_issue_title TEXT NOT NULL DEFAULT '';",
         )
         .map_err(sql)?;
     }

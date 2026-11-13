@@ -196,6 +196,7 @@ export function useLinkedAgentLaunch({
           source: issue.source,
           id: issue.id,
           identifier: issue.identifier,
+          title: issue.title,
         }),
       launch: kanbanIssueLaunch(issue),
     });

@@ -863,7 +863,7 @@ fn linear_agent(name: &str) -> FakeAgent {
     let agent = FakeAgent::start(name);
     agent
         .state
-        .link_session_linear_issue("session", "lin-7", "ENG-7")
+        .link_session_linear_issue("session", "lin-7", "ENG-7", "Cache assets")
         .unwrap();
     std::fs::write(
         agent.private_directory().join("kanban-issue-linear.json"),

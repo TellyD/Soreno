@@ -289,9 +289,10 @@ pub(crate) async fn agent_link_session_linear_issue(
     session_id: String,
     issue_id: String,
     issue_identifier: String,
+    issue_title: String,
 ) -> Result<(), String> {
     blocking(app, move |state| {
-        state.link_session_linear_issue(&session_id, &issue_id, &issue_identifier)
+        state.link_session_linear_issue(&session_id, &issue_id, &issue_identifier, &issue_title)
     })
     .await
 }

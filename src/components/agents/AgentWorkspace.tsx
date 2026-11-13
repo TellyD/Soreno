@@ -253,6 +253,7 @@ export function AgentWorkspace({
     statusError,
     setError,
     retry,
+    refresh,
     execute: executeWorkspace,
     saveProjectAppearance,
     saveGroupAppearance,
@@ -859,6 +860,7 @@ export function AgentWorkspace({
     agentSessionDisplayName(
       session,
       statusOf(session.id)?.conversation?.name || terminalTitles[session.id],
+      kanbanIssueSessions.find((link) => link.sessionId === session.id),
     );
   // Design sessions notify too, without marks: their tabs live in the Design board only.
   const attentionSessions = useMemo(
@@ -3808,6 +3810,8 @@ export function AgentWorkspace({
       onIssueDeleted={handleIssueDeleted}
       // The session link moved to the Linear issue: reload, nothing to release.
       onIssueTransferred={() => void retry()}
+      // shortcut: the worktree and service-trust dialogs ignore `loading`, so a submit during this background reload is silently refused; disable them on `loading` if users hit it.
+      onLinkedIssueRenamed={() => void refresh()}
       onStartIssueAgent={startIssueAgent}
       // Only a failed mutation rejects: the controller goes on after a failed reload.
       onLinkSessionIssue={async (sessionId, issue) => {

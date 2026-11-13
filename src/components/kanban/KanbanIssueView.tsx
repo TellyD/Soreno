@@ -379,6 +379,7 @@ export function KanbanIssueView({
           sessions={kanban.sessions}
           statuses={kanban.statuses}
           terminalTitles={kanban.terminalTitles}
+          issueSessions={kanban.issueSessions}
           endedAgent={kanban.issueAgents.ended.get(selection.id)}
           boardIssue={boardIssue}
           detail={detail}

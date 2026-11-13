@@ -222,18 +222,25 @@ it("links a session to a local or a Linear issue", async () => {
     source: "local",
     id: "i1",
     identifier: "SOR-1",
+    title: "Local",
   });
   await api.linkAgentSessionKanbanIssue("s", {
     source: "linear",
     id: "i2",
     identifier: "ENG-2",
+    title: "Remote",
   });
 
   expect(vi.mocked(invoke).mock.calls).toEqual([
     ["agent_link_session_kanban_issue", { sessionId: "s", issueId: "i1" }],
     [
       "agent_link_session_linear_issue",
-      { sessionId: "s", issueId: "i2", issueIdentifier: "ENG-2" },
+      {
+        sessionId: "s",
+        issueId: "i2",
+        issueIdentifier: "ENG-2",
+        issueTitle: "Remote",
+      },
     ],
   ]);
 });

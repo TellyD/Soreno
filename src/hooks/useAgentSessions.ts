@@ -379,28 +379,37 @@ export function useAgentSessions(
     }
   }, [reload]);
 
-  const retry = useCallback(async (): Promise<boolean> => {
-    if (!desktop) return false;
-    if (inFlight.current) {
-      retryQueued.current = true;
-      return false;
-    }
-    inFlight.current = true;
-    setLoading(true);
-    setLoadError(null);
-    setError(null);
-    try {
-      await reload();
-      return true;
-    } catch {
-      /* reload owns the workspace error. */
-      return false;
-    } finally {
-      inFlight.current = false;
-      await refreshQueued();
-      if (mounted.current) setLoading(false);
-    }
-  }, [desktop, reload, refreshQueued]);
+  const runReload = useCallback(
+    async (clearErrors: boolean): Promise<boolean> => {
+      if (!desktop) return false;
+      if (inFlight.current) {
+        retryQueued.current = true;
+        return false;
+      }
+      inFlight.current = true;
+      setLoading(true);
+      if (clearErrors) {
+        setLoadError(null);
+        setError(null);
+      }
+      try {
+        await reload();
+        return true;
+      } catch {
+        /* reload owns the workspace error. */
+        return false;
+      } finally {
+        inFlight.current = false;
+        await refreshQueued();
+        if (mounted.current) setLoading(false);
+      }
+    },
+    [desktop, reload, refreshQueued],
+  );
+
+  const retry = useCallback(() => runReload(true), [runReload]);
+  // Keeps workspace errors, e.g. a merge conflict's resolve action.
+  const refresh = useCallback(() => runReload(false), [runReload]);
 
   // Appearance only: no global busy state, so the workspace does not flash on each pick.
   // Picks are merged per project or group and sent as deltas by a single serialized drain, so the latest pick persists last.
@@ -1041,6 +1050,7 @@ export function useAgentSessions(
     statusError,
     setError,
     retry,
+    refresh,
     execute,
     saveProjectAppearance,
     saveGroupAppearance,

@@ -155,17 +155,31 @@ it("selects Pi's platform image shortcut without changing other providers", () =
   expect(agentImagePasteSequence("omp", local, "Win32")).toBe("\x16");
 });
 
-it("prefers the manual name, then a non-empty CLI name, then the launcher name", () => {
-  expect(
-    agentSessionDisplayName({ name: "Pi", customName: "Manuel" }, "Auto"),
-  ).toBe("Manuel");
-  expect(
-    agentSessionDisplayName({ name: "Pi", customName: null }, "Auto"),
-  ).toBe("Auto");
-  expect(agentSessionDisplayName({ name: "Pi", customName: "" }, "")).toBe(
-    "Pi",
-  );
-  expect(agentSessionDisplayName({ name: "Pi" })).toBe("Pi");
+it("prefers the manual name, then the linked issue over Claude and Codex titles, then the launcher name", () => {
+  const issue = { issueIdentifier: "TEL-1", issueTitle: "Fix login" };
+  const name = (
+    executable: string,
+    automatic?: string,
+    linked?: typeof issue,
+    customName?: string,
+  ) =>
+    agentSessionDisplayName(
+      { name: "Agent", customName, executable },
+      automatic,
+      linked,
+    );
+  expect(name("claude", "Auto", issue, "Manuel")).toBe("Manuel");
+  expect(name("claude", "Auto")).toBe("Auto");
+  expect(name("claude", "", undefined, "")).toBe("Agent");
+  for (const executable of ["claude", "C:\\bin\\codex.cmd", "/bin/sh"])
+    expect(name(executable, "Soreno file", issue)).toBe("TEL-1 · Fix login");
+  // OMP retitles itself and a Pi name is chosen: the issue only replaces the launcher name.
+  for (const executable of ["omp", "omp-conversation", "pi"]) {
+    expect(name(executable, "Auto", issue)).toBe("Auto");
+    expect(name(executable, "", issue)).toBe("TEL-1 · Fix login");
+  }
+  // A Linear link made before titles were kept.
+  expect(name("codex", "Auto", { ...issue, issueTitle: "" })).toBe("TEL-1");
 });
 
 it("extracts changing Pi names without the title prefix, spinner or project folder", () => {

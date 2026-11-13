@@ -88,7 +88,7 @@ export const setAgentProjectLinearLink = (
   });
 export const linkAgentSessionKanbanIssue = (
   sessionId: string,
-  issue: KanbanIssueSelection,
+  issue: KanbanIssueSelection & { title: string },
 ) =>
   issue.source === "local"
     ? invoke<void>("agent_link_session_kanban_issue", {
@@ -99,6 +99,7 @@ export const linkAgentSessionKanbanIssue = (
         sessionId,
         issueId: issue.id,
         issueIdentifier: issue.identifier,
+        issueTitle: issue.title,
       });
 export const unlinkAgentSessionIssue = (sessionId: string) =>
   invoke<void>("agent_unlink_session_issue", { sessionId });

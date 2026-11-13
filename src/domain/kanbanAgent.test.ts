@@ -285,6 +285,7 @@ describe("kanbanCommentTargets", () => {
       source: "local",
       issueId: "issue",
       issueIdentifier: "ACM-1",
+      issueTitle: "Login",
       sessionId: linked.id,
       sessionName: linked.name,
       executable: linked.executable,
@@ -303,9 +304,9 @@ describe("kanbanCommentTargets", () => {
     ).live.get("issue");
   };
 
-  it("names the linked agent as its tab: custom name, then conversation name, then terminal title", () => {
+  it("names the linked agent as its tab: custom name, then OMP's title, then the issue over Claude's title", () => {
     const linked = session("linked");
-    const titles = { linked: "Fix login" };
+    const titles = { linked: "Soreno file" };
     const status = {
       ...running("linked"),
       conversation: {
@@ -316,11 +317,12 @@ describe("kanbanCommentTargets", () => {
       },
     };
     expect(linkedAgent(linked, [running("linked")], titles)?.name).toBe(
-      "Fix login",
+      "ACM-1 · Login",
     );
-    expect(linkedAgent(linked, [status], titles)?.name).toBe(
-      "Finish the steps",
-    );
+    expect(
+      linkedAgent({ ...linked, executable: "omp-conversation" }, [status])
+        ?.name,
+    ).toBe("Finish the steps");
     expect(
       linkedAgent({ ...linked, customName: "Renamed" }, [status], titles)?.name,
     ).toBe("Renamed");
@@ -344,6 +346,7 @@ describe("kanbanCommentTargets", () => {
       ],
       ["linked", "pi", "shell", "service", "elsewhere"].map(running),
       {},
+      [],
     );
     expect(targets).toEqual([
       {
@@ -367,6 +370,7 @@ describe("kanbanCommentTargets", () => {
         ],
         ["pi", "shell", "service", "elsewhere"].map(running),
         { pi: "Fix login" },
+        [],
       ),
     ).toEqual([
       {
@@ -386,6 +390,7 @@ describe("kanbanCommentTargets", () => {
         [session("pi")],
         [running("pi")],
         {},
+        [],
       ),
     ).toEqual([]);
   });

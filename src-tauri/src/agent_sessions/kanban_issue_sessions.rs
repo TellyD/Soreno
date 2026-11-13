@@ -50,6 +50,8 @@ pub struct AgentSessionKanbanIssue {
     pub source: KanbanSource,
     pub issue_id: String,
     pub issue_identifier: String,
+    /// Empty for a Linear link made before titles were kept.
+    pub issue_title: String,
     pub session_id: Option<String>,
     pub session_name: String,
     pub executable: String,
@@ -88,14 +90,14 @@ impl<'a> SessionEnd<'a> {
 pub(super) fn list_issue_sessions(db: &Connection) -> Result<Vec<AgentSessionKanbanIssue>> {
     let mut statement = db
         .prepare(
-            "SELECT 0, link.rowid, link.issue_id, team.key || '-' || issue.number, link.session_id, link.session_name,
+            "SELECT 0, link.rowid, link.issue_id, team.key || '-' || issue.number, issue.title, link.session_id, link.session_name,
                 link.executable, link.project_name, link.started_at, link.ended_at, link.end_reason, link.merged_into
             FROM agent_kanban_issue_sessions link
             JOIN kanban_issues issue ON issue.id=link.issue_id
             JOIN kanban_teams team ON team.id=issue.team_id
             WHERE link.session_id IS NOT NULL OR link.ended_at IS NOT NULL
             UNION ALL
-            SELECT 1, rowid, linear_issue_id, linear_issue_identifier, session_id, session_name,
+            SELECT 1, rowid, linear_issue_id, linear_issue_identifier, linear_issue_title, session_id, session_name,
                 executable, project_name, started_at, ended_at, end_reason, merged_into
             FROM agent_linear_issue_sessions
             WHERE session_id IS NOT NULL OR ended_at IS NOT NULL
@@ -113,14 +115,15 @@ pub(super) fn list_issue_sessions(db: &Connection) -> Result<Vec<AgentSessionKan
                 },
                 issue_id: row.get(2)?,
                 issue_identifier: row.get(3)?,
-                session_id: row.get(4)?,
-                session_name: row.get(5)?,
-                executable: row.get(6)?,
-                project_name: row.get(7)?,
-                started_at: row.get(8)?,
-                ended_at: row.get(9)?,
-                end_reason: row.get(10)?,
-                merged_into: row.get(11)?,
+                issue_title: row.get(4)?,
+                session_id: row.get(5)?,
+                session_name: row.get(6)?,
+                executable: row.get(7)?,
+                project_name: row.get(8)?,
+                started_at: row.get(9)?,
+                ended_at: row.get(10)?,
+                end_reason: row.get(11)?,
+                merged_into: row.get(12)?,
             })
         })
         .map_err(|error| error.to_string())?
@@ -316,16 +319,19 @@ impl AgentSessions {
         Ok(())
     }
 
-    /// The Linear issue lives on Linear only: its identifier is kept for when it is not loaded.
+    /// The Linear issue lives on Linear only: its identifier and title are kept for when it is not loaded.
+    // shortcut: the title is the one at link time, so a rename on Linear shows after a relink only; refresh it when the board loads if users rename linked issues.
     pub fn link_session_linear_issue(
         &self,
         session_id: &str,
         issue_id: &str,
         issue_identifier: &str,
+        issue_title: &str,
     ) -> Result<()> {
         id(session_id)?;
         text(issue_id, "Identifiant de l’issue", 128)?;
         text(issue_identifier, "Référence de l’issue", 128)?;
+        let issue_title = kanban::required_title(issue_title)?;
         let store = lock(&self.store)?;
         let session = require_session(&store, session_id)?;
         let project = require_project(&store, &session.project_id)?;
@@ -339,14 +345,15 @@ impl AgentSessions {
         store
             .db
             .execute(
-                "INSERT INTO agent_linear_issue_sessions(linear_issue_id, linear_issue_identifier, session_id, session_name, executable, project_name, started_at)
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-                ON CONFLICT(linear_issue_id) DO UPDATE SET linear_issue_identifier=excluded.linear_issue_identifier, session_id=excluded.session_id,
+                "INSERT INTO agent_linear_issue_sessions(linear_issue_id, linear_issue_identifier, linear_issue_title, session_id, session_name, executable, project_name, started_at)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                ON CONFLICT(linear_issue_id) DO UPDATE SET linear_issue_identifier=excluded.linear_issue_identifier, linear_issue_title=excluded.linear_issue_title, session_id=excluded.session_id,
                     session_name=excluded.session_name, executable=excluded.executable, project_name=excluded.project_name, started_at=excluded.started_at,
                     ended_at=NULL, end_reason=NULL, merged_into=NULL, summary_comment_id=NULL",
                 params![
                     issue_id,
                     issue_identifier,
+                    issue_title,
                     session_id,
                     session.display_name(),
                     session.executable,
@@ -448,9 +455,9 @@ impl AgentSessions {
                 return Err(TRANSFER_DESCRIPTION_CHANGED_MESSAGE.into());
             }
             db.execute(
-                "INSERT INTO agent_linear_issue_sessions(linear_issue_id, linear_issue_identifier, session_id, session_name, executable, project_name, started_at, ended_at, end_reason, merged_into)
-                SELECT ?2, ?3, session_id, session_name, executable, project_name, started_at, ended_at, end_reason, merged_into
-                FROM agent_kanban_issue_sessions WHERE issue_id=?1",
+                "INSERT INTO agent_linear_issue_sessions(linear_issue_id, linear_issue_identifier, linear_issue_title, session_id, session_name, executable, project_name, started_at, ended_at, end_reason, merged_into)
+                SELECT ?2, ?3, issue.title, link.session_id, link.session_name, link.executable, link.project_name, link.started_at, link.ended_at, link.end_reason, link.merged_into
+                FROM agent_kanban_issue_sessions link JOIN kanban_issues issue ON issue.id=link.issue_id WHERE link.issue_id=?1",
                 params![issue_id, linear_issue_id, linear_issue_identifier],
             )
             .map_err(|error| error.to_string())?;

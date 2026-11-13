@@ -121,6 +121,9 @@ fn the_migration_keeps_linear_links_drops_the_legacy_table_and_seeds_the_default
         assert!(
             table_column_exists(&db, "agent_linear_issue_sessions", "summary_comment_id").unwrap()
         );
+        assert!(
+            table_column_exists(&db, "agent_linear_issue_sessions", "linear_issue_title").unwrap()
+        );
         assert_eq!(
             count(
                 &db,

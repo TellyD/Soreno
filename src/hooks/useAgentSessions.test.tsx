@@ -1432,6 +1432,33 @@ it("keeps a failed mutation's error and resolves only after the queued workspace
   expect(next).toHaveBeenCalledOnce();
 });
 
+it("keeps the workspace error while a background refresh disables the workspace", async () => {
+  data.projects = [appearanceProject];
+  await renderHook();
+  await act(async () =>
+    expect(
+      await hook.execute(async () => {
+        throw new Error("merge conflict");
+      }),
+    ).toBe(false),
+  );
+  const pending = deferred<AgentWorkspace>();
+  vi.mocked(api.loadAgentWorkspace).mockReturnValueOnce(pending.promise);
+  let refreshed!: Promise<boolean>;
+  await act(async () => {
+    refreshed = hook.refresh();
+  });
+
+  expect(hook.loading).toBe(true);
+  expect(hook.error?.message).toBe("merge conflict");
+  await act(async () => {
+    pending.resolve(structuredClone(data));
+    expect(await refreshed).toBe(true);
+  });
+  expect(hook.loading).toBe(false);
+  expect(hook.error?.message).toBe("merge conflict");
+});
+
 it("keeps reporting a failed appearance save while a later queued one succeeds", async () => {
   data.projects = [appearanceProject];
   await renderHook();
