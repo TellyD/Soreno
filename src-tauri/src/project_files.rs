@@ -296,7 +296,12 @@ fn visible_local_entry(
         return Ok(None);
     }
     let path = entry.path();
-    let metadata = fs::symlink_metadata(&path).map_err(|error| file_io_error(&name, error))?;
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        // The entry vanished between read_dir and stat (temp files): skip it.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(file_io_error(&name, error)),
+    };
     Ok(Some((name, path, metadata)))
 }
 

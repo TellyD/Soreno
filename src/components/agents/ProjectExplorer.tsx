@@ -271,7 +271,12 @@ export function ProjectExplorer({
         if (latest())
           commitListings((value) => new Map(value).set(directory, listing));
       } catch (reason) {
-        if (latest()) reportError(reason);
+        if (!latest()) return;
+        const { code } = projectFileError(reason);
+        // A folder deleted or replaced outside the explorer just leaves the tree.
+        if (directory && (code === "notFound" || code === "notDirectory"))
+          forgetTree(directory);
+        else reportError(reason);
       } finally {
         if (directoryTokens.current.get(directory) === token)
           pendingDirectories.current.delete(directory);
