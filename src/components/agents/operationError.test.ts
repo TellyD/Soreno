@@ -53,7 +53,7 @@ it("localizes authentication failures in French", () => {
 
 it("localizes Git error codes", () => {
   expect(format("en-US", { message: "[Git/dirty]" })).toBe(
-    "The working tree must be clean before this Git operation.",
+    agentStringsForLocale("en-US").operationDirtyRepository,
   );
   expect(format("fr-FR", { message: "[Git/rebaseConflict] x" })).toBe(
     agentStringsForLocale("fr-FR").operationGitRebaseConflict,

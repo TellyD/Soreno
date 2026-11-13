@@ -390,11 +390,6 @@
   opacity: 1;
 }
 
-.git-branches-view .git-branch-switch-help {
-  border-top: 1px solid var(--border-muted);
-  border-bottom: 0;
-}
-
 @container git-panel (max-width: 759px) {
   .git-history-view .git-history-main {
     grid-template-areas: "rail" "diff";

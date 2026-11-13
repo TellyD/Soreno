@@ -220,11 +220,7 @@ export function GitBranchesView({
     !!git.repo?.operation ||
     !name.trim();
   const switchBlocked =
-    git.busy ||
-    !!git.error ||
-    !!git.repo?.limited ||
-    !!git.repo?.operation ||
-    !!git.repo?.files.length;
+    git.busy || !!git.error || !!git.repo?.limited || !!git.repo?.operation;
   const worktreeBlocked =
     git.busy ||
     !!git.error?.uncertain ||
@@ -500,17 +496,15 @@ export function GitBranchesView({
   const blockTitle = (branch: GitBranchValue) =>
     branch.current
       ? s.currentBranch
-      : git.repo?.files.length
-        ? s.switchDirty
-        : git.repo?.operation
-          ? s.operationBlocksMutation
-          : git.repo?.limited
-            ? s.limited
-            : git.error
-              ? s.gitErrorBlocksAction
-              : git.busy
-                ? s.loading
-                : undefined;
+      : git.repo?.operation
+        ? s.operationBlocksMutation
+        : git.repo?.limited
+          ? s.limited
+          : git.error
+            ? s.gitErrorBlocksAction
+            : git.busy
+              ? s.loading
+              : undefined;
 
   useNotification(
     active && readFailed
@@ -883,11 +877,6 @@ export function GitBranchesView({
           </div>
         </div>
       )}
-      {switchBlocked && git.repo?.files.length ? (
-        <div className="git-panel-notice git-branch-switch-help">
-          <span>{s.switchDirty}</span>
-        </div>
-      ) : null}
       {pending && active
         ? createPortal(
             <ConfirmationDialog

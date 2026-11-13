@@ -110,7 +110,6 @@ export const forgeStringsEn = {
   } satisfies Record<ForgeMergeBlocker, string>,
   forgeCheckoutWorktree: "Check out in a new worktree",
   forgeCheckoutHere: "Check out in this worktree",
-  forgeCheckoutDirty: "Checking out here requires a worktree without changes.",
   forgeOpenBrowser: "Open in browser",
   forgeClose: "Close",
   forgeReopen: "Reopen",
@@ -265,8 +264,6 @@ export const forgeStringsFr: typeof forgeStringsEn = {
   },
   forgeCheckoutWorktree: "Checkout dans un nouveau worktree",
   forgeCheckoutHere: "Checkout dans ce worktree",
-  forgeCheckoutDirty:
-    "Le checkout ici exige un worktree sans modifications en cours.",
   forgeOpenBrowser: "Ouvrir dans le navigateur",
   forgeClose: "Fermer",
   forgeReopen: "Rouvrir",

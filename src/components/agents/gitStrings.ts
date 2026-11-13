@@ -338,10 +338,10 @@ const en = {
   worktreeParent: "Parent folder",
   worktreeFolder: "Worktree folder",
   switchTitle: "Confirm branch switch",
-  switchDescription: "The working tree and index must be clean.",
+  switchDescription:
+    "Local changes carry over to the target branch. Git refuses the switch if they would be overwritten.",
   destination: "Local destination",
   remoteSource: "Remote source",
-  switchDirty: "Commit or stash changes before switching branches.",
   resolve: "Mark resolved…",
   resolveAll: "Mark all resolved…",
   resolveTitle: "Mark conflicts resolved",
@@ -708,11 +708,10 @@ const fr: typeof en = {
   worktreeParent: "Dossier parent",
   worktreeFolder: "Dossier du worktree",
   switchTitle: "Confirmer le changement de branche",
-  switchDescription: "L’arbre de travail et l’index doivent être propres.",
+  switchDescription:
+    "Les modifications locales suivent sur la branche cible. Git refuse le changement si elles seraient écrasées.",
   destination: "Destination locale",
   remoteSource: "Source distante",
-  switchDirty:
-    "Commitez ou remisez les changements avant de changer de branche.",
   resolve: "Marquer résolu…",
   resolveAll: "Tout marquer résolu…",
   resolveTitle: "Marquer les conflits résolus",

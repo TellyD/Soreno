@@ -804,13 +804,9 @@ pub(crate) fn switch_branch(
         version,
         move |project, snapshot| {
             require_idle_snapshot(snapshot.operation.as_deref())?;
-            if !snapshot.files.is_empty() {
-                return Err(GitError::new(
-                "dirty",
-                "La copie de travail et l’index doivent être propres avant de changer de branche.",
-            ));
-            }
-            if remote {
+            // Without --force/--merge, Git itself refuses to overwrite local changes.
+            // shortcut: over SSH, a refusal listing more than ~64 KiB of paths exceeds the relay's stderr cap and locks mutations until restart; keep bounded SSH stderr if large conflicting switches are reported.
+            let switched = if remote {
                 let refs = list_rooted(project)?;
                 let reference = format!("refs/remotes/{name}");
                 if !refs
@@ -844,7 +840,7 @@ pub(crate) fn switch_branch(
                     ],
                     GitOperation::LocalMutation,
                     None,
-                )?;
+                )
             } else {
                 // Git valide la référence et refuse nativement une branche déjà utilisée
                 // par une autre worktree, sans lecture préparatoire redondante.
@@ -853,7 +849,27 @@ pub(crate) fn switch_branch(
                     &["switch", "--no-overwrite-ignore", "--no-guess", &name],
                     GitOperation::LocalMutation,
                     None,
-                )?;
+                )
+            };
+            if let Err(error) = switched {
+                return Err(
+                    if error.code == "failed"
+                        && [
+                            "would be overwritten by checkout",
+                            "would be removed by checkout",
+                            "would lose untracked files",
+                        ]
+                        .iter()
+                        .any(|phrase| error.message.contains(phrase))
+                    {
+                        GitError::new(
+                            "dirty",
+                            "Des modifications locales seraient écrasées par le changement de branche.",
+                        )
+                    } else {
+                        error
+                    },
+                );
             }
             Ok(result("Branche active changée.", None))
         },
