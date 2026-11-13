@@ -9,18 +9,18 @@ project_dir="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$project_dir"
 
 if ! command -v wslpath >/dev/null 2>&1; then
-  echo "Ce lanceur doit être exécuté depuis WSL." >&2
+  echo "This launcher must be run from WSL." >&2
   exit 1
 fi
 
 if [[ ! -e /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
   cat >&2 <<'EOF'
-L’interopérabilité Windows de WSL est inactive : aucun exécutable Windows ne peut démarrer.
-Fermez cette session, ouvrez PowerShell côté Windows, exécutez :
+WSL Windows interop is disabled: no Windows executable can start.
+Close this session, open PowerShell on the Windows side and run:
 
   wsl --shutdown
 
-Rouvrez ensuite WSL et relancez sh scripts/tauri-wsl.sh.
+Then reopen WSL and run sh scripts/tauri-wsl.sh again.
 EOF
   exit 1
 fi
@@ -28,7 +28,7 @@ fi
 action="${1:-dev}"
 case "$action" in
   dev|build) ;;
-  *) echo "Usage : $0 [dev|build]" >&2; exit 2 ;;
+  *) echo "Usage: $0 [dev|build]" >&2; exit 2 ;;
 esac
 dev_port=1422
 
@@ -46,7 +46,7 @@ if node_is_recent; then
 else
   node_bin="$node_cache/bin/node"
   if [[ ! -x "$node_bin" ]]; then
-    echo "Soreno : installation locale de Node ${node_version} dans ~/.cache/soreno…"
+    echo "Soreno: installing Node ${node_version} locally in ~/.cache/soreno…"
     mkdir -p "$HOME/.cache/soreno"
     archive="$HOME/.cache/soreno/$node_folder.tar.xz"
     curl --fail --location --output "$archive" "https://nodejs.org/dist/${node_version}/${node_folder}.tar.xz"
@@ -101,11 +101,11 @@ build_windows_remote() {
   )
 }
 
-echo "Soreno : préparation du CLI Tauri Windows…"
+echo "Soreno: preparing the Windows Tauri CLI…"
 install_windows_cli
 
 # The Windows-side configs drop the before* commands: the embedded binaries are built here.
-echo "Soreno : construction des binaires soreno-remote…"
+echo "Soreno: building the soreno-remote binaries…"
 build_windows_remote
 
 if [[ "$action" == "build" ]]; then
@@ -114,7 +114,7 @@ if [[ "$action" == "build" ]]; then
   exit $?
 fi
 
-echo "Soreno : démarrage de Vite dans WSL avec $("$node_bin" --version)…"
+echo "Soreno: starting Vite in WSL with $("$node_bin" --version)…"
 vite_pid=""
 cleanup() {
   if [[ -n "$vite_pid" ]]; then
@@ -142,11 +142,11 @@ if [[ -n "$existing_page" ]]; then
   fi
 
   if [[ "$existing_is_current" != true ]]; then
-    echo "Le port $dev_port est occupé par un autre processus ou un autre clone." >&2
+    echo "Port $dev_port is used by another process or another clone." >&2
     exit 1
   fi
 
-  echo "Soreno : redémarrage du serveur Vite de ce projet sur le port $dev_port."
+  echo "Soreno: restarting this project's Vite server on port $dev_port."
   kill $listener_pids 2>/dev/null || true
   for _ in {1..40}; do
     if ! curl --silent --fail --max-time 1 "http://127.0.0.1:$dev_port" >/dev/null 2>&1; then
@@ -155,7 +155,7 @@ if [[ -n "$existing_page" ]]; then
     sleep .1
   done
   if curl --silent --fail --max-time 1 "http://127.0.0.1:$dev_port" >/dev/null 2>&1; then
-    echo "Le serveur Vite existant sur le port $dev_port n’a pas pu être arrêté." >&2
+    echo "The existing Vite server on port $dev_port could not be stopped." >&2
     exit 1
   fi
 fi
@@ -171,16 +171,16 @@ for _ in {1..80}; do
     break
   fi
   if ! kill -0 "$vite_pid" 2>/dev/null; then
-    echo "Vite s’est arrêté avant le lancement de Tauri." >&2
+    echo "Vite stopped before Tauri was launched." >&2
     exit 1
   fi
   sleep .25
 done
 
 if [[ "$vite_ready" != true ]]; then
-  echo "Vite n’a pas répondu sur le port $dev_port dans le délai imparti." >&2
+  echo "Vite did not respond on port $dev_port in time." >&2
   exit 1
 fi
 
-echo "Soreno : lancement de l’application Windows…"
+echo "Soreno: launching the Windows app…"
 run_windows_tauri

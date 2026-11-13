@@ -6,7 +6,7 @@ cmd_exe="/mnt/c/Windows/System32/cmd.exe"
 powershell_exe="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
 
 if ! command -v wslpath >/dev/null 2>&1; then
-  echo "Ce lanceur doit être exécuté depuis WSL." >&2
+  echo "This launcher must be run from WSL." >&2
   exit 1
 fi
 
@@ -23,7 +23,7 @@ cd "$project_dir"
 npm run build:windows
 
 if [ ! -f "$source_exe" ]; then
-  printf 'Erreur : artefact manquant : %s\n' "$source_exe" >&2
+  printf 'Error: missing artifact: %s\n' "$source_exe" >&2
   exit 1
 fi
 
@@ -34,14 +34,14 @@ for relative_path in \
   LICENSE SOURCE.md
 do
   if [ ! -f "$source_conpty/$relative_path" ]; then
-    printf 'Erreur : ressource ConPTY manquante : %s\n' "$source_conpty/$relative_path" >&2
+    printf 'Error: missing ConPTY resource: %s\n' "$source_conpty/$relative_path" >&2
     exit 1
   fi
 done
 for relative_path in LICENSE SOURCE.md source/dtach-0.9.tar.gz build.sh soreno-history.patch
 do
   if [ ! -f "$source_dtach/$relative_path" ]; then
-    printf 'Erreur : ressource dtach manquante : %s\n' "$source_dtach/$relative_path" >&2
+    printf 'Error: missing dtach resource: %s\n' "$source_dtach/$relative_path" >&2
     exit 1
   fi
 done
@@ -52,7 +52,7 @@ if ! cp "$source_exe" "$staging_dir/soreno.exe" \
   || ! cp -R "$source_conpty" "$staging_dir/conpty" \
   || ! cp -R "$source_dtach" "$staging_dir/dtach"
 then
-  printf 'Erreur : impossible de préparer le dossier portable temporaire. Relancez la commande.\n' >&2
+  printf 'Error: cannot prepare the temporary portable folder. Run the command again.\n' >&2
   exit 1
 fi
 
@@ -62,11 +62,11 @@ attempts=0
 while ! cp "$staging_dir/soreno.exe" "$destination_exe" 2>/dev/null; do
   attempts=$((attempts + 1))
   if [ "$attempts" -eq 1 ]; then
-    printf 'Copie impossible : fermez Soreno normalement pour libérer %s. Nouvelle tentative pendant 10 secondes…\n' \
+    printf 'Copy failed: close Soreno normally to release %s. Retrying for 10 seconds…\n' \
       "$destination_exe" >&2
   fi
   if [ "$attempts" -ge 40 ]; then
-    printf 'Erreur : impossible de remplacer %s. Fermez Soreno puis relancez la commande.\n' \
+    printf 'Error: cannot replace %s. Close Soreno, then run the command again.\n' \
       "$destination_exe" >&2
     exit 1
   fi
@@ -74,14 +74,14 @@ while ! cp "$staging_dir/soreno.exe" "$destination_exe" 2>/dev/null; do
 done
 
 if ! cp -R "$staging_dir/conpty" "$staging_dir/dtach" "$destination/"; then
-  printf 'Erreur : impossible de remplacer les ressources dans %s. Fermez Soreno puis relancez la commande.\n' \
+  printf 'Error: cannot replace the resources in %s. Close Soreno, then run the command again.\n' \
     "$destination" >&2
   exit 1
 fi
 
 for resource in conpty dtach; do
   if [ ! -f "$destination/$resource/LICENSE" ]; then
-    printf 'Erreur : dossier de ressources incomplet dans %s. Fermez Soreno puis relancez la commande.\n' \
+    printf 'Error: incomplete resource folder in %s. Close Soreno, then run the command again.\n' \
       "$destination/$resource" >&2
     exit 1
   fi
@@ -101,9 +101,9 @@ if ! "$powershell_exe" -NoProfile -NonInteractive -Command \
   || ! mv "$temporary_archive" "$destination_archive"
 then
   rm -f "$temporary_archive"
-  printf 'Erreur : impossible de créer l’archive portable %s.\n' "$destination_archive" >&2
+  printf 'Error: cannot create the portable archive %s.\n' "$destination_archive" >&2
   exit 1
 fi
 
-printf '\nBuild portable installé : %s\nArchive portable créée : %s\n' \
+printf '\nPortable build installed: %s\nPortable archive created: %s\n' \
   "$(wslpath -w "$destination")" "$(wslpath -w "$destination_archive")"

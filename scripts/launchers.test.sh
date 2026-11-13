@@ -200,18 +200,18 @@ try {
     const destinationName = `portable ${failures}`;
     if (failures === 40) {
       mkdirSync(resolve(fixtureRoot, destinationName, 'conpty'), { recursive: true });
-      writeFileSync(resolve(fixtureRoot, destinationName, 'soreno.exe'), 'ancienne version');
-      writeFileSync(resolve(fixtureRoot, destinationName, 'conpty/sentinel'), 'ressources actives');
+      writeFileSync(resolve(fixtureRoot, destinationName, 'soreno.exe'), 'previous version');
+      writeFileSync(resolve(fixtureRoot, destinationName, 'conpty/sentinel'), 'active resources');
     }
     const run = runPortableCopy({ failures, destinationName });
     assert.equal(run.result.status, failures === 40 ? 1 : 0, run.result.stderr);
-    if (failures) assert.match(run.result.stderr, /fermez Soreno normalement/);
+    if (failures) assert.match(run.result.stderr, /close Soreno normally/);
     if (failures === 40) {
-      assert.match(run.result.stderr, /Erreur : impossible de remplacer/);
-      assert.equal(readFileSync(resolve(run.destinationPath, 'soreno.exe'), 'utf8'), 'ancienne version');
-      assert.equal(readFileSync(resolve(run.destinationPath, 'conpty/sentinel'), 'utf8'), 'ressources actives');
+      assert.match(run.result.stderr, /Error: cannot replace/);
+      assert.equal(readFileSync(resolve(run.destinationPath, 'soreno.exe'), 'utf8'), 'previous version');
+      assert.equal(readFileSync(resolve(run.destinationPath, 'conpty/sentinel'), 'utf8'), 'active resources');
       assert.equal(existsSync(resolve(run.destinationPath, 'conpty/x64/conpty.dll')), false);
-      assert.doesNotMatch(run.result.stdout, /Build portable installé/);
+      assert.doesNotMatch(run.result.stdout, /Portable build installed/);
     } else {
       assert.equal(readFileSync(resolve(run.destinationPath, 'soreno.exe'), 'utf8'), 'Soreno');
       for (const file of conptyFiles) assert.ok(existsSync(resolve(run.destinationPath, 'conpty', file)), file);
@@ -220,7 +220,7 @@ try {
       assert.match(archiveManifest, /^soreno\.exe$/m);
       for (const file of conptyFiles) assert.match(archiveManifest, new RegExp('^conpty/' + file.replaceAll('.', '\\.') + '$', 'm'), file);
       for (const file of dtachResourceFiles) assert.match(archiveManifest, new RegExp('^dtach/' + file.replaceAll('.', '\\.') + '$', 'm'), file);
-      assert.ok(run.result.stdout.includes('installé : C:\\portable with spaces'));
+      assert.ok(run.result.stdout.includes('installed: C:\\portable with spaces'));
     }
   }
 
@@ -229,24 +229,24 @@ try {
   writeFileSync(resolve(incompleteSource, 'soreno.exe'), 'Soreno');
   const missing = runPortableCopy({ source: incompleteSource, destinationName: 'missing resource' });
   assert.equal(missing.result.status, 1, missing.result.stderr);
-  assert.match(missing.result.stderr, /ressource ConPTY manquante/);
+  assert.match(missing.result.stderr, /missing ConPTY resource/);
   assert.equal(existsSync(missing.callsFile), false);
   assert.equal(existsSync(missing.destinationPath), false);
-  assert.doesNotMatch(missing.result.stdout, /Build portable installé/);
+  assert.doesNotMatch(missing.result.stdout, /Portable build installed/);
 
   const locked = runPortableCopy({ mode: 'resource', destinationName: 'locked resource' });
   assert.equal(locked.result.status, 1, locked.result.stderr);
-  assert.match(locked.result.stderr, /impossible de remplacer les ressources/);
-  assert.match(locked.result.stderr, /Fermez Soreno puis relancez/);
-  assert.doesNotMatch(locked.result.stdout, /Build portable installé/);
+  assert.match(locked.result.stderr, /cannot replace the resources/);
+  assert.match(locked.result.stderr, /Close Soreno, then run the command again/);
+  assert.doesNotMatch(locked.result.stdout, /Portable build installed/);
 
   const archiveFailure = runPortableCopy({ mode: 'archive', destinationName: 'archive failure' });
   assert.equal(archiveFailure.result.status, 1, archiveFailure.result.stderr);
-  assert.match(archiveFailure.result.stderr, /impossible de créer l’archive portable/);
+  assert.match(archiveFailure.result.stderr, /cannot create the portable archive/);
   assert.equal(existsSync(resolve(archiveFailure.destinationPath, 'soreno.zip')), false);
-  assert.doesNotMatch(archiveFailure.result.stdout, /Build portable installé/);
+  assert.doesNotMatch(archiveFailure.result.stdout, /Portable build installed/);
 } finally {
   rmSync(fixtureRoot, { recursive: true, force: true });
 }
-console.log('Lanceurs : racine hors cwd, commandes npm/Windows, ressources, copies et archive validées.');
+console.log('Launchers: root outside cwd, npm/Windows commands, resources, copies and archive verified.');
 NODE

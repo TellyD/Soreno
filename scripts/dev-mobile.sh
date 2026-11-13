@@ -8,13 +8,13 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
 
 fail() {
-  printf 'dev-mobile : %s\n' "$1" >&2
+  printf 'dev-mobile: %s\n' "$1" >&2
   exit 1
 }
 
-command -v node >/dev/null 2>&1 || fail "Node.js est introuvable."
-command -v curl >/dev/null 2>&1 || fail "curl est introuvable."
-[ -d "$HOME/.cache/soreno/sessions" ] || [ -d "$HOME/.cache/soreno/conversations" ] || fail "aucune session Soreno sur cette machine."
+command -v node >/dev/null 2>&1 || fail "Node.js not found."
+command -v curl >/dev/null 2>&1 || fail "curl not found."
+[ -d "$HOME/.cache/soreno/sessions" ] || [ -d "$HOME/.cache/soreno/conversations" ] || fail "no Soreno session on this machine."
 
 cargo build --manifest-path src-tauri/Cargo.toml -p soreno-relay -p soreno-remote
 relay=src-tauri/target/debug/soreno-relay
@@ -62,19 +62,19 @@ pids="$pids $vite_pid"
 tries=0
 until curl -fso /dev/null "$origin/"; do
   tries=$((tries + 1))
-  [ "$tries" -lt 150 ] || fail "Vite ne répond pas sur le port $vite_port."
+  [ "$tries" -lt 150 ] || fail "Vite is not responding on port $vite_port."
   sleep 0.2
 done
 state=$home/.cache/soreno/remote/state.json
 tries=0
 until [ -f "$state" ] && node -e 'process.exit(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).connected ? 0 : 1)' "$state" 2>/dev/null; do
   tries=$((tries + 1))
-  [ "$tries" -lt 50 ] || fail "soreno-remote ne se connecte pas au relais local."
+  [ "$tries" -lt 50 ] || fail "soreno-remote cannot connect to the local relay."
   sleep 0.2
 done
 
-pairing=$(HOME=$home "$remote" pair) || fail "soreno-remote pair a échoué."
+pairing=$(HOME=$home "$remote" pair) || fail "soreno-remote pair failed."
 link=$(printf '%s' "$pairing" | node -e 'const pairing = JSON.parse(require("fs").readFileSync(0, "utf8")); console.log(`${process.argv[1]}/#p=${pairing.server}.${pairing.secret}`)' "$origin")
 
-printf '\nPage mobile de développement : %s/\nLien d’appairage (10 minutes) : %s\nCtrl+C pour tout arrêter.\n\n' "$origin" "$link"
+printf '\nDevelopment mobile page: %s/\nPairing link (10 minutes): %s\nCtrl+C to stop everything.\n\n' "$origin" "$link"
 wait "$vite_pid"

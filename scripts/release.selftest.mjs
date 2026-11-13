@@ -17,13 +17,13 @@ import {
   syncVersionFiles,
 } from "./release.mjs";
 
-test("préserve le statut porcelain en extrayant les chemins", () => {
+test("keeps the porcelain status when extracting paths", () => {
   assert.deepEqual(parsePorcelainPaths(" M package-lock.json\n"), [
     "package-lock.json",
   ]);
 });
 
-test("construit une invocation npm portable", () => {
+test("builds a portable npm invocation", () => {
   assert.deepEqual(createNpmInvocation("/node", "/npm-cli.js"), {
     command: "/node",
     args: ["/npm-cli.js"],
@@ -31,7 +31,7 @@ test("construit une invocation npm portable", () => {
   assert.throws(() => createNpmInvocation("/node"), /npm_execpath/);
 });
 
-test("synchronise uniquement les versions de release", () => {
+test("syncs only the release versions", () => {
   const root = mkdtempSync(resolve(tmpdir(), "soreno-release-"));
   mkdirSync(resolve(root, "src-tauri"));
   writeFileSync(

@@ -20,7 +20,7 @@ function readJson(root, path) {
 
 function readMatch(root, path, pattern) {
   const match = readFileSync(resolve(root, path), "utf8").match(pattern);
-  if (!match) throw new Error(`Version introuvable dans ${path}`);
+  if (!match) throw new Error(`Version not found in ${path}`);
   return match[1];
 }
 
@@ -66,7 +66,7 @@ export function parsePorcelainPaths(output) {
 export function createNpmInvocation(execPath, npmExecPath) {
   if (!npmExecPath) {
     throw new Error(
-      "npm_execpath est absent ; lancez la release avec npm run release",
+      "npm_execpath is missing; run the release with npm run release",
     );
   }
   return { command: execPath, args: [npmExecPath] };
@@ -76,14 +76,14 @@ function replaceVersion(root, path, pattern, version) {
   const absolutePath = resolve(root, path);
   const source = readFileSync(absolutePath, "utf8");
   if (!pattern.test(source))
-    throw new Error(`Version introuvable dans ${path}`);
+    throw new Error(`Version not found in ${path}`);
   writeFileSync(absolutePath, source.replace(pattern, `$1${version}$2`));
 }
 
 export function syncVersionFiles(root, version) {
   if (!stableVersion.test(version)) {
     throw new Error(
-      "La version doit respecter le format X.Y.Z, par exemple 0.1.2",
+      "The version must follow the format X.Y.Z, for example 0.1.2",
     );
   }
 
@@ -97,7 +97,7 @@ export function syncVersionFiles(root, version) {
   const packageLock = readJson(root, "package-lock.json");
   packageLock.version = version;
   if (!packageLock.packages?.[""]) {
-    throw new Error("Entrée racine introuvable dans package-lock.json");
+    throw new Error("Root entry not found in package-lock.json");
   }
   packageLock.packages[""].version = version;
   writeFileSync(
@@ -134,7 +134,7 @@ function command(commandName, args, options = {}) {
   });
   if (result.error) throw result.error;
   if (result.status !== 0) {
-    throw new Error(`Commande échouée : ${commandName} ${args.join(" ")}`);
+    throw new Error(`Command failed: ${commandName} ${args.join(" ")}`);
   }
   return options.capture ? result.stdout.trimEnd() : "";
 }
@@ -148,7 +148,7 @@ function tagExistsOnOrigin(tag) {
   if (result.error) throw result.error;
   if (result.status === 0) return true;
   if (result.status === 2) return false;
-  throw new Error("Impossible de vérifier les tags du dépôt origin");
+  throw new Error("Cannot check the tags of the origin repository");
 }
 
 // One page serves phones of every Soreno version: it must already read what this release's server sends.
@@ -157,16 +157,16 @@ async function checkMobilePage(npm) {
     resolve(projectDir, "src-tauri/src/agent_sessions/remote_mobile.rs"),
     "utf8",
   ).match(/RELAY_ORIGIN: &str = "([^"]+)"/)?.[1];
-  if (!origin) throw new Error("Adresse de la page mobile introuvable");
+  if (!origin) throw new Error("Mobile page address not found");
   command(npm.command, [...npm.args, "run", "build:mobile"]);
   const built = readFileSync(resolve(projectDir, "dist/mobile/index.html"), "utf8");
   const response = await fetch(`${origin}/`, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`Page mobile injoignable : HTTP ${response.status}`);
+    throw new Error(`Mobile page unreachable: HTTP ${response.status}`);
   }
   if ((await response.text()) !== built) {
     throw new Error(
-      "La page mobile servie par Vercel n’est pas celle de ce dépôt : attendre le déploiement du projet soreno-mobile depuis main (ou le relancer), puis relancer la release",
+      "The mobile page served by Vercel is not this repository's: wait for the soreno-mobile project to deploy from main (or redeploy it), then run the release again",
     );
   }
 }
@@ -174,30 +174,30 @@ async function checkMobilePage(npm) {
 async function main() {
   const [version, ...extraArguments] = process.argv.slice(2);
   if (!version || extraArguments.length > 0 || !stableVersion.test(version)) {
-    throw new Error("Usage : npm run release -- X.Y.Z");
+    throw new Error("Usage: npm run release -- X.Y.Z");
   }
 
   const branch = command("git", ["branch", "--show-current"], {
     capture: true,
   });
   if (!branch)
-    throw new Error("Une release ne peut pas partir d’une HEAD détachée");
+    throw new Error("A release cannot start from a detached HEAD");
   if (command("git", ["status", "--porcelain"], { capture: true })) {
-    throw new Error("Le dépôt doit être propre avant de préparer une release");
+    throw new Error("The repository must be clean before preparing a release");
   }
 
   const versions = readVersions(projectDir);
   const currentVersions = new Set(Object.values(versions));
   if (currentVersions.size !== 1) {
-    throw new Error(`Versions désynchronisées : ${JSON.stringify(versions)}`);
+    throw new Error(`Versions out of sync: ${JSON.stringify(versions)}`);
   }
   const currentVersion = versions.packageJson;
   if (!stableVersion.test(currentVersion)) {
-    throw new Error(`Version actuelle non prise en charge : ${currentVersion}`);
+    throw new Error(`Unsupported current version: ${currentVersion}`);
   }
   if (compareVersions(version, currentVersion) <= 0) {
     throw new Error(
-      `La nouvelle version doit être supérieure à ${currentVersion}`,
+      `The new version must be greater than ${currentVersion}`,
     );
   }
 
@@ -209,7 +209,7 @@ async function main() {
   );
   if (localTag.error) throw localTag.error;
   if (localTag.status === 0 || tagExistsOnOrigin(tag)) {
-    throw new Error(`Le tag ${tag} existe déjà`);
+    throw new Error(`Tag ${tag} already exists`);
   }
 
   const npm = createNpmInvocation(process.execPath, process.env.npm_execpath);
@@ -225,7 +225,7 @@ async function main() {
   ]);
   command("cargo", ["test", "--manifest-path", "src-tauri/Cargo.toml"]);
   if (command("git", ["status", "--porcelain"], { capture: true })) {
-    throw new Error("Les vérifications ont modifié le dépôt");
+    throw new Error("The checks modified the repository");
   }
 
   syncVersionFiles(projectDir, version);
@@ -239,12 +239,12 @@ async function main() {
   );
   if (unexpectedPaths.length > 0) {
     throw new Error(
-      `Fichiers inattendus modifiés : ${unexpectedPaths.join(", ")}`,
+      `Unexpected files modified: ${unexpectedPaths.join(", ")}`,
     );
   }
   for (const path of versionFiles) {
     if (!changedPaths.includes(path)) {
-      throw new Error(`La version n’a pas été modifiée dans ${path}`);
+      throw new Error(`The version was not updated in ${path}`);
     }
   }
 
@@ -252,7 +252,7 @@ async function main() {
   command("git", ["commit", "-m", `Release ${version}`]);
   command("git", ["tag", tag]);
 
-  console.log(`\nRelease ${version} prête. Publication explicite :`);
+  console.log(`\nRelease ${version} ready. Publish explicitly:`);
   console.log(`git push origin ${branch} ${tag}`);
 }
 
@@ -263,7 +263,7 @@ if (
   try {
     await main();
   } catch (error) {
-    console.error(`Erreur : ${error instanceof Error ? error.message : error}`);
+    console.error(`Error: ${error instanceof Error ? error.message : error}`);
     process.exitCode = 1;
   }
 }

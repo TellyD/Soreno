@@ -9,21 +9,21 @@ relay_dir=/usr/local/lib/soreno-relay
 relay_bin=$relay_dir/soreno-relay
 
 fail() {
-  printf 'relais : %s\n' "$1" >&2
+  printf 'relay: %s\n' "$1" >&2
   exit 1
 }
 
-[ "$(id -u)" = 0 ] || fail "à lancer avec sudo."
+[ "$(id -u)" = 0 ] || fail "run with sudo."
 
 case $(uname -m) in
   x86_64) built_target=x86_64-unknown-linux-musl ;;
   aarch64) built_target=aarch64-unknown-linux-musl ;;
-  *) fail "architecture non prise en charge : $(uname -m)." ;;
+  *) fail "unsupported architecture: $(uname -m)." ;;
 esac
 # The caller's first argument, if any, is a binary built elsewhere.
 built=${1:-$root/src-tauri/target/$built_target/release/soreno-relay}
 [ -x "$built" ] ||
-  fail "binaire absent : $built (lancer d’abord « npm run build:relay » sans sudo, ou passer le chemin du binaire)."
+  fail "missing binary: $built (first run \"npm run build:relay\" without sudo, or pass the binary path)."
 
 # Sets relay_changed to yes when the installed binary was replaced.
 install_relay_binary() {

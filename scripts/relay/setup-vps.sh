@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs the Soreno relay on the VPS, once: `sudo sh scripts/relay/setup-vps.sh [binaire]` after
+# Installs the Soreno relay on the VPS, once: `sudo sh scripts/relay/setup-vps.sh [binary]` after
 # `npm run build:relay`. Safe to run again. Then scripts/relay/deploy.sh updates the relay.
 set -eu
 
@@ -19,8 +19,8 @@ case $(uname -m) in
     ;;
 esac
 
-command -v systemctl >/dev/null 2>&1 || fail "systemd est introuvable."
-command -v curl >/dev/null 2>&1 || fail "curl est introuvable (apt install curl)."
+command -v systemctl >/dev/null 2>&1 || fail "systemd not found."
+command -v curl >/dev/null 2>&1 || fail "curl not found (apt install curl)."
 
 system_user() {
   id -u "$1" >/dev/null 2>&1 ||
@@ -40,13 +40,13 @@ write_file() {
   fi
 }
 
-echo "Relais : utilisateur, dossier d’état et binaire…"
+echo "Relay: user, state directory and binary…"
 system_user "$relay_user" "$relay_state"
 install -d -m 0700 -o "$relay_user" -g "$relay_user" "$relay_state"
 install_relay_binary
 if [ ! -f "$relay_key" ]; then
   runuser -u "$relay_user" -- "$relay_bin" keygen "$relay_key" >/dev/null
-  echo "Clé du relais créée : $relay_key"
+  echo "Relay key created: $relay_key"
 fi
 
 echo "Caddy $caddy_version…"
@@ -61,7 +61,7 @@ if [ "$caddy_current" = no ]; then
   curl -fsSL -o "$work/$archive" \
     "https://github.com/caddyserver/caddy/releases/download/v$caddy_version/$archive"
   printf '%s  %s\n' "$caddy_sha256" "$work/$archive" | sha256sum -c --quiet - ||
-    fail "empreinte SHA-256 de Caddy inattendue : installation abandonnée."
+    fail "unexpected Caddy SHA-256 checksum: installation aborted."
   tar -xzf "$work/$archive" -C "$work" caddy
   install -m 0755 "$work/caddy" "$caddy_bin.new"
   mv -f "$caddy_bin.new" "$caddy_bin"
@@ -87,7 +87,7 @@ $relay_host {
 EOF
 write_file /etc/systemd/system/caddy.service <<EOF
 [Unit]
-Description=Caddy, HTTPS du relais mobile Soreno
+Description=Caddy, HTTPS for the Soreno mobile relay
 After=network-online.target
 Wants=network-online.target
 
@@ -115,7 +115,7 @@ Restart=on-failure
 WantedBy=multi-user.target
 EOF
 runuser -u caddy -- env HOME=/var/lib/caddy "$caddy_bin" validate --config /etc/caddy/Caddyfile >/dev/null 2>&1 ||
-  fail "Caddyfile invalide : $caddy_bin validate --config /etc/caddy/Caddyfile"
+  fail "invalid Caddyfile: $caddy_bin validate --config /etc/caddy/Caddyfile"
 systemctl daemon-reload
 systemctl enable caddy.service >/dev/null
 if [ "$changed" = yes ] || ! systemctl is-active --quiet caddy.service; then
@@ -123,11 +123,11 @@ if [ "$changed" = yes ] || ! systemctl is-active --quiet caddy.service; then
 fi
 
 # After Caddy, which thus never proxies to the port an older relay just freed.
-echo "Relais : service…"
+echo "Relay: service…"
 changed=$relay_changed
 write_file /etc/systemd/system/soreno-relay.service <<EOF
 [Unit]
-Description=Relais mobile Soreno
+Description=Soreno mobile relay
 After=network-online.target
 Wants=network-online.target
 
@@ -162,14 +162,14 @@ if command -v ufw >/dev/null 2>&1 && ufw status | grep -q '^Status: active'; the
   for port in 80 443 8790; do
     ufw allow "$port/tcp" >/dev/null
   done
-  echo "Pare-feu ufw : ports 80, 443 et 8790 ouverts."
+  echo "ufw firewall: ports 80, 443 and 8790 opened."
 fi
 
 sleep 2
-systemctl is-active --quiet soreno-relay.service || fail "soreno-relay ne tourne pas : journalctl -u soreno-relay"
-systemctl is-active --quiet caddy.service || fail "Caddy ne tourne pas : journalctl -u caddy"
+systemctl is-active --quiet soreno-relay.service || fail "soreno-relay is not running: journalctl -u soreno-relay"
+systemctl is-active --quiet caddy.service || fail "Caddy is not running: journalctl -u caddy"
 
-printf '\nRelais installé : téléphones sur wss://%s, serveurs sur ws://%s:8790/relay/server\n' "$relay_host" "$relay_host"
-printf 'Clé publique du relais (RELAY_PUBLIC_KEY) : %s\n' \
+printf '\nRelay installed: phones on wss://%s, servers on ws://%s:8790/relay/server\n' "$relay_host" "$relay_host"
+printf 'Relay public key (RELAY_PUBLIC_KEY): %s\n' \
   "$(runuser -u "$relay_user" -- "$relay_bin" public-key "$relay_key")"
-echo "Les ports 80, 443 et 8790 doivent aussi être ouverts dans le pare-feu de l’hébergeur."
+echo "Ports 80, 443 and 8790 must also be open in the hosting provider's firewall."
