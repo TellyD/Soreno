@@ -554,6 +554,8 @@ struct Store {
     attachment_instance_directory: PathBuf,
     runtimes: HashMap<String, Arc<Runtime>>,
     omp_conversations: HashMap<String, Arc<conversation::ConversationProcess>>,
+    // Conversations launching outside the store lock: they count as running until published.
+    starting_conversations: HashSet<String>,
     session_operations: HashMap<String, Arc<Mutex<()>>>,
     closing: bool,
     git_busy: bool,
@@ -597,6 +599,17 @@ impl Drop for NewProjectGitOperationLease<'_> {
     fn drop(&mut self) {
         if let Ok(mut store) = self.owner.store.lock() {
             store.git_busy = false;
+        }
+    }
+}
+struct StartingConversation<'a> {
+    owner: &'a AgentSessions,
+    session_id: &'a str,
+}
+impl Drop for StartingConversation<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut store) = self.owner.store.lock() {
+            store.starting_conversations.remove(self.session_id);
         }
     }
 }
@@ -859,6 +872,7 @@ impl AgentSessions {
                 attachment_instance_directory,
                 runtimes: HashMap::new(),
                 omp_conversations: HashMap::new(),
+                starting_conversations: HashSet::new(),
                 session_operations: HashMap::new(),
                 closing: false,
                 git_busy: false,
@@ -1599,15 +1613,15 @@ impl AgentSessions {
         let operation = self.session_operation(session_id)?;
         let _operation = lock(&operation)?;
         let connection_change = lock(&self.connection_changes)?;
-        let (kind, serialized) = {
+        let (kind, ssh, grouped) = {
             let store = lock(&self.store)?;
             let session = require_session(&store, session_id)?;
             let project = require_project(&store, &session.project_id)?;
             let grouped = groups::group_by_group_project(&store.db, &project.id)?.is_some();
-            (session.kind, project.environment.kind == "ssh" || grouped)
+            (session.kind, project.environment.kind == "ssh", grouped)
         };
         // Only SSH relays and group folders need launches ordered with project changes.
-        let _connection_change = serialized.then_some(connection_change);
+        let _connection_change = (ssh || grouped).then_some(connection_change);
         if kind == conversation::KIND {
             return self.start_conversation(session_id, initial_prompt, attachments);
         }
@@ -1694,6 +1708,12 @@ impl AgentSessions {
         #[cfg(windows)]
         let wsl = (prepared_project.environment.kind == "wsl")
             .then(|| {
+                if grouped {
+                    groups::create_group_directory(
+                        &prepared_project.environment,
+                        &prepared_project.path,
+                    )?;
+                }
                 WslRun::prepare(
                     &prepared_project,
                     prepared_session
@@ -2015,7 +2035,7 @@ impl AgentSessions {
         initial_prompt: Option<&str>,
         attachments: &[PromptAttachment],
     ) -> Result<()> {
-        let (label, project, resumed, launch_args, token, local_files) = {
+        let (label, project, resumed, launch_args, token, local_files, _starting) = {
             let mut store = lock(&self.store)?;
             if store.closing {
                 return Err("L’application est en cours de fermeture.".into());
@@ -2050,13 +2070,19 @@ impl AgentSessions {
             let resumed = conversation::reconcile(&store.db, session_id, previous)?;
             let local_files = (project.environment.kind != "ssh")
                 .then(|| attachment_directory(&store.attachment_instance_directory, session_id));
+            let token = run_token(&store.db)?;
+            store.starting_conversations.insert(session_id.into());
             (
                 format!("{} · {}", project.name, session.display_name()),
                 project,
                 resumed,
                 launch_args,
-                run_token(&store.db)?,
+                token,
                 local_files,
+                StartingConversation {
+                    owner: self,
+                    session_id,
+                },
             )
         };
         if let Some(directory) = &local_files {
@@ -2085,10 +2111,6 @@ impl AgentSessions {
             require_session(&store, session_id).and_then(|session| {
                 if session.kind != conversation::KIND {
                     return Err("La session n’est plus une conversation OMP.".into());
-                }
-                // Non-SSH starts run outside `connection_changes`: a Git stop may have run meanwhile.
-                if store.git_stopped_projects.contains(&session.project_id) {
-                    return Err("[Git/busy] Une opération Git est en cours sur ce projet.".into());
                 }
                 require_project_connected(&store, &session.project_id).map(|_| ())
             })
@@ -2606,7 +2628,9 @@ fn status(store: &Store, session: &AgentSession) -> Result<AgentSessionStatus> {
     Ok(status)
 }
 fn ensure_stopped(store: &Store, session_id: &str) -> Result<()> {
-    if runtime_status(store, session_id)?.state == "running" {
+    if store.starting_conversations.contains(session_id)
+        || runtime_status(store, session_id)?.state == "running"
+    {
         return Err("Arrêtez la session active avant cette opération.".into());
     }
     // Do not discard the only run identity if natural-exit cleanup failed.
