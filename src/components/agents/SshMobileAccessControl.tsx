@@ -379,9 +379,11 @@ export function SshMobileAccessControl({
         className="agent-ssh-toggle"
         disabled={disabled || disconnected}
         title={
-          connected
-            ? `${s.sshMobileTitle} · ${s.sshMobileConnected}`
-            : s.sshMobileTitle
+          disconnected
+            ? `${s.sshMobileTitle} · ${s.sshConnectFirst}`
+            : connected
+              ? `${s.sshMobileTitle} · ${s.sshMobileConnected}`
+              : s.sshMobileTitle
         }
         onClick={() => setOpen(true)}
       >

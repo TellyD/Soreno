@@ -1,4 +1,10 @@
-import { AlertTriangle, Folder, GitBranch, LoaderCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  Folder,
+  GitBranch,
+  LoaderCircle,
+  Unplug,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -116,6 +122,10 @@ export type GitPanelProps = {
   project?: AgentProject;
   projects?: AgentProject[];
   disconnected?: boolean;
+  /** Not reached since launch: disconnected, but never explicitly. */
+  dormant?: boolean;
+  /** Connects the selected project, shown while it is disconnected. */
+  connectAction?: ReactNode;
   projectsLoading?: boolean;
   projectsError?: string | null;
   branchRevision?: number;
@@ -162,6 +172,8 @@ export function GitPanel({
   project,
   projects = [],
   disconnected = false,
+  dormant = false,
+  connectAction,
   projectsLoading = false,
   projectsError = null,
   branchRevision,
@@ -636,7 +648,21 @@ export function GitPanel({
         />
       </div>
     );
-  else if (projectsError) content = <EmptyState fill />;
+  else if (projectsError)
+    // The workspace notification carries the error message.
+    content = (
+      <EmptyState
+        actions={
+          onRetryProjects ? (
+            <Button onClick={onRetryProjects}>{s.retry}</Button>
+          ) : undefined
+        }
+        fill
+        headingLevel={3}
+        icon={<AlertTriangle />}
+        title={s.projectsLoadError}
+      />
+    );
   else if (!project)
     content = <EmptyState description={s.noProject} fill icon={<Folder />} />;
   else if (git.loading && !git.repo)
@@ -661,7 +687,18 @@ export function GitPanel({
         icon={<AlertTriangle />}
       />
     ) : (
-      <EmptyState description={s.missing} fill />
+      <EmptyState
+        actions={
+          <Button
+            disabled={git.loading || git.busy}
+            onClick={() => void git.refresh()}
+          >
+            {s.retry}
+          </Button>
+        }
+        description={s.missing}
+        fill
+      />
     );
   else if (git.repo.availability === "notRepository")
     content = (
@@ -769,6 +806,7 @@ export function GitPanel({
               filterFocusRequest={historyFilterFocus}
               onFilterFocusHandled={() => setHistoryFilterFocus(null)}
               fileMenu={fileMenu}
+              onShowChanges={() => void selectPanelView("changes")}
             />
           </div>
         ) : null}
@@ -858,7 +896,19 @@ export function GitPanel({
   if (git.desktop && project && !projectsLoading && !projectsError) {
     const retainedGitContent = content;
     const inactiveContent = disconnected ? (
-      <EmptyState description={s.projectDisconnected} fill role="status" />
+      <EmptyState
+        actions={connectAction}
+        description={
+          dormant
+            ? s.projectDormantDescription
+            : s.projectDisconnectedDescription
+        }
+        fill
+        headingLevel={3}
+        icon={<Unplug />}
+        role="status"
+        title={dormant ? s.projectDormant : s.projectDisconnected}
+      />
     ) : explorerActive ? (
       <ProjectExplorer
         key={`explorer:${readScope ?? project.id}`}

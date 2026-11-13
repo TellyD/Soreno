@@ -99,6 +99,7 @@ async function render(sessions = [session]) {
           onRenameSession={onRenameSession}
           onOpenSession={onOpenSession}
           onConnectProject={vi.fn()}
+          onAddSshProject={vi.fn()}
           onServerReached={onServerReached}
           onAutomationDeleted={vi.fn()}
         />

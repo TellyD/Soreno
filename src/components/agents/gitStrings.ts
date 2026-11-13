@@ -160,10 +160,15 @@ const en = {
   loading: "Reading Git status…",
   revalidating: "Refreshing Git status…",
   loadingProjects: "Loading projects…",
+  projectsLoadError: "Unable to load projects.",
   noProject: "Select a project to browse its files and Git changes.",
   desktop: "Git changes require the Soreno desktop app.",
-  projectDisconnected:
-    "Project disconnected. Reconnect from the SSH status bar to access Git.",
+  projectDisconnected: "Project disconnected",
+  projectDisconnectedDescription:
+    "Connect this SSH project to browse its files and Git.",
+  projectDormant: "Project not connected",
+  projectDormantDescription:
+    "Soreno has not reached this SSH server since it opened. Connect the project to browse its files and Git.",
   initRepository: "Initialize Git",
   initTitle: "Initialize Git repository?",
   initDescription:
@@ -285,6 +290,7 @@ const en = {
   refreshHistory: "Refresh history",
   historyLoading: "Reading history…",
   historyEmpty: "No commits.",
+  historyEmptyHint: "No commits yet. Make the first one from Changes.",
   loadMore: "Load more",
   historyChoose: "Select a commit to view its files.",
   historyChooseFile: "Select a file to view its diff.",
@@ -529,11 +535,16 @@ const fr: typeof en = {
   loading: "Lecture de l’état Git…",
   revalidating: "Actualisation de l’état Git…",
   loadingProjects: "Chargement des projets…",
+  projectsLoadError: "Impossible de charger les projets.",
   noProject:
     "Sélectionnez un projet pour parcourir ses fichiers et changements Git.",
   desktop: "Les changements Git nécessitent l’application de bureau Soreno.",
-  projectDisconnected:
-    "Projet déconnecté. Reconnectez-le depuis la barre d’état SSH pour accéder à Git.",
+  projectDisconnected: "Projet déconnecté",
+  projectDisconnectedDescription:
+    "Connectez ce projet SSH pour parcourir ses fichiers et Git.",
+  projectDormant: "Projet non connecté",
+  projectDormantDescription:
+    "Soreno n’a pas encore joint ce serveur SSH depuis son ouverture. Connectez le projet pour parcourir ses fichiers et Git.",
   initRepository: "Initialiser Git",
   initTitle: "Initialiser le dépôt Git ?",
   initDescription:
@@ -655,6 +666,8 @@ const fr: typeof en = {
   refreshHistory: "Actualiser l’historique",
   historyLoading: "Lecture de l’historique…",
   historyEmpty: "Aucun commit.",
+  historyEmptyHint:
+    "Aucun commit pour l’instant. Faites le premier depuis Changements.",
   loadMore: "Charger la suite",
   historyChoose: "Sélectionnez un commit pour voir ses fichiers.",
   historyChooseFile: "Sélectionnez un fichier pour voir son diff.",

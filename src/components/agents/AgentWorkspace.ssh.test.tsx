@@ -1170,7 +1170,8 @@ it("keeps offline session navigation passive, disables creation and reconnects w
         finishWorktrees = resolve;
       }),
   );
-  await click("Connecter · Soreno", host);
+  // The offline session offers the connection where the user is looking.
+  await click("Connecter", container.querySelector('[data-terminal="s2"]')!);
   expect(api.setAgentProjectConnected).toHaveBeenCalledExactlyOnceWith(
     "p1",
     true,

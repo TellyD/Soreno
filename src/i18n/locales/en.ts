@@ -457,6 +457,7 @@ export const en = {
   "notes.passphrase.error": "Something went wrong. Try again.",
   "notes.passphrase.cancel": "Cancel",
   "notes.empty.view": "No notes in this view",
+  "notes.empty.search": "No notes match your search",
   "notes.listAria": "Notes list",
   "notes.loading": "Loading...",
   "notes.modifiedAt": "Modified at {date}",
@@ -816,6 +817,7 @@ export const en = {
     "Start an agent at a set time on an SSH server, for example a skill every morning. Its session then waits for you in Soreno.",
   "automations.noSshProject":
     "Add an SSH project first: automations run on the server, even with Soreno closed.",
+  "automations.addSshProject": "Add an SSH project",
   "automations.column.name": "Name",
   "automations.column.project": "Project",
   "automations.column.schedule": "Schedule",

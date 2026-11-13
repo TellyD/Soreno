@@ -43,6 +43,8 @@ export type ProjectServicesPanelProps = {
   onStartServices: (projectId: string, services: ProjectService[]) => void;
   onStopServices: (projectId: string, services: ProjectService[]) => void;
   onRestartService: (projectId: string, service: ProjectService) => void;
+  /** Connects a disconnected section's SSH project. */
+  connectAction?: (projectId: string, size?: "small") => ReactNode;
 };
 
 export function ProjectServicesPanel({
@@ -57,6 +59,7 @@ export function ProjectServicesPanel({
   onStartServices,
   onStopServices,
   onRestartService,
+  connectAction,
 }: ProjectServicesPanelProps) {
   const s = useAgentStrings();
   const statusBySession = new Map(
@@ -247,12 +250,14 @@ export function ProjectServicesPanel({
     </ul>
   );
 
+  const disconnectedSection = sections.find((section) => section.disconnected);
   return (
     <section className="project-services-panel" aria-label={s.services}>
-      {sections.some((section) => section.disconnected) ? (
-        <p className="project-services-disconnected" role="status">
-          {s.servicesDisconnected}
-        </p>
+      {disconnectedSection ? (
+        <div className="project-services-disconnected" role="status">
+          <span>{s.servicesDisconnected}</span>
+          {connectAction?.(disconnectedSection.projectId, "small")}
+        </div>
       ) : null}
 
       <div className="project-services-body">

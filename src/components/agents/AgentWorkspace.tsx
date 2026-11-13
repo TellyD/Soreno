@@ -1,4 +1,10 @@
-import { Folder, GitBranch, LoaderCircle, TerminalSquare } from "lucide-react";
+import {
+  Folder,
+  GitBranch,
+  LoaderCircle,
+  TerminalSquare,
+  Unplug,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as api from "../../data/agentSessionsApi";
@@ -25,6 +31,7 @@ import {
   reconcileProjectSectionOrder,
   sameAgentMachine,
   sessionLaunchBlocked,
+  type AgentEnvironment,
   type AgentProject,
   type AgentProjectWorktree,
   type AgentSession,
@@ -196,7 +203,7 @@ type AgentWorkspaceProps = {
   registerTransitionGuard?: (guard: AgentTransitionGuard) => () => void;
 };
 type Form = (
-  | { kind: "project"; project?: AgentProject }
+  | { kind: "project"; project?: AgentProject; environment?: AgentEnvironment }
   | { kind: "clone" }
   | { kind: "group"; group?: AgentProjectGroup }
   | { kind: "session"; session: AgentSession }
@@ -754,19 +761,34 @@ export function AgentWorkspace({
     return byId;
   }, [workspace.statuses]);
   const statusOf = (id: string) => statusById.get(id);
-  function missingAgentNotice(session: AgentSession) {
-    if (!statusOf(session.id)?.missingExecutable) return undefined;
-    return (
-      <MissingAgentNotice
-        session={session}
-        environment={
-          workspace.projects.find((project) => project.id === session.projectId)
-            ?.environment
-        }
-        disabled={disabled}
-        onRetry={() => void performAction({ kind: "restart", session })}
-      />
-    );
+  function sessionNotice(session: AgentSession) {
+    if (statusOf(session.id)?.missingExecutable)
+      return (
+        <MissingAgentNotice
+          session={session}
+          environment={
+            workspace.projects.find(
+              (project) => project.id === session.projectId,
+            )?.environment
+          }
+          disabled={disabled}
+          onRetry={() => void performAction({ kind: "restart", session })}
+        />
+      );
+    if (
+      sessionLaunchBlocked(workspace, session.projectId) &&
+      statusOf(session.id)?.state !== "running"
+    )
+      return (
+        <EmptyState
+          actions={connectButton(session.projectId)}
+          description={s.projectDisconnectedBody}
+          fill
+          icon={<Unplug />}
+          title={s.projectDisconnectedTitle}
+        />
+      );
+    return undefined;
   }
   const terminalSessionIds = new Set([
     selectedSession?.id,
@@ -1813,6 +1835,21 @@ export function AgentWorkspace({
     } finally {
       releaseSshTransition(transition);
     }
+  }
+  function connectButton(projectId: string, size?: "small") {
+    const pending =
+      sshTransition?.projectId === projectId && sshTransition.connected;
+    return (
+      <Button
+        size={size}
+        variant="primary"
+        disabled={disabled}
+        aria-busy={pending || undefined}
+        onClick={() => void connectProject(projectId)}
+      >
+        {pending ? s.connecting : s.connect}
+      </Button>
+    );
   }
   async function saveProject(
     project: AgentProject,
@@ -2997,6 +3034,12 @@ export function AgentWorkspace({
                     onConnectProject={(projectId) =>
                       void connectProject(projectId)
                     }
+                    onAddSshProject={() =>
+                      openForm({
+                        kind: "project",
+                        environment: { kind: "ssh", distribution: null },
+                      })
+                    }
                     onServerReached={() => void retry()}
                     onAutomationDeleted={(sessionId) => {
                       setHiddenSessionIds((current) => {
@@ -3067,7 +3110,7 @@ export function AgentWorkspace({
                               navigator.platform,
                             )
                           }
-                          notice={missingAgentNotice(session)}
+                          notice={sessionNotice(session)}
                         />
                       );
                     }}
@@ -3092,12 +3135,14 @@ export function AgentWorkspace({
                 ) : !selectedSession ? (
                   <EmptyState
                     actions={
-                      selectedProject &&
-                      selectedProjectSessions.length === 0 ? (
+                      selectedProject && selectedProjectLaunchBlocked ? (
+                        connectButton(selectedProject.id)
+                      ) : selectedProject &&
+                        selectedProjectSessions.length === 0 ? (
                         <NewSessionMenu
                           prominent
                           projectName={selectedProject.name}
-                          disabled={disabled || selectedProjectLaunchBlocked}
+                          disabled={disabled}
                           returnFocusRef={returnFocusRef}
                           triggerRef={addSessionRef}
                           onPreset={(preset) =>
@@ -3128,7 +3173,11 @@ export function AgentWorkspace({
                       ) : undefined
                     }
                     description={
-                      selectedProject ? s.chooseSession : s.emptyBody
+                      selectedProjectLaunchBlocked
+                        ? s.projectDisconnectedBody
+                        : selectedProject
+                          ? s.chooseSession
+                          : s.emptyBody
                     }
                     fill
                     icon={<TerminalSquare />}
@@ -3194,7 +3243,7 @@ export function AgentWorkspace({
                       onRestart={() =>
                         void performAction({ kind: "restart", session })
                       }
-                      notice={missingAgentNotice(session)}
+                      notice={sessionNotice(session)}
                       remote={environment.kind === "ssh"}
                     />
                   ) : (
@@ -3216,7 +3265,7 @@ export function AgentWorkspace({
                         environment,
                         navigator.platform,
                       )}
-                      notice={missingAgentNotice(session)}
+                      notice={sessionNotice(session)}
                     />
                   );
                 })}
@@ -3250,6 +3299,7 @@ export function AgentWorkspace({
                       services.selectedService.id,
                     )}
                     disabled={disabled}
+                    connectAction={connectButton}
                     onServiceChange={(projectId, serviceId) => {
                       services.setView({ projectId, serviceId });
                       setServiceFocusRequest((value) => (value ?? 0) + 1);
@@ -3305,6 +3355,12 @@ export function AgentWorkspace({
                 project={selectedProject}
                 projects={workspace.projects}
                 disconnected={selectedProjectDisconnected}
+                dormant={selectedProjectDormant}
+                connectAction={
+                  selectedProject && selectedProjectDisconnected
+                    ? connectButton(selectedProject.id)
+                    : undefined
+                }
                 projectsLoading={!hasLoaded && !loadError}
                 projectsError={!hasLoaded ? loadError : null}
                 branchRevision={branchRevision}
@@ -3411,6 +3467,7 @@ export function AgentWorkspace({
                   disconnectedProjectIds={
                     workspace.disconnectedProjectIds ?? []
                   }
+                  connectAction={connectButton}
                   workingSessions={workspace.sessions.filter(
                     (session) =>
                       (session.projectId ===
@@ -3543,6 +3600,7 @@ export function AgentWorkspace({
               <AgentProjectForm
                 returnFocusRef={form.fromMenu ? returnFocusRef : undefined}
                 project={form.project}
+                environment={form.environment}
                 projects={workspace.projects}
                 hasSessions={fullWorkspace.sessions.some(
                   (session) => session.projectId === form.project?.id,
