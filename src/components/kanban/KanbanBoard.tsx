@@ -1,5 +1,6 @@
 import { Menu } from "@base-ui/react/menu";
 import {
+  ArrowUpDown,
   Plug,
   Plus,
   RefreshCw,
@@ -18,11 +19,14 @@ import {
   kanbanBoardTabs,
   kanbanColumn,
   kanbanIssueProjects,
+  kanbanSortFields,
   kanbanSourceFilters,
   noKanbanProjectFilter,
   type KanbanBoardTab,
   type KanbanIssue,
   type KanbanIssueSelection,
+  type KanbanSort,
+  type KanbanSortField,
   type KanbanSourceFilter,
   linearWorkspaceName,
   type LinearWorkspace,
@@ -65,12 +69,28 @@ const sourceLabelKeys: Record<KanbanSourceFilter, TranslationKey> = {
   local: "kanban.source.local",
 };
 
+const sortLabelKeys: Record<KanbanSortField, TranslationKey> = {
+  created: "kanban.sort.created",
+  priority: "kanban.sort.priority",
+  updated: "kanban.sort.updated",
+};
+
 const projectFilterKey = "soreno.kanban.projectFilter.v1";
 const sourceFilterKey = "soreno.kanban.sourceFilter.v1";
+const sortFieldKey = "soreno.kanban.sortField.v1";
+const sortAscendingKey = "soreno.kanban.sortAscending.v1";
 
 function readSourceFilter(): KanbanSourceFilter {
   const saved = readPreference(sourceFilterKey);
   return kanbanSourceFilters.find((filter) => filter === saved) ?? "all";
+}
+
+function readSort(): KanbanSort {
+  const saved = readPreference(sortFieldKey);
+  return {
+    field: kanbanSortFields.find((field) => field === saved) ?? "updated",
+    ascending: readPreference(sortAscendingKey) === "true",
+  };
 }
 
 type KanbanBoardProps = {
@@ -121,6 +141,7 @@ function KanbanBoardContent({
   const [savedProjectFilter, setSavedProjectFilter] = useState(
     () => readPreference(projectFilterKey) ?? allKanbanProjectsFilter,
   );
+  const [sort, setSort] = useState(readSort);
   const [selectedIssue, setSelectedIssue] =
     useState<KanbanIssueSelection | null>(null);
   // A deletion or a transfer made in another view replaces the shown issue too.
@@ -173,6 +194,11 @@ function KanbanBoardContent({
   const selectSourceFilter = (value: KanbanSourceFilter) => {
     setSavedSourceFilter(value);
     writePreference(sourceFilterKey, value === "all" ? null : value);
+  };
+  const selectSort = (next: KanbanSort) => {
+    setSort(next);
+    writePreference(sortFieldKey, next.field === "updated" ? null : next.field);
+    writePreference(sortAscendingKey, next.ascending ? "true" : null);
   };
   const filteredIssues = useMemo(
     () => filterIssuesByProject(sourceIssues, projectFilter),
@@ -380,7 +406,7 @@ function KanbanBoardContent({
             </SegmentedControl>
           ) : null}
 
-          {linearConnected && linear ? (
+          {linearConnected && linear && sourceFilter !== "local" ? (
             <Select
               aria-label={t("kanban.linear.team")}
               className="kanban-project-select"
@@ -443,6 +469,29 @@ function KanbanBoardContent({
               value={projectFilter}
             />
           ) : null}
+
+          <Select
+            aria-label={t("kanban.sort.label")}
+            className="kanban-project-select"
+            onValueChange={(field) =>
+              selectSort({ ...sort, field: field as KanbanSortField })
+            }
+            options={kanbanSortFields.map((field) => ({
+              label: t(sortLabelKeys[field]),
+              value: field,
+            }))}
+            size="small"
+            value={sort.field}
+          />
+          <IconButton
+            aria-label={t("kanban.sort.reverse")}
+            aria-pressed={sort.ascending}
+            onClick={() => selectSort({ ...sort, ascending: !sort.ascending })}
+            size="small"
+            title={t("kanban.sort.reverse")}
+          >
+            <ArrowUpDown size={14} />
+          </IconButton>
 
           <div className="kanban-board-actions">
             {linearConnected ? null : (
@@ -579,6 +628,7 @@ function KanbanBoardContent({
             onOpenProject={kanban.onOpenProject}
             onOpenUrl={kanban.openExternal}
             onUpdateIssue={kanban.moveBoardIssue}
+            sort={sort}
             tab={tab}
           />
         ) : (

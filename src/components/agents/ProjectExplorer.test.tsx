@@ -130,7 +130,7 @@ function textButton(text: string, scope: ParentNode = document) {
   return value;
 }
 
-it("opens and acknowledges a file requested by quick navigation", async () => {
+it("opens, reveals in the tree and acknowledges a requested file", async () => {
   const onOpenFileRequestHandled = vi.fn();
   await render();
   await act(async () =>
@@ -152,6 +152,20 @@ it("opens and acknowledges a file requested by quick navigation", async () => {
     ),
   );
   expect(onOpenFileRequestHandled).toHaveBeenCalledWith(1);
+  await act(async () =>
+    vi.waitFor(() =>
+      expect(
+        container
+          .querySelector('[data-entry-path="src/App.tsx"]')
+          ?.getAttribute("aria-current"),
+      ).toBe("page"),
+    ),
+  );
+  expect(
+    container
+      .querySelector('[data-entry-path="src"]')
+      ?.getAttribute("aria-expanded"),
+  ).toBe("true");
 });
 
 it("acknowledges a quick-open request cancelled by the discard guard", async () => {
@@ -558,6 +572,44 @@ it("keeps a loaded directory when its refresh fails", async () => {
       tone: "error",
     }),
   ]);
+  expect(
+    container.querySelector(".project-explorer")?.getAttribute("aria-busy"),
+  ).toBe("false");
+});
+
+it("drops an expanded directory deleted outside the explorer without an error on refresh", async () => {
+  await render();
+  await act(async () => textButton("src", container).click());
+  await act(async () =>
+    vi.waitFor(() => expect(textButton("App.tsx", container)).toBeTruthy()),
+  );
+
+  vi.mocked(api.listProjectFiles).mockImplementation((_projectId, directory) =>
+    directory === ""
+      ? Promise.resolve({
+          entries: [
+            {
+              name: "README.md",
+              path: "README.md",
+              kind: "file",
+              editable: true,
+            },
+          ],
+          truncated: false,
+        })
+      : Promise.reject({ code: "notDirectory", message: "gone" }),
+  );
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>(
+        '[aria-label="Actualiser les fichiers"]',
+      )!
+      .click(),
+  );
+
+  expect(textButton("README.md", container)).toBeTruthy();
+  expect(container.textContent).not.toContain("App.tsx");
+  expect(getNotifications()).toEqual([]);
   expect(
     container.querySelector(".project-explorer")?.getAttribute("aria-busy"),
   ).toBe("false");
