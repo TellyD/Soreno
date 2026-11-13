@@ -10,6 +10,7 @@ import {
   type KanbanBoard as KanbanBoardData,
   type KanbanIssue,
   type KanbanIssuePatch,
+  type KanbanSort,
   type KanbanWorkflowState,
 } from "../../domain/kanban";
 import type { KanbanIssueAgentSession } from "../../domain/kanbanAgent";
@@ -39,6 +40,7 @@ type KanbanColumnsProps = {
   onOpenProject: (projectId: string) => void;
   onOpenUrl: (url: string) => void;
   onUpdateIssue: (issue: KanbanIssue, patch: KanbanIssuePatch) => void;
+  sort: KanbanSort;
   tab: KanbanBoardTab;
 };
 
@@ -54,6 +56,7 @@ export function KanbanColumns({
   onOpenProject,
   onOpenUrl,
   onUpdateIssue,
+  sort,
   tab,
 }: KanbanColumnsProps) {
   const { t } = useI18n();
@@ -62,8 +65,8 @@ export function KanbanColumns({
     [board.states, tab],
   );
   const groups = useMemo(
-    () => groupIssuesByState(boardIssues, board.states, linearStates),
-    [boardIssues, board.states, linearStates],
+    () => groupIssuesByState(boardIssues, board.states, linearStates, sort),
+    [boardIssues, board.states, linearStates, sort],
   );
   const issueState = (issue: KanbanIssue) =>
     (issue.source === "linear" ? linearStates : board.states).find(

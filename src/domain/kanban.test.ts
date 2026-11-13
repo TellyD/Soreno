@@ -117,6 +117,40 @@ describe("groupIssuesByState", () => {
       "todo-old",
     ]);
   });
+
+  const sortable = [
+    { ...issue("a", "todo", "2026-08-02T10:00:00.000Z"), priority: 2 },
+    { ...issue("b", "todo", "2026-08-09T10:00:00.000Z"), priority: 0 },
+    { ...issue("c", "todo", "2026-08-01T10:00:00.000Z"), priority: 1 },
+    { ...issue("d", "todo", "2026-08-05T10:00:00.000Z"), priority: 2 },
+  ].map((sorted, index) => ({
+    ...sorted,
+    createdAt: [
+      "2026-07-05T10:00:00.000Z",
+      "2026-07-01T10:00:00.000Z",
+      "2026-07-03T10:00:00.000Z",
+      "2026-07-02T10:00:00.000Z",
+    ][index],
+  }));
+
+  it.each([
+    ["updated", false, ["b", "d", "a", "c"]],
+    ["updated", true, ["c", "a", "d", "b"]],
+    ["created", false, ["a", "c", "d", "b"]],
+    ["created", true, ["b", "d", "c", "a"]],
+    ["priority", false, ["c", "d", "a", "b"]],
+    ["priority", true, ["a", "d", "c", "b"]],
+  ] as const)(
+    "sorts by %s (ascending: %s), issues without priority last",
+    (field, ascending, expected) => {
+      const groups = groupIssuesByState(sortable, states, [], {
+        field,
+        ascending,
+      });
+
+      expect(groups.get("todo")?.map(({ id }) => id)).toEqual(expected);
+    },
+  );
 });
 
 describe("Linear issues on the local columns", () => {

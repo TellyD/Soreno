@@ -338,10 +338,34 @@ export function droppedIssueStateId(
     : null;
 }
 
+export const kanbanSortFields = ["updated", "created", "priority"] as const;
+
+export type KanbanSortField = (typeof kanbanSortFields)[number];
+
+/** Not ascending: newest first, or most urgent first. */
+export type KanbanSort = { field: KanbanSortField; ascending: boolean };
+
+function compareIssues(
+  left: KanbanIssue,
+  right: KanbanIssue,
+  { field, ascending }: KanbanSort,
+): number {
+  // Priority 0 means none: last in both directions.
+  if (field === "priority" && (left.priority === 0) !== (right.priority === 0))
+    return left.priority === 0 ? 1 : -1;
+  const order =
+    field === "created"
+      ? compareDate(right.createdAt, left.createdAt)
+      : (field === "priority" ? left.priority - right.priority : 0) ||
+        compareDate(right.updatedAt, left.updatedAt);
+  return ascending ? -order : order;
+}
+
 export function groupIssuesByState(
   issues: readonly KanbanIssue[],
   localStates: readonly KanbanWorkflowState[],
   linearStates: readonly KanbanWorkflowState[] = [],
+  sort: KanbanSort = { field: "updated", ascending: false },
 ): Map<string, KanbanIssue[]> {
   const groups = new Map<string, KanbanIssue[]>(
     localStates.map((state) => [state.id, []]),
@@ -353,9 +377,7 @@ export function groupIssuesByState(
   }
 
   for (const group of groups.values()) {
-    group.sort(
-      (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
-    );
+    group.sort((left, right) => compareIssues(left, right, sort));
   }
 
   return groups;
