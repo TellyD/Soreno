@@ -1,11 +1,11 @@
 //! Kanban issues that agents request by writing a JSON file into their private directory, and
-//! the HTML frames that design board agents write there.
+//! the HTML frames that design board agents, or coding agents linked to a board, write there.
 use super::{
     codex_overrides::{add_developer_instructions, add_writable_roots},
     conversation::{self, ConversationProcess},
     conversations::{self, Provider},
     design, groups, kanban_issue_sessions, lock, require_session, AgentSessions, RemoteClipboard,
-    Result, Runtime,
+    Result, Runtime, Store,
 };
 use crate::{
     kanban::{self, KanbanIssueCreateInput, KanbanIssueInput, KanbanSource},
@@ -49,7 +49,7 @@ pub(super) fn instruction(directory: &str) -> String {
 /// The launch-time instruction of a session: the design board one, else the Kanban one.
 pub(super) fn agent_instruction(design: bool, directory: &str) -> String {
     if design {
-        design::instruction(directory)
+        design::instruction(directory, true)
     } else {
         instruction(directory)
     }
@@ -259,13 +259,14 @@ fn resolve_image_placeholders(text: &str, targets: &[String]) -> Result<String> 
 pub struct IssueRequestWatcher {
     session_id: String,
     run: WatchedRun,
-    requests: Requests,
+    /// The board's hidden session, which writes design frames only.
+    design: bool,
     failures: HashMap<String, u8>,
     /// Requests whose file could not be claimed: handling them again would duplicate the issue.
     skipped: HashSet<String>,
     /// Original target of `image-N` at index N-1, as the launch prompt replaced it.
     image_targets: Vec<String>,
-    /// A design run whose frame mirror is not written yet.
+    /// A run whose design board mirror is not written yet.
     mirror_pending: bool,
 }
 
@@ -276,14 +277,10 @@ impl IssueRequestWatcher {
         self
     }
 
-    /// The run writes design frames: requests go to `handle_design_frame`.
-    pub fn is_design(&self) -> bool {
-        self.requests == Requests::DesignFrames
-    }
-
     /// Moves the file out of the scanned names, then reads it; `None` when another watcher
     /// sharing the directory claimed it first.
-    fn claim(&mut self, name: &str, message_id: &str) -> Option<Result<Vec<u8>>> {
+    fn claim(&mut self, request: &IssueRequest, message_id: &str) -> Option<Result<Vec<u8>>> {
+        let name = &request.name;
         let claimed = self
             .run
             .upgrade()
@@ -291,7 +288,7 @@ impl IssueRequestWatcher {
             .and_then(|run| {
                 claim_request(
                     &run,
-                    self.requests,
+                    request.requests,
                     name,
                     &format!("{name}.{message_id}.claimed"),
                 )
@@ -322,14 +319,32 @@ impl WatchedRun {
     }
 }
 
-enum Run {
+pub(super) enum Run {
     Terminal(Arc<Runtime>),
     Conversation(Arc<ConversationProcess>),
 }
 
 impl Run {
+    /// The session's current run, exited or not.
+    pub(super) fn current(store: &Store, session_id: &str) -> Option<Self> {
+        match store.runtimes.get(session_id) {
+            Some(run) => Some(Self::Terminal(run.clone())),
+            None => store
+                .omp_conversations
+                .get(session_id)
+                .map(|run| Self::Conversation(run.clone())),
+        }
+    }
+
+    pub(super) fn exited(&self) -> Result<bool> {
+        Ok(match self {
+            Self::Terminal(run) => lock(&run.output)?.exited,
+            Self::Conversation(run) => run.exited(),
+        })
+    }
+
     /// The run's private directory: local, else on the SSH server.
-    fn files(&self) -> (&Mutex<Option<PathBuf>>, Option<&RemoteClipboard>) {
+    pub(super) fn files(&self) -> (&Mutex<Option<PathBuf>>, Option<&RemoteClipboard>) {
         match self {
             Self::Terminal(run) => (
                 &run.local_attachment_directory,
@@ -343,6 +358,16 @@ impl Run {
 /// A request ready to handle; its payload is read again once claimed.
 pub struct IssueRequest {
     name: String,
+    requests: Requests,
+    /// The board a design frame was scanned for: it is not saved once the session draws elsewhere.
+    board_id: Option<String>,
+}
+
+impl IssueRequest {
+    /// A design frame: it goes to `handle_design_frame`.
+    pub fn is_design(&self) -> bool {
+        self.requests == Requests::DesignFrames
+    }
 }
 
 pub enum IssueRequestScan {
@@ -770,19 +795,15 @@ impl AgentSessions {
         Ok(run.map(|run| IssueRequestWatcher {
             session_id: session_id.to_owned(),
             run,
-            requests: if session.design {
-                Requests::DesignFrames
-            } else {
-                Requests::Kanban
-            },
+            design: session.design,
             failures: HashMap::new(),
             skipped: HashSet::new(),
             image_targets: Vec::new(),
-            mirror_pending: session.design,
+            mirror_pending: true,
         }))
     }
 
-    /// Writes the design run's frame mirror once; retried on each scan until it succeeds, since an
+    /// Writes the run's design board mirror once; retried on each scan until it succeeds, since an
     /// SSH dtach launch only creates its directory once its remote script ran.
     pub fn sync_design_mirror(&self, watcher: &mut IssueRequestWatcher) {
         if !watcher.mirror_pending {
@@ -793,9 +814,34 @@ impl AgentSessions {
         };
         let (local, remote) = run.files();
         match self.write_design_mirror(&watcher.session_id, local, remote) {
-            Ok(()) => watcher.mirror_pending = false,
+            Ok(_) => watcher.mirror_pending = false,
             Err(error) => eprintln!("Miroir des cadres Design : {error}"),
         }
+    }
+
+    /// Removes the design frame files the session's live run left unclaimed; bounded so an agent
+    /// still writing cannot keep it looping, and fails if frames remain so the link is not switched.
+    pub(super) fn discard_design_frames(&self, session_id: &str) -> Result<()> {
+        let Some(run) = Run::current(&*lock(&self.store)?, session_id) else {
+            return Ok(());
+        };
+        if run.exited()? {
+            return Ok(());
+        }
+        let (local, remote) = run.files();
+        for _ in 0..design::FRAME_CAPACITY {
+            let Some((name, _)) = read_request(&run, Requests::DesignFrames, &HashSet::new())?
+            else {
+                return Ok(());
+            };
+            design::write_private(local, remote, false, &name, None)?;
+        }
+        if read_request(&run, Requests::DesignFrames, &HashSet::new())?.is_some() {
+            return Err(
+                "Trop de cadres Design en attente : réessayez une fois l’agent arrêté.".into(),
+            );
+        }
+        Ok(())
     }
 
     /// Looks for one request file; unreadable directories are retried on the next scan.
@@ -810,12 +856,29 @@ impl AgentSessions {
             return Ok(IssueRequestScan::Stopped);
         }
         self.sync_design_mirror(watcher);
-        let Ok(Some((name, bytes))) = read_request(&run, watcher.requests, &watcher.skipped) else {
+        // A coding session draws in its linked board, if any, beside its Kanban requests.
+        let board_id = design::session_board(&lock(&self.store)?.db, &watcher.session_id)?;
+        let kinds: &[Requests] = match (watcher.design, &board_id) {
+            (true, _) => &[Requests::DesignFrames],
+            (false, Some(_)) => &[Requests::Kanban, Requests::DesignFrames],
+            (false, None) => &[Requests::Kanban],
+        };
+        let Some((requests, name, bytes)) = kinds.iter().find_map(|&requests| {
+            let found = read_request(&run, requests, &watcher.skipped).ok()??;
+            Some((requests, found.0, found.1))
+        }) else {
             return Ok(IssueRequestScan::Idle);
         };
-        if watcher.requests.complete(&bytes) {
+        let board_id = (requests == Requests::DesignFrames)
+            .then_some(board_id)
+            .flatten();
+        if requests.complete(&bytes) {
             watcher.failures.remove(&name);
-            return Ok(IssueRequestScan::Request(IssueRequest { name }));
+            return Ok(IssueRequestScan::Request(IssueRequest {
+                name,
+                requests,
+                board_id,
+            }));
         }
         let failures = watcher.failures.entry(name.clone()).or_default();
         *failures += 1;
@@ -823,7 +886,11 @@ impl AgentSessions {
             return Ok(IssueRequestScan::Idle);
         }
         watcher.failures.remove(&name);
-        Ok(IssueRequestScan::Request(IssueRequest { name }))
+        Ok(IssueRequestScan::Request(IssueRequest {
+            name,
+            requests,
+            board_id,
+        }))
     }
 
     /// Claims the request file, creates or edits the issue and queues the reply; `None` when
@@ -855,7 +922,7 @@ impl AgentSessions {
                 agent,
             )
         };
-        let content = match watcher.claim(&request.name, &message_id) {
+        let content = match watcher.claim(&request, &message_id) {
             None => return Ok(None),
             Some(bytes) => bytes.and_then(|bytes| parse_request(&bytes)),
         };
@@ -917,18 +984,21 @@ impl AgentSessions {
             let store = lock(&self.store)?;
             crate::sqlite::random_id(&store.db).map_err(|error| error.to_string())?
         };
-        let frame_id = watcher
-            .requests
+        let frame_id = Requests::DesignFrames
             .stem(&request.name)
             .ok_or("Nom de cadre invalide.")?
             .to_owned();
-        let Some(bytes) = watcher.claim(&request.name, &message_id) else {
+        let Some(bytes) = watcher.claim(&request, &message_id) else {
             return Ok(None);
         };
         let result = bytes
             .and_then(|bytes| design::parse_frame(&bytes))
             .and_then(|frame| {
-                self.kanban(|db, _| design::ingest_frame(db, &watcher.session_id, &frame_id, frame))
+                let board_id = request.board_id.clone().ok_or(design::BOARD_CHANGED)?;
+                self.kanban(|db, _| {
+                    design::ingest_frame(db, &watcher.session_id, &board_id, &frame_id, frame)
+                })?;
+                Ok(board_id)
             });
         let (board_id, sent) = match result {
             Ok(board_id) => {

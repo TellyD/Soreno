@@ -503,7 +503,7 @@ fn watch_issue_requests(app: AppHandle, mut watcher: IssueRequestWatcher) {
                 return;
             }
         };
-        if watcher.is_design() {
+        if request.is_design() {
             match state.handle_design_frame(&mut watcher, request) {
                 Ok(Some(outcome)) => {
                     notify_reply(

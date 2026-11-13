@@ -16,16 +16,12 @@ fn create_board(state: &AgentSessions, project_id: Option<&str>, directory: &Pat
         .unwrap()
 }
 
-fn ingest(
-    state: &AgentSessions,
-    board: &DesignBoard,
-    frame_id: &str,
-    html: &str,
-) -> Result<String> {
+fn ingest(state: &AgentSessions, board: &DesignBoard, frame_id: &str, html: &str) -> Result<()> {
     state.kanban(|db, _| {
         design::ingest_frame(
             db,
             &board.session_id,
+            &board.id,
             frame_id,
             design::parse_frame(format!("{html}</html>").as_bytes())?,
         )
@@ -205,6 +201,7 @@ fn invalid_frame_files_are_refused() {
         .kanban(|db, _| design::ingest_frame(
             db,
             "session",
+            &board.id,
             "home",
             design::parse_frame(b"<p></html>").unwrap()
         ))
@@ -323,7 +320,7 @@ fn a_design_agent_gets_the_design_instruction_and_its_frames_are_ingested() {
         .find(|pair| pair[0] == "--append-system-prompt")
         .map(|pair| pair[1])
         .unwrap();
-    assert_eq!(prompt, design::instruction(private.to_str().unwrap()));
+    assert_eq!(prompt, design::instruction(private.to_str().unwrap(), true));
     assert!(argv
         .windows(2)
         .any(|pair| pair == ["--permission-mode", "dontAsk"]));
@@ -346,7 +343,6 @@ fn a_design_agent_gets_the_design_instruction_and_its_frames_are_ingested() {
     ));
     assert!(frame.exists());
     std::fs::write(&frame, "<!DOCTYPE html><title>Home</title></html>\n").unwrap();
-    assert!(watcher.is_design());
     let handle = |watcher: &mut IssueRequestWatcher| {
         let IssueRequestScan::Request(found) = state.scan_issue_request(watcher).unwrap() else {
             panic!("frame expected");
@@ -555,6 +551,109 @@ fn a_running_agent_receives_the_frames_and_a_message_naming_them() {
 
 #[cfg(unix)]
 #[test]
+fn a_linked_coding_agent_draws_in_an_empty_board() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let (state, directory) = board_state();
+    let board = create_board(&state, Some("project"), &directory);
+    let executable = directory.join("claude");
+    std::fs::write(&executable, "#!/bin/sh\nexec sleep 30\n").unwrap();
+    std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o755)).unwrap();
+    state
+        .save_session(AgentSession {
+            id: "coder".into(),
+            executable: executable.to_str().unwrap().into(),
+            args: Vec::new(),
+            ..session()
+        })
+        .unwrap();
+    state.link_design_session("coder", &board.id).unwrap();
+    state.start("coder", 80, 24, None).unwrap();
+    let runtime = state.runtime("coder").unwrap().unwrap();
+    let private = lock(&runtime.local_attachment_directory)
+        .unwrap()
+        .clone()
+        .unwrap();
+    let mut watcher = state.issue_request_watcher("coder").unwrap().unwrap();
+
+    let (message, _) = state
+        .send_design_to_session("coder", &board.id, None, false)
+        .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(private.join("design-instructions.md")).unwrap(),
+        design::instruction(private.to_str().unwrap(), false)
+    );
+    // The index names the instruction file where the mirror wrote it, not beside the index.
+    let index = message
+        .body
+        .split_once("its screens are listed in ")
+        .and_then(|(_, rest)| rest.split_once(", which also says how to create or change them"))
+        .map(|(path, _)| PathBuf::from(path.trim_matches('\'')))
+        .unwrap();
+    let instructions = private.join("design-instructions.md");
+    assert!(std::fs::read_to_string(index).unwrap().contains(&format!(
+        "read {} and follow it.",
+        instructions.to_str().unwrap()
+    )));
+    assert!(instructions.is_file());
+    std::fs::write(
+        private.join("design-frame-home.html"),
+        "<title>Home</title></html>",
+    )
+    .unwrap();
+    let IssueRequestScan::Request(found) = state.scan_issue_request(&mut watcher).unwrap() else {
+        panic!("frame expected");
+    };
+    let outcome = state
+        .handle_design_frame(&mut watcher, found)
+        .unwrap()
+        .unwrap();
+    assert_eq!(outcome.board_id.as_deref(), Some(board.id.as_str()));
+    assert_eq!(state.design_frames(&board.id).unwrap()[0].title, "Home");
+    let mirror = PathBuf::from(format!("{}-frames", private.to_str().unwrap()));
+    assert_eq!(
+        std::fs::read_to_string(mirror.join("home.html")).unwrap(),
+        "<title>Home</title></html>"
+    );
+
+    // A relink drops the frame the agent wrote for the previous board before Soreno read it.
+    let second = create_board(&state, Some("project"), &directory);
+    let pending = private.join("design-frame-home.html");
+    std::fs::write(&pending, "<title>Other</title></html>").unwrap();
+    state.link_design_session("coder", &second.id).unwrap();
+    assert!(!pending.exists());
+    assert_eq!(state.design_frames(&board.id).unwrap()[0].title, "Home");
+    assert!(state.design_frames(&second.id).unwrap().is_empty());
+    // A frame scanned for one board is never saved in the board linked since.
+    std::fs::write(&pending, "<title>Late</title></html>").unwrap();
+    let IssueRequestScan::Request(found) = state.scan_issue_request(&mut watcher).unwrap() else {
+        panic!("frame expected");
+    };
+    state.link_design_session("coder", &board.id).unwrap();
+    state.handle_design_frame(&mut watcher, found).unwrap();
+    let frames = state.design_frames(&board.id).unwrap();
+    assert_eq!((frames.len(), frames[0].title.as_str()), (1, "Home"));
+    assert!(state.design_frames(&second.id).unwrap().is_empty());
+
+    // Unlinked, the session's frame files are no longer picked.
+    state.unlink_design_session("coder").unwrap();
+    std::fs::write(
+        private.join("design-frame-card.html"),
+        "<title>Card</title></html>",
+    )
+    .unwrap();
+    assert!(matches!(
+        state.scan_issue_request(&mut watcher).unwrap(),
+        IssueRequestScan::Idle
+    ));
+    assert_eq!(state.design_frames(&board.id).unwrap().len(), 1);
+    state.stop("coder").unwrap();
+    state.shutdown();
+    std::fs::remove_dir_all(&directory).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
 fn the_running_design_agent_sees_every_frame_in_its_mirror() {
     use std::os::unix::fs::PermissionsExt;
 
@@ -606,7 +705,7 @@ fn the_running_design_agent_sees_every_frame_in_its_mirror() {
     assert_eq!((mirrored("stale"), mirrored(".stale")), (None, None));
     assert_eq!(
         std::fs::read_to_string(private.join("design-instructions.md")).unwrap(),
-        design::instruction(private.to_str().unwrap())
+        design::instruction(private.to_str().unwrap(), true)
     );
 
     std::fs::write(
