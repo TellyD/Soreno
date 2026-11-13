@@ -300,6 +300,9 @@ const en = {
     "Approve the Soreno hooks in Codex’s startup review or with /hooks, then relaunch this session.",
   resumeUnsupported:
     "Native resume is not integrated for this CLI; it will launch normally.",
+  sessionIdle: "This session is not running.",
+  startSession: "Start",
+  resumeSession: "Resume the conversation",
   retry: "Retry",
   loading: "Loading projects…",
   terminal: "Agent terminal",
@@ -870,6 +873,9 @@ const fr: typeof en = {
     "Approuvez les hooks Soreno dans l’écran de démarrage de Codex ou avec /hooks, puis relancez cette session.",
   resumeUnsupported:
     "Reprise native non intégrée pour ce CLI ; il sera lancé normalement.",
+  sessionIdle: "Cette session n’est pas démarrée.",
+  startSession: "Démarrer",
+  resumeSession: "Reprendre la conversation",
   retry: "Réessayer",
   loading: "Chargement des projets…",
   terminal: "Terminal agent",

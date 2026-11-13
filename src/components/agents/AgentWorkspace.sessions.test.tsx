@@ -934,6 +934,18 @@ it("restores selection and cached CLI name passively, then starts that exact ina
   expect(api.startAgentSession).toHaveBeenCalledTimes(1);
 });
 
+it("offers to start a restored idle terminal session without launching it on its own", async () => {
+  localStorage.setItem(
+    "soreno.agents.selection.v1",
+    JSON.stringify({ projectId: "p1", sessionId: "s2" }),
+  );
+  setStatus("s2", "idle");
+  await render();
+  expect(api.startAgentSession).not.toHaveBeenCalled();
+  await click("Démarrer");
+  expect(api.startAgentSession).toHaveBeenCalledExactlyOnceWith("s2");
+});
+
 it("does not mount unvisited idle terminals; clicking one starts only that agent", async () => {
   data.sessions = Array.from({ length: 8 }, (_, index) => ({
     ...session,

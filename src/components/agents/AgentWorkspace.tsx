@@ -788,6 +788,30 @@ export function AgentWorkspace({
           title={s.projectDisconnectedTitle}
         />
       );
+    // OMP conversations render their own start prompt.
+    if (
+      session.kind !== "conversation" &&
+      (statusOf(session.id)?.state ?? "idle") === "idle" &&
+      startingSessionId !== session.id
+    )
+      return (
+        <EmptyState
+          actions={
+            <Button
+              variant="primary"
+              disabled={disabled}
+              onClick={() => void launch(session)}
+            >
+              {statusOf(session.id)?.resume === "linked"
+                ? s.resumeSession
+                : s.startSession}
+            </Button>
+          }
+          fill
+          icon={<TerminalSquare />}
+          title={s.sessionIdle}
+        />
+      );
     return undefined;
   }
   const terminalSessionIds = new Set([
