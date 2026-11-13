@@ -541,9 +541,9 @@ it("does not ask for a commit selection when the repository has no commits", asy
   await act(async () =>
     root.render(<GitHistoryView active projectId="p1" revision={0} />),
   );
-  expect(container.querySelector(".git-history-diff p")?.textContent).toBe(
-    "Aucun commit.",
-  );
+  const diffPane = container.querySelector(".git-history-diff");
+  expect(diffPane?.textContent).toContain("Aucun commit");
+  expect(diffPane?.textContent).not.toContain("Sélectionnez un commit");
 });
 
 it("keeps pagination and selection when reactivated without repeating cached reads", async () => {

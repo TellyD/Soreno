@@ -184,6 +184,7 @@ type GitHistoryViewProps = {
   filterFocusRequest?: object | null;
   onFilterFocusHandled?: () => void;
   fileMenu?: GitFileMenu;
+  onShowChanges?: () => void;
 };
 
 export function GitHistoryView({
@@ -201,6 +202,7 @@ export function GitHistoryView({
   filterFocusRequest = null,
   onFilterFocusHandled,
   fileMenu,
+  onShowChanges,
 }: GitHistoryViewProps) {
   const s = useGitStrings();
   const scope = readScope ?? projectId;
@@ -648,6 +650,7 @@ export function GitHistoryView({
       : null,
   );
 
+  const firstCommitPending = path === null && page?.commits.length === 0;
   return (
     <div className="git-history-view">
       <div className="git-view-toolbar">
@@ -903,12 +906,21 @@ export function GitHistoryView({
             </LoadingState>
           ) : (
             <EmptyState
+              actions={
+                firstCommitPending && onShowChanges ? (
+                  <Button size="small" onClick={onShowChanges}>
+                    {s.changesView}
+                  </Button>
+                ) : undefined
+              }
               description={
                 selected
                   ? s.historyChooseFile
-                  : page?.commits.length === 0
-                    ? s.historyEmpty
-                    : s.historyChoose
+                  : firstCommitPending
+                    ? s.historyEmptyHint
+                    : page?.commits.length === 0
+                      ? s.historyEmpty
+                      : s.historyChoose
               }
               fill
               icon={<HistoryIcon />}

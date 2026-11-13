@@ -1,5 +1,6 @@
-import { CameraOff, X } from "lucide-react";
+import { CameraOff, RefreshCw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconButton } from "@/components/ui/IconButton";
 import type { MobileStrings } from "./mobileStrings";
@@ -20,6 +21,7 @@ export function ScanView({
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [notice, setNotice] = useState<ScanNotice>("hint");
+  const [attempt, setAttempt] = useState(0);
   const onCodeRef = useRef(onCode);
   onCodeRef.current = onCode;
 
@@ -55,7 +57,7 @@ export function ScanView({
       abort.abort();
       stop?.();
     };
-  }, []);
+  }, [attempt]);
 
   const failed = notice === "denied" || notice === "unavailable";
   return (
@@ -81,6 +83,24 @@ export function ScanView({
               notice === "denied"
                 ? strings.cameraDenied
                 : strings.cameraUnavailable
+            }
+            actions={
+              <>
+                <Button
+                  size="large"
+                  variant="primary"
+                  startIcon={<RefreshCw />}
+                  onClick={() => {
+                    setNotice("hint");
+                    setAttempt((value) => value + 1);
+                  }}
+                >
+                  {strings.retry}
+                </Button>
+                <Button size="large" onClick={onClose}>
+                  {strings.backToServers}
+                </Button>
+              </>
             }
           />
         ) : (

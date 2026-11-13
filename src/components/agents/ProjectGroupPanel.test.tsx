@@ -237,7 +237,15 @@ it("shows Changes and only members with changes", async () => {
   expect(text).toContain("1 préparé · 1 modifié · 1 non suivi");
   expect(text).toContain("1 agent actif");
   expect(text).not.toContain("Docs");
-  expect(text).not.toContain("Site");
+  // The disconnected member is reported instead of silently dropped.
+  expect(host.querySelector(".git-change-groups")?.textContent).not.toContain(
+    "Site",
+  );
+  expect(
+    [...host.querySelectorAll('[role="status"]')].some((status) =>
+      status.textContent?.includes("Site"),
+    ),
+  ).toBe(true);
 });
 
 it("lists the members' merge requests together and acts on each one's project", async () => {

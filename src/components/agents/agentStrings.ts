@@ -50,7 +50,11 @@ const en = {
   refreshGroupRepositories: "Refresh repositories",
   groupRepositoriesLoading: "Reading repositories…",
   groupEmpty: "Add a project to the group",
-  groupDisconnected: "Disconnected",
+  groupDisconnected: (names: string) =>
+    `Disconnected: ${names}. Their changes are not shown.`,
+  groupDisconnectedTitle: "Projects disconnected",
+  groupDisconnectedBody:
+    "Connect the group’s projects to review their changes.",
   groupNotRepository: "Not a Git repository",
   groupChangeCounts: ({
     conflicts,
@@ -270,6 +274,10 @@ const en = {
   disconnect: "Disconnect",
   disconnecting: "Disconnecting…",
   disconnected: "Disconnected",
+  projectDisconnectedTitle: "Project disconnected",
+  projectDisconnectedBody:
+    "Connect this SSH project to launch its agents and resume its sessions.",
+  sshConnectFirst: "Connect the project first.",
   disconnectDescription:
     "Disconnect this SSH project? Soreno will suspend this SSH connection and stop agents in every project using it; unsaved work may be lost. Ona keeps running. Files and launchers are kept. Git is suspended until you reconnect.",
   disconnectIncompleteTitle: "Project disconnected with incomplete shutdown",
@@ -606,7 +614,11 @@ const fr: typeof en = {
   refreshGroupRepositories: "Actualiser les dépôts",
   groupRepositoriesLoading: "Lecture des dépôts…",
   groupEmpty: "Ajoutez un projet au groupe",
-  groupDisconnected: "Déconnecté",
+  groupDisconnected: (names: string) =>
+    `Déconnectés : ${names}. Leurs changements ne sont pas affichés.`,
+  groupDisconnectedTitle: "Projets déconnectés",
+  groupDisconnectedBody:
+    "Connectez les projets du groupe pour consulter leurs changements.",
   groupNotRepository: "Hors dépôt Git",
   groupChangeCounts: ({
     conflicts,
@@ -831,6 +843,10 @@ const fr: typeof en = {
   disconnect: "Déconnecter",
   disconnecting: "Déconnexion…",
   disconnected: "Déconnecté",
+  projectDisconnectedTitle: "Projet déconnecté",
+  projectDisconnectedBody:
+    "Connectez ce projet SSH pour lancer ses agents et reprendre ses sessions.",
+  sshConnectFirst: "Connectez d’abord le projet.",
   disconnectDescription:
     "Déconnecter ce projet SSH ? Soreno suspendra la connexion SSH de ce projet et arrêtera les agents de tous les projets utilisant la même connexion SSH ; le travail non enregistré peut être perdu. Ona continuera de fonctionner. Les fichiers et les lanceurs sont conservés. Git est suspendu jusqu’à la reconnexion.",
   disconnectIncompleteTitle: "Projet déconnecté, arrêt incomplet",

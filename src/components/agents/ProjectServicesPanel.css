@@ -14,12 +14,20 @@
 }
 
 .project-services-disconnected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   padding: 8px 12px;
   font-size: 12px;
   border-bottom: 1px solid var(--border-muted);
   color: var(--text-soft);
   background: var(--surface-muted);
+}
+.project-services-disconnected > span {
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
 .project-services-body {

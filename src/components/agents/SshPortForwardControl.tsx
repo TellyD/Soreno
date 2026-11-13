@@ -118,7 +118,11 @@ export function SshPortForwardControl({
         type="button"
         className="agent-ssh-toggle"
         disabled={disabled || disconnected}
-        title={s.sshForwardTitle}
+        title={
+          disconnected
+            ? `${s.sshForwardTitle} · ${s.sshConnectFirst}`
+            : s.sshForwardTitle
+        }
         onClick={() => setOpen(true)}
       >
         {forwards.length > 0

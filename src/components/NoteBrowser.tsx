@@ -162,7 +162,7 @@ export function NoteBrowser({
             />
           ))
         ) : (
-          <EmptyList />
+          <EmptyList searching={searchQuery.trim() !== ""} />
         )}
       </div>
     </section>
@@ -263,13 +263,13 @@ function getViewTitle(
   return isNoteLibraryView(view) ? t(viewLabelKeys[view]) : t("views.all");
 }
 
-function EmptyList() {
+function EmptyList({ searching }: { searching: boolean }) {
   const { t } = useI18n();
 
   return (
     <EmptyState
       className="note-list-empty"
-      description={t("notes.empty.view")}
+      description={t(searching ? "notes.empty.search" : "notes.empty.view")}
       icon={<LayoutList />}
       size="compact"
     />

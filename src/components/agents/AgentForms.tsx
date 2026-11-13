@@ -295,6 +295,7 @@ export function AgentSessionForm({
 
 export function AgentProjectForm({
   project,
+  environment = { kind: "local", distribution: null },
   projects = [],
   hasSessions = false,
   groupLocked = false,
@@ -305,6 +306,8 @@ export function AgentProjectForm({
   ...shared
 }: SharedProps & {
   project?: AgentProject;
+  /** Preselected for a new project. */
+  environment?: AgentEnvironment;
   projects?: AgentProject[];
   hasSessions?: boolean;
   groupLocked?: boolean;
@@ -329,7 +332,7 @@ export function AgentProjectForm({
         id: crypto.randomUUID(),
         name: "",
         path: "",
-        environment: { kind: "local", distribution: null },
+        environment,
       },
   );
   const [batchSelection, setBatchSelection] = useState<{

@@ -463,6 +463,7 @@ export const fr = {
   "notes.passphrase.error": "L’opération a échoué. Réessayez.",
   "notes.passphrase.cancel": "Annuler",
   "notes.empty.view": "Aucune note dans cette vue",
+  "notes.empty.search": "Aucune note ne correspond à votre recherche",
   "notes.listAria": "Liste des notes",
   "notes.loading": "Chargement...",
   "notes.modifiedAt": "Modifiée à {date}",
@@ -830,6 +831,7 @@ export const fr = {
     "Lancez un agent à heure fixe sur un serveur SSH, par exemple un skill chaque matin. La session vous attend ensuite dans Soreno.",
   "automations.noSshProject":
     "Ajoutez d’abord un projet SSH : les automatisations tournent sur le serveur, même Soreno fermé.",
+  "automations.addSshProject": "Ajouter un projet SSH",
   "automations.column.name": "Nom",
   "automations.column.project": "Projet",
   "automations.column.schedule": "Planning",

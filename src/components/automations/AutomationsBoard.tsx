@@ -75,6 +75,8 @@ type AutomationsBoardProps = {
   /** Resolves true when the session is shown and its project may launch. */
   onOpenSession: (sessionId: string) => Promise<boolean>;
   onConnectProject: (projectId: string) => void;
+  /** Opens the project form with SSH preselected. */
+  onAddSshProject: () => void;
   /** Saving reaches a dormant server, which the workspace then shows connected. */
   onServerReached: () => void;
   /** The deleted automation no longer keeps its session closed. */
@@ -103,6 +105,7 @@ export function AutomationsBoard({
   onRenameSession,
   onOpenSession,
   onConnectProject,
+  onAddSshProject,
   onServerReached,
   onAutomationDeleted,
 }: AutomationsBoardProps) {
@@ -187,7 +190,15 @@ export function AutomationsBoard({
                 >
                   {t("automations.new")}
                 </Button>
-              ) : undefined
+              ) : (
+                <Button
+                  variant="primary"
+                  startIcon={<Plus />}
+                  onClick={onAddSshProject}
+                >
+                  {t("automations.addSshProject")}
+                </Button>
+              )
             }
             icon={<CalendarClock />}
             title={t("automations.emptyTitle")}
