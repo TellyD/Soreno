@@ -97,7 +97,7 @@ pub(super) fn instruction(directory: &str, designer: bool) -> String {
         ""
     };
     format!(
-        "Soreno design board. You design UI as standalone HTML documents (inline CSS, no JavaScript, no external resources: no remote fonts, images or scripts; use inline SVG or CSS for visuals; no meta http-equiv). Soreno renders the frames itself: do not render, screenshot or preview them, and do not run scripts or servers. A frame is the file design-frame-<id>.html in {directory} (id: letters, digits, . - _; an existing id replaces that frame, a new id creates one). Soreno keeps the current HTML of every frame in {directory}{MIRROR_SUFFIX}/<id>.html (read only). To change a frame, copy {directory}{MIRROR_SUFFIX}/<id>.html to a draft in {directory} (for example draft-<id>.tmp; without a copy command, read it and write the draft), edit only what is asked with targeted edits and keep everything else identical, then rename the draft to design-frame-<id>.html (without a rename command, write the finished draft to that name in one write). To create a frame, write the whole document into a draft, then rename it the same way. Every frame is a whole document ending with </html>. Put the frame title in <title>; optionally <meta name=soreno-frame content=width=1440,height=900> for the size of a new frame.{confined} Soreno replies only on error."
+        "Soreno design board. You design UI as standalone HTML documents (inline CSS, no JavaScript, no external resources: no remote fonts, images or scripts; use inline SVG or CSS for visuals; no meta http-equiv). Soreno renders the frames itself: do not render, screenshot or preview them, and do not run scripts or servers. A frame is the file design-frame-<id>.html in {directory} (id: letters, digits, . - _; an existing id replaces that frame, a new id creates one). Soreno keeps the current HTML of every frame in {directory}{MIRROR_SUFFIX}/<id>.html (read only). To change a frame, copy {directory}{MIRROR_SUFFIX}/<id>.html to a draft in {directory} (for example draft-<id>.tmp; without a copy command, read it and write the draft), edit only what is asked with targeted edits and keep everything else identical, then rename the draft to design-frame-<id>.html (without a rename command, write the finished draft to that name in one write). To create a frame, write the whole document into a draft, then rename it the same way. Every frame is a whole document ending with </html>. Put the frame title in <title>; optionally <meta name=soreno-frame content=width=1440,height=900> for the frame size (120 to 4096). When a change no longer fits the frame, set that meta to a new size: Soreno resizes the frame only when its values change.{confined} Soreno replies only on error."
     )
 }
 
@@ -318,8 +318,9 @@ fn touch_board(db: &Connection, board_id: &str) -> Result<()> {
     Ok(())
 }
 
-/// Replaces the frame's content, keeping its geometry, or places a new frame right of the
-/// others, in `board_id` only while the session still draws there. Errors go to the agent.
+/// Replaces the frame's content, keeping its position and, unless the agent changed the
+/// `soreno-frame` meta, its size; or places a new frame right of the others, in `board_id`
+/// only while the session still draws there. Errors go to the agent.
 pub(super) fn ingest_frame(
     db: &Connection,
     session_id: &str,
@@ -330,13 +331,30 @@ pub(super) fn ingest_frame(
     if session_board(db, session_id)?.as_deref() != Some(board_id) {
         return Err(BOARD_CHANGED.into());
     }
-    let replaced = db
-        .execute(
-            "UPDATE design_frames SET html=?3, title=COALESCE(?4,title), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE board_id=?1 AND id=?2",
-            params![board_id, frame_id, frame.html, frame.title],
+    let previous: Option<String> = db
+        .query_row(
+            "SELECT html FROM design_frames WHERE board_id=?1 AND id=?2",
+            [board_id, frame_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+    if let Some(previous) = previous {
+        // A draft copied from the mirror keeps the old meta: only a new size overrides a user resize.
+        let resized = frame.size.filter(|size| meta_size(&previous) != Some(*size));
+        db.execute(
+            "UPDATE design_frames SET html=?3, title=COALESCE(?4,title), width=COALESCE(?5,width), height=COALESCE(?6,height), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE board_id=?1 AND id=?2",
+            params![
+                board_id,
+                frame_id,
+                frame.html,
+                frame.title,
+                resized.map(|size| size.0),
+                resized.map(|size| size.1)
+            ],
         )
         .map_err(|error| error.to_string())?;
-    if replaced == 0 {
+    } else {
         ensure_frame_capacity(db, board_id)?;
         let (width, height) = frame.size.unwrap_or(DEFAULT_SIZE);
         db.execute(

@@ -151,27 +151,39 @@ fn ingested_frames_are_placed_once_then_keep_their_geometry() {
     state
         .update_design_frame(&board.id, "home", -50.0, 30.0, 800.0, 600.0, 7)
         .unwrap();
+    // The draft copied from the mirror keeps the meta: the user's resize stays.
     ingest(
         &state,
         &board,
         "home",
-        "<title> </title><meta name=\"soreno-frame\" content=\"width=300, height=300\"><p>v2</p>",
+        "<title> </title><meta name=\"soreno-frame\" content=\"width=1440,height=900\"><p>v2</p>",
     )
     .unwrap();
-    let home = state
-        .design_frames(&board.id)
-        .unwrap()
-        .into_iter()
-        .find(|frame| frame.id == "home")
-        .unwrap();
+    let home = || {
+        state
+            .design_frames(&board.id)
+            .unwrap()
+            .into_iter()
+            .find(|frame| frame.id == "home")
+            .unwrap()
+    };
+    let kept = home();
     assert_eq!(
         (
-            home.title.as_str(),
-            home.html.contains("v2"),
-            geometry(&home)
+            kept.title.as_str(),
+            kept.html.contains("v2"),
+            geometry(&kept)
         ),
         ("Home & login", true, (-50.0, 30.0, 800.0, 600.0, 7))
     );
+    ingest(
+        &state,
+        &board,
+        "home",
+        "<meta name=\"soreno-frame\" content=\"width=1440, height=1600\"><p>v3</p>",
+    )
+    .unwrap();
+    assert_eq!(geometry(&home()), (-50.0, 30.0, 1440.0, 1600.0, 7));
     assert!(state
         .update_design_frame(&board.id, "home", 0.0, 0.0, 80.0, 600.0, 7)
         .is_err());
