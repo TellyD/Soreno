@@ -926,8 +926,8 @@
   box-sizing: border-box;
   border-radius: 7px;
   padding: 0 3px;
-  color: var(--danger-action-text);
-  background: var(--warning-accent);
+  color: var(--primary-text);
+  background: var(--primary);
   font-size: 9px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -936,11 +936,8 @@
   pointer-events: none;
 }
 .agent-priority-count[data-attention="awaiting"] {
+  color: var(--danger-action-text);
   background: var(--danger-action);
-}
-:root:not([data-theme="dark"])
-  .agent-priority-count:not([data-attention="awaiting"]) {
-  color: var(--text-strong);
 }
 .agent-priority-name {
   min-width: 0;

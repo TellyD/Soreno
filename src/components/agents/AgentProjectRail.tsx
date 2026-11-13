@@ -1098,9 +1098,7 @@ export function AgentProjectRail({
                 data-attention={attentionOf(priority.toHandle[0].id)}
                 aria-hidden="true"
               >
-                {priority.toHandle.length > 99
-                  ? "99+"
-                  : priority.toHandle.length}
+                {priority.toHandle.length > 9 ? "9+" : priority.toHandle.length}
               </span>
             ) : null}
           </IconButton>
