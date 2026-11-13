@@ -19,6 +19,7 @@ import type {
 } from "../../domain/projectGit";
 import { clearNotifications, getNotifications } from "../../notifications";
 import { useGitFilesRatioPreference } from "./GitChangesWorkspace";
+import { agentStringsForLocale } from "./agentStrings";
 import { ProjectGroupPanel } from "./ProjectGroupPanel";
 import { setInputValue } from "../ui/testInput";
 
@@ -901,7 +902,7 @@ it("runs project mutations sequentially and continues after failure", async () =
   );
   expect(failure?.message).toContain("API");
   expect(failure?.message).toContain(
-    "La copie de travail doit être propre avant cette opération Git.",
+    agentStringsForLocale("fr-FR").operationDirtyRepository,
   );
   expect(failure?.message).toContain(
     "Le résultat est incertain. Vérifiez le dépôt avant de réessayer.",
@@ -947,7 +948,7 @@ it("notifies the executed prefix before stopping an invalidated mutation batch",
   );
   expect(failure?.message).toContain("API");
   expect(failure?.message).toContain(
-    "La copie de travail doit être propre avant cette opération Git.",
+    agentStringsForLocale("fr-FR").operationDirtyRepository,
   );
   expect(failure?.message).toContain(
     "Le résultat est incertain. Vérifiez le dépôt avant de réessayer.",

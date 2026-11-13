@@ -814,13 +814,11 @@ export function GitForgeView({
     void openUrl(url).catch(() => notifyError(agentStrings.urlOpenError));
   }
 
-  const switchBlocker = git?.repo?.files.length
-    ? s.forgeCheckoutDirty
-    : git?.repo?.operation
-      ? s.operationBlocksMutation
-      : git?.busy
-        ? s.operationPending
-        : null;
+  const switchBlocker = git?.repo?.operation
+    ? s.operationBlocksMutation
+    : git?.busy
+      ? s.operationPending
+      : null;
   const mainStyle = {
     "--history-diff-size": `${100 - railRatio}fr`,
     "--history-rail-size": `${railRatio}fr`,

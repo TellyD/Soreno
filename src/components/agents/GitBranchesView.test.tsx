@@ -873,7 +873,7 @@ it("ignores a branch read started before an optimistic worktree removal", async 
   await act(async () => finishRefresh());
 });
 
-it("offers branch creation while HEAD is detached and blocks switching with dirty files", async () => {
+it("offers branch creation and switching while HEAD is detached with dirty files", async () => {
   git = {
     ...git,
     repo: {
@@ -906,8 +906,7 @@ it("offers branch creation while HEAD is detached and blocks switching with dirt
     '[aria-label="Basculer · origin/feature/x"]',
   )!;
   expect(current.getAttribute("aria-current")).toBe("true");
-  expect(remote.disabled).toBe(true);
-  expect(container.textContent).toContain("Commitez ou remisez");
+  expect(remote.disabled).toBe(false);
   expect(
     container.querySelector<HTMLButtonElement>(
       '[aria-label="Créer un worktree · origin/feature/x"]',

@@ -303,7 +303,7 @@ const en = {
   operationAuthError:
     "Git authentication was refused. Check the Git credentials for this environment.",
   operationDirtyRepository:
-    "The working tree must be clean before this Git operation.",
+    "Local changes block this Git operation. Commit or stash them first.",
   operationWorktreeDirty:
     "This worktree has uncommitted changes or untracked files. Commit or stash them in this worktree before merging it.",
   operationPrimaryWorktreeDirty:
@@ -865,7 +865,7 @@ const fr: typeof en = {
   operationAuthError:
     "L’authentification Git a été refusée. Vérifiez les identifiants Git de cet environnement.",
   operationDirtyRepository:
-    "La copie de travail doit être propre avant cette opération Git.",
+    "Des modifications locales bloquent cette opération Git. Commitez-les ou remisez-les d’abord.",
   operationWorktreeDirty:
     "Ce worktree contient des changements non commités ou des fichiers non suivis. Commitez-les ou remisez-les dans ce worktree avant de le fusionner.",
   operationPrimaryWorktreeDirty:

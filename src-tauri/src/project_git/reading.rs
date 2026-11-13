@@ -190,10 +190,7 @@ fn branch_switch_state_with_cache(
     if discover_repository(project)?.identity != repository.identity {
         return repository_state(project);
     }
-    if repository.availability != "ready"
-        || !repository.files.is_empty()
-        || repository.operation.is_some()
-    {
+    if repository.availability != "ready" || repository.operation.is_some() {
         return Ok(repository.clone());
     }
     let status = execute(&snapshot.project, STATUS_ARGS, GitOperation::Read, None)?.stdout;
@@ -204,6 +201,7 @@ fn branch_switch_state_with_cache(
         .ok_or_else(|| GitError::new("malformed", "Identité Git absente."))?;
     let operation = operation_state(&snapshot.project, identity)?.0;
     if entries.is_empty()
+        && repository.files.is_empty()
         && operation.is_none()
         && branch.head == repository.head
         && branch.branch == repository.branch

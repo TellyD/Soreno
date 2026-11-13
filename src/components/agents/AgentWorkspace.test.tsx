@@ -38,6 +38,7 @@ import { setInputValue } from "../ui/testInput";
 import * as gitApi from "../../data/projectGitApi";
 import { getNotifications } from "../../notifications";
 import { deferred } from "../../testing/deferred";
+import { agentStringsForLocale } from "./agentStrings";
 
 vi.mock("../kanban/KanbanBoard", () => ({
   KanbanBoard: () => <div data-testid="kanban-board" />,
@@ -1059,8 +1060,7 @@ it("notifies a dirty-worktree GitError in the active locale and keeps the confir
   await vi.waitFor(() =>
     expect(getNotifications()).toContainEqual(
       expect.objectContaining({
-        message:
-          "La copie de travail doit être propre avant cette opération Git.",
+        message: agentStringsForLocale("fr-FR").operationDirtyRepository,
         tone: "error",
       }),
     ),

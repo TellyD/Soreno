@@ -176,12 +176,31 @@ fn creates_switches_tracks_and_refuses_unsafe_switches() {
     )
     .unwrap();
 
-    std::fs::write(temp.repository.join("dirty"), "dirty\n").unwrap();
+    temp.git(&["switch", "-q", "-c", "diverged"]);
+    std::fs::write(temp.repository.join("tracked"), "diverged\n").unwrap();
+    temp.git(&["commit", "-qam", "diverge tracked"]);
+    temp.git(&["switch", "-q", "feature"]);
+    temp.git(&["branch", "same-commit"]);
+    std::fs::write(temp.repository.join("tracked"), "dirty\n").unwrap();
+    switch_branch(
+        &temp.sessions,
+        "project",
+        "same-commit".into(),
+        false,
+        &temp.version(),
+    )
+    .unwrap();
+    assert_eq!(temp.git(&["branch", "--show-current"]), "same-commit");
+    assert_eq!(
+        std::fs::read_to_string(temp.repository.join("tracked")).unwrap(),
+        "dirty\n"
+    );
+    let head = temp.git(&["rev-parse", "HEAD"]);
     assert_eq!(
         switch_branch(
             &temp.sessions,
             "project",
-            initial.clone(),
+            "diverged".into(),
             false,
             &temp.version(),
         )
@@ -189,7 +208,42 @@ fn creates_switches_tracks_and_refuses_unsafe_switches() {
         .code,
         "dirty"
     );
-    std::fs::remove_file(temp.repository.join("dirty")).unwrap();
+    assert_eq!(temp.git(&["branch", "--show-current"]), "same-commit");
+    assert_eq!(temp.git(&["rev-parse", "HEAD"]), head);
+    assert_eq!(
+        std::fs::read_to_string(temp.repository.join("tracked")).unwrap(),
+        "dirty\n"
+    );
+    let dirty_version = temp.version();
+    std::fs::write(temp.repository.join("tracked"), "dirty again\n").unwrap();
+    assert_eq!(
+        switch_branch(
+            &temp.sessions,
+            "project",
+            "diverged".into(),
+            false,
+            &dirty_version,
+        )
+        .unwrap_err()
+        .code,
+        "stale"
+    );
+    assert_eq!(temp.git(&["branch", "--show-current"]), "same-commit");
+    let dirty_version = temp.version();
+    std::fs::write(temp.repository.join("tracked"), "base\n").unwrap();
+    assert_eq!(
+        switch_branch(
+            &temp.sessions,
+            "project",
+            "diverged".into(),
+            false,
+            &dirty_version,
+        )
+        .unwrap_err()
+        .code,
+        "stale"
+    );
+    assert_eq!(temp.git(&["branch", "--show-current"]), "same-commit");
     std::fs::write(
         temp.repository.join(".git/MERGE_HEAD"),
         format!("{}\n", temp.git(&["rev-parse", "HEAD"])),
@@ -209,6 +263,33 @@ fn creates_switches_tracks_and_refuses_unsafe_switches() {
     );
     std::fs::remove_file(temp.repository.join(".git/MERGE_HEAD")).unwrap();
 
+    temp.git(&["switch", "-q", "-c", "dir-file"]);
+    std::fs::write(temp.repository.join("dir"), "file\n").unwrap();
+    temp.git(&["add", "dir"]);
+    temp.git(&["commit", "-qm", "add dir file"]);
+    temp.git(&["switch", "-q", "same-commit"]);
+    std::fs::create_dir(temp.repository.join("dir")).unwrap();
+    std::fs::write(temp.repository.join("dir/local.txt"), "keep\n").unwrap();
+    assert_eq!(
+        switch_branch(
+            &temp.sessions,
+            "project",
+            "dir-file".into(),
+            false,
+            &temp.version(),
+        )
+        .unwrap_err()
+        .code,
+        "dirty"
+    );
+    assert_eq!(temp.git(&["branch", "--show-current"]), "same-commit");
+    assert_eq!(temp.git(&["rev-parse", "HEAD"]), head);
+    assert_eq!(
+        std::fs::read_to_string(temp.repository.join("dir/local.txt")).unwrap(),
+        "keep\n"
+    );
+    std::fs::remove_dir_all(temp.repository.join("dir")).unwrap();
+
     temp.git(&["switch", "--detach", "HEAD"]);
     create_branch(&temp.sessions, "project", "rescue".into(), &temp.version()).unwrap();
     assert!(temp.git(&["branch", "--show-current"]).is_empty());
@@ -227,14 +308,18 @@ fn creates_switches_tracks_and_refuses_unsafe_switches() {
         .any(|branch| branch.name == "origin/feature" && branch.remote));
     assert!(!listed.iter().any(|branch| branch.name == "origin/HEAD"));
     std::fs::write(temp.repository.join("local-only"), "keep remote local\n").unwrap();
-    assert!(switch_branch(
-        &temp.sessions,
-        "project",
-        "origin/feature".into(),
-        true,
-        &temp.version(),
-    )
-    .is_err());
+    assert_eq!(
+        switch_branch(
+            &temp.sessions,
+            "project",
+            "origin/feature".into(),
+            true,
+            &temp.version(),
+        )
+        .unwrap_err()
+        .code,
+        "dirty"
+    );
     assert_eq!(
         std::fs::read_to_string(temp.repository.join("local-only")).unwrap(),
         "keep remote local\n"
