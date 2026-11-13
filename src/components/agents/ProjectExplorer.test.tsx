@@ -563,6 +563,44 @@ it("keeps a loaded directory when its refresh fails", async () => {
   ).toBe("false");
 });
 
+it("drops an expanded directory deleted outside the explorer without an error on refresh", async () => {
+  await render();
+  await act(async () => textButton("src", container).click());
+  await act(async () =>
+    vi.waitFor(() => expect(textButton("App.tsx", container)).toBeTruthy()),
+  );
+
+  vi.mocked(api.listProjectFiles).mockImplementation((_projectId, directory) =>
+    directory === ""
+      ? Promise.resolve({
+          entries: [
+            {
+              name: "README.md",
+              path: "README.md",
+              kind: "file",
+              editable: true,
+            },
+          ],
+          truncated: false,
+        })
+      : Promise.reject({ code: "notDirectory", message: "gone" }),
+  );
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>(
+        '[aria-label="Actualiser les fichiers"]',
+      )!
+      .click(),
+  );
+
+  expect(textButton("README.md", container)).toBeTruthy();
+  expect(container.textContent).not.toContain("App.tsx");
+  expect(getNotifications()).toEqual([]);
+  expect(
+    container.querySelector(".project-explorer")?.getAttribute("aria-busy"),
+  ).toBe("false");
+});
+
 it("preserves mixed line endings at unchanged boundaries when saving", async () => {
   vi.mocked(api.readProjectFile).mockResolvedValueOnce({
     path: "README.md",
