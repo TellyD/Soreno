@@ -1598,8 +1598,17 @@ impl AgentSessions {
         }
         let operation = self.session_operation(session_id)?;
         let _operation = lock(&operation)?;
-        let _connection_change = lock(&self.connection_changes)?;
-        if require_session(&*lock(&self.store)?, session_id)?.kind == conversation::KIND {
+        let connection_change = lock(&self.connection_changes)?;
+        let (kind, serialized) = {
+            let store = lock(&self.store)?;
+            let session = require_session(&store, session_id)?;
+            let project = require_project(&store, &session.project_id)?;
+            let grouped = groups::group_by_group_project(&store.db, &project.id)?.is_some();
+            (session.kind, project.environment.kind == "ssh" || grouped)
+        };
+        // Only SSH relays and group folders need launches ordered with project changes.
+        let _connection_change = serialized.then_some(connection_change);
+        if kind == conversation::KIND {
             return self.start_conversation(session_id, initial_prompt, attachments);
         }
         let (prepared_project, prepared_session, local_attachment_directory) = {
@@ -1682,11 +1691,29 @@ impl AgentSessions {
             Some(clipboard) => clipboard.prompt_directory()?,
             None => None,
         };
+        #[cfg(windows)]
+        let wsl = (prepared_project.environment.kind == "wsl")
+            .then(|| {
+                WslRun::prepare(
+                    &prepared_project,
+                    prepared_session
+                        .working_directory
+                        .as_deref()
+                        .unwrap_or(&prepared_project.path),
+                )
+            })
+            .transpose()?;
         let mut store = lock(&self.store)?;
         if store.closing {
             return Err("L’application est en cours de fermeture.".into());
         }
         let session = require_session(&store, session_id)?;
+        #[cfg(windows)]
+        if wsl.is_some() && session.working_directory != prepared_session.working_directory {
+            return Err(
+                "Le dossier de la session a changé pendant son lancement. Relancez-la.".into(),
+            );
+        }
         if store.git_stopped_projects.contains(&session.project_id) {
             return Err("[Git/busy] Une opération Git est en cours sur ce projet.".into());
         }
@@ -1770,21 +1797,6 @@ impl AgentSessions {
                     .or_else(|error| prepared.rollback(&store.db, error))?;
             }
             prepared
-        };
-        #[cfg(windows)]
-        let wsl = if project.environment.kind == "wsl" {
-            Some(
-                WslRun::prepare(
-                    &project,
-                    launch_session
-                        .working_directory
-                        .as_deref()
-                        .unwrap_or(&project.path),
-                )
-                .or_else(|error| launch_session.rollback(&store.db, error))?,
-            )
-        } else {
-            None
         };
         #[cfg(unix)]
         let run_token =
@@ -2073,6 +2085,10 @@ impl AgentSessions {
             require_session(&store, session_id).and_then(|session| {
                 if session.kind != conversation::KIND {
                     return Err("La session n’est plus une conversation OMP.".into());
+                }
+                // Non-SSH starts run outside `connection_changes`: a Git stop may have run meanwhile.
+                if store.git_stopped_projects.contains(&session.project_id) {
+                    return Err("[Git/busy] Une opération Git est en cours sur ce projet.".into());
                 }
                 require_project_connected(&store, &session.project_id).map(|_| ())
             })

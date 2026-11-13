@@ -1265,6 +1265,42 @@ fn blocked_remote_start_allows_other_reads_and_serializes_same_session_stop() {
 }
 
 #[test]
+fn non_ssh_start_does_not_block_project_save() {
+    let state = memory_state();
+    state.save_project(project()).unwrap();
+    state.save_session(session()).unwrap();
+
+    let (prepare_entered, prepare_started) = std::sync::mpsc::sync_channel(0);
+    let (release_prepare, prepare_released) = std::sync::mpsc::sync_channel(0);
+    thread::scope(|scope| {
+        let state_for_start = &state;
+        let start = scope.spawn(move || {
+            state_for_start.start_with("session", 80, 24, None, |_, _, _| {
+                prepare_entered.send(()).unwrap();
+                prepare_released.recv().unwrap();
+                Err("sonde interrompue".into())
+            })
+        });
+        prepare_started.recv().unwrap();
+
+        let (save_sender, save_receiver) = std::sync::mpsc::sync_channel(1);
+        let state_for_save = &state;
+        scope.spawn(move || {
+            save_sender
+                .send(state_for_save.save_project(project()))
+                .unwrap()
+        });
+        let saved = save_receiver.recv_timeout(Duration::from_secs(1));
+        release_prepare.send(()).unwrap();
+        assert_eq!(start.join().unwrap().unwrap_err(), "sonde interrompue");
+        assert!(
+            matches!(saved, Ok(Ok(()))),
+            "the launch blocked the project save"
+        );
+    });
+}
+
+#[test]
 fn blocked_remote_stop_allows_other_session_reads() {
     let state = memory_state();
     let remote = ssh_project("serialized-stop");
