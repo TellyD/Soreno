@@ -603,6 +603,9 @@ export function DesignCanvas(
                     title={frame.title}
                     sandbox="allow-scripts"
                     srcDoc={designFrameDocument(frame.html, PICKER, theme)}
+                    onLoad={(event) => {
+                      event.currentTarget.dataset.loaded = "";
+                    }}
                     tabIndex={targeting ? undefined : -1}
                     style={{
                       pointerEvents:

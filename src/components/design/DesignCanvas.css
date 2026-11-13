@@ -44,7 +44,6 @@
 /* Board units; chrome around frames keeps its screen size through --design-inverse. */
 .design-canvas-frame {
   position: absolute;
-  background: #ffffff;
   outline: calc(1px * var(--design-inverse)) solid var(--border);
 }
 
@@ -63,11 +62,18 @@
   outline-offset: calc(2px * var(--design-inverse));
 }
 
+/* Hidden until loaded, or the white page backdrop flashes in the dark theme. */
 .design-canvas-frame > iframe {
   display: block;
   width: 100%;
   height: 100%;
   border: 0;
+  visibility: hidden;
+}
+
+.design-canvas-frame > iframe[data-loaded] {
+  visibility: visible;
+  background: #ffffff;
 }
 
 .design-canvas-frame-label {
