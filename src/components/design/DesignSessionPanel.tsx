@@ -159,7 +159,7 @@ export function DesignSessionPanel({
       setSent(null);
       onLinkChange();
     });
-  // An empty board: nothing to send yet, the link alone is enough.
+  // Even empty, the board is sent: the message tells the agent how to draw in it.
   const create = (values: DesignBoardFormValues) =>
     run(async () => {
       const created = await designApi.createDesignBoard(
@@ -174,6 +174,15 @@ export function DesignSessionPanel({
       try {
         await designApi.linkDesignSession(sessionId, created.id);
         focusEditFor.current = created.id;
+        if (running)
+          setSent(
+            await designApi.sendDesignToSession(
+              sessionId,
+              created.id,
+              null,
+              false,
+            ),
+          );
       } finally {
         // Also brings the board's hidden designer session into the workspace.
         onLinkChange();

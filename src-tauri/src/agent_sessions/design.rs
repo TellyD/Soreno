@@ -3,7 +3,9 @@ use super::{
     agent_local_path,
     attachments::{mirror_directory, MIRROR_SUFFIX},
     conversations::{self, Provider},
-    get, id, lock, require_project, require_session, runtime_status, text, validate_project,
+    get, id,
+    issue_requests::Run,
+    lock, require_project, require_session, runtime_status, text, validate_project,
     AgentEnvironment, AgentProject, AgentSession, AgentSessionMessage, AgentSessions,
     PromptAttachment, RemoteClipboard, Result,
 };
@@ -38,6 +40,9 @@ const INSTRUCTIONS_LIMIT: usize = 16 * 1024;
 const INSTRUCTION_FILENAME: &str = "design-instructions.md";
 const BOARD_NOT_FOUND: &str = "Tableau introuvable.";
 const FRAME_NOT_FOUND: &str = "Cadre introuvable.";
+/// Goes to the agent: in English.
+pub(super) const BOARD_CHANGED: &str =
+    "the design board linked to this session changed; the frame was not saved.";
 static TITLE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?is)<title\b[^>]*>(.*?)</title\s*>").unwrap());
 static META: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?is)<meta\b[^>]*>").unwrap());
@@ -84,9 +89,15 @@ pub(super) struct FrameFile {
     pub html: String,
 }
 
-pub(super) fn instruction(directory: &str) -> String {
+/// `designer`: the board's hidden session, confined to its frames; else a linked coding agent.
+pub(super) fn instruction(directory: &str, designer: bool) -> String {
+    let confined = if designer {
+        " Do not modify project files."
+    } else {
+        ""
+    };
     format!(
-        "Soreno design board. You design UI as standalone HTML documents (inline CSS, no JavaScript, no external resources: no remote fonts, images or scripts; use inline SVG or CSS for visuals; no meta http-equiv). Soreno renders the frames itself: do not render, screenshot or preview them, and do not run scripts or servers. A frame is the file design-frame-<id>.html in {directory} (id: letters, digits, . - _; an existing id replaces that frame, a new id creates one). Soreno keeps the current HTML of every frame in {directory}{MIRROR_SUFFIX}/<id>.html (read only). To change a frame, copy {directory}{MIRROR_SUFFIX}/<id>.html to a draft in {directory} (for example draft-<id>.tmp; without a copy command, read it and write the draft), edit only what is asked with targeted edits and keep everything else identical, then rename the draft to design-frame-<id>.html (without a rename command, write the finished draft to that name in one write). To create a frame, write the whole document into a draft, then rename it the same way. Every frame is a whole document ending with </html>. Put the frame title in <title>; optionally <meta name=soreno-frame content=width=1440,height=900> for the size of a new frame. Do not modify project files. Soreno replies only on error."
+        "Soreno design board. You design UI as standalone HTML documents (inline CSS, no JavaScript, no external resources: no remote fonts, images or scripts; use inline SVG or CSS for visuals; no meta http-equiv). Soreno renders the frames itself: do not render, screenshot or preview them, and do not run scripts or servers. A frame is the file design-frame-<id>.html in {directory} (id: letters, digits, . - _; an existing id replaces that frame, a new id creates one). Soreno keeps the current HTML of every frame in {directory}{MIRROR_SUFFIX}/<id>.html (read only). To change a frame, copy {directory}{MIRROR_SUFFIX}/<id>.html to a draft in {directory} (for example draft-<id>.tmp; without a copy command, read it and write the draft), edit only what is asked with targeted edits and keep everything else identical, then rename the draft to design-frame-<id>.html (without a rename command, write the finished draft to that name in one write). To create a frame, write the whole document into a draft, then rename it the same way. Every frame is a whole document ending with </html>. Put the frame title in <title>; optionally <meta name=soreno-frame content=width=1440,height=900> for the size of a new frame.{confined} Soreno replies only on error."
     )
 }
 
@@ -142,6 +153,17 @@ pub(super) fn list_board_sessions(db: &Connection) -> Result<Vec<DesignBoardSess
         .map_err(|error| error.to_string())
 }
 
+/// The board a session draws in: its own as the designer, else the one it is linked to.
+pub(super) fn session_board(db: &Connection, session_id: &str) -> Result<Option<String>> {
+    db.query_row(
+        "SELECT id FROM design_boards WHERE session_id=?1 UNION ALL SELECT board_id FROM design_board_sessions WHERE session_id=?1",
+        [session_id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(|error| error.to_string())
+}
+
 /// The board and the requested frames in order, else all its frames by `z`.
 fn selected_frames(
     db: &Connection,
@@ -160,9 +182,6 @@ fn selected_frames(
             .collect::<Result<Vec<_>>>()?,
         None => query_frames(db, board_id, None)?,
     };
-    if frames.is_empty() {
-        return Err("Ce tableau ne contient aucun cadre.".into());
-    }
     Ok((found, frames))
 }
 
@@ -178,8 +197,15 @@ fn screen_title(frame: &DesignFrame) -> &str {
     }
 }
 
-fn board_index(name: &str, screens: &str) -> String {
-    format!("# Design board \"{name}\"\n\nStatic HTML/CSS mockups, one file per screen. Reproduce their layout, styles and content with this project's stack and conventions; do not copy the HTML files into the project.\n\n{screens}")
+/// `instructions`: the agent-visible directory holding the instruction file, once written.
+fn board_index(name: &str, screens: &str, instructions: Option<&str>) -> String {
+    let screens = if screens.is_empty() {
+        "No screens yet.\n"
+    } else {
+        screens
+    };
+    let pointer = instructions.map_or(String::new(), |directory| format!("\nTo create or change this board's screens, only when the user asks, read {directory}/{INSTRUCTION_FILENAME} and follow it.\n"));
+    format!("# Design board \"{name}\"\n\nStatic HTML/CSS mockups, one file per screen. Reproduce their layout, styles and content with this project's stack and conventions; do not copy the HTML files into the project.\n\n{screens}{pointer}")
 }
 
 pub(super) fn valid_frame_id(value: &str) -> bool {
@@ -293,22 +319,17 @@ fn touch_board(db: &Connection, board_id: &str) -> Result<()> {
 }
 
 /// Replaces the frame's content, keeping its geometry, or places a new frame right of the
-/// others; returns the board id. Errors go to the agent.
+/// others, in `board_id` only while the session still draws there. Errors go to the agent.
 pub(super) fn ingest_frame(
     db: &Connection,
     session_id: &str,
+    board_id: &str,
     frame_id: &str,
     frame: FrameFile,
-) -> Result<String> {
-    let board_id: String = db
-        .query_row(
-            "SELECT id FROM design_boards WHERE session_id=?1",
-            [session_id],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(|error| error.to_string())?
-        .ok_or("this session has no design board.")?;
+) -> Result<()> {
+    if session_board(db, session_id)?.as_deref() != Some(board_id) {
+        return Err(BOARD_CHANGED.into());
+    }
     let replaced = db
         .execute(
             "UPDATE design_frames SET html=?3, title=COALESCE(?4,title), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE board_id=?1 AND id=?2",
@@ -316,7 +337,7 @@ pub(super) fn ingest_frame(
         )
         .map_err(|error| error.to_string())?;
     if replaced == 0 {
-        ensure_frame_capacity(db, &board_id)?;
+        ensure_frame_capacity(db, board_id)?;
         let (width, height) = frame.size.unwrap_or(DEFAULT_SIZE);
         db.execute(
             "INSERT INTO design_frames(board_id,id,title,html,x,y,width,height,z,updated_at)
@@ -334,8 +355,7 @@ pub(super) fn ingest_frame(
         )
         .map_err(|error| error.to_string())?;
     }
-    touch_board(db, &board_id)?;
-    Ok(board_id)
+    touch_board(db, board_id)
 }
 
 fn ensure_frame_capacity(db: &Connection, board_id: &str) -> Result<()> {
@@ -704,17 +724,26 @@ impl AgentSessions {
 pub(super) const NOT_RUNNING: &str = "Démarrez l’agent pour lui transmettre le design.";
 
 impl AgentSessions {
-    /// Replaces the session's previous board, if any.
+    /// Replaces the session's previous board, if any, after dropping the frame files its running
+    /// agent wrote for that board and Soreno did not ingest yet.
     pub fn link_design_session(&self, session_id: &str, board_id: &str) -> Result<()> {
         id(session_id)?;
         id(board_id)?;
-        self.kanban(|db, _| {
+        let changed = self.kanban(|db, _| {
             let session: AgentSession =
                 get(db, "agent_sessions", session_id)?.ok_or("Session introuvable.")?;
             if session.design || session.kind == "service" {
                 return Err("Seul un agent de code peut être lié à un tableau Design.".into());
             }
             board(db, board_id)?;
+            Ok(session_board(db, session_id)?.as_deref() != Some(board_id))
+        })?;
+        // Purge while still linked to the old board: a frame scanned meanwhile goes there or is refused.
+        if changed {
+            self.discard_design_frames(session_id)?;
+        }
+        // shortcut: frames the agent writes for the previous board between the purge and the switch, or after the switch before it reads the new link message, land in the new board; tie frame files to a link generation if users hit it.
+        self.kanban(|db, _| {
             db.execute(
                 "DELETE FROM design_board_sessions WHERE session_id=?1",
                 [session_id],
@@ -762,6 +791,9 @@ impl AgentSessions {
         let store = lock(&self.store)?;
         let (found, frames) =
             selected_frames(&store.db, &selection.board_id, Some(&selection.frame_ids))?;
+        if frames.is_empty() {
+            return Err("Ce tableau ne contient aucun cadre.".into());
+        }
         // shortcut: a `]` in a frame title breaks its Markdown link, the file name still shows the frame; escape titles if agents write such titles.
         let screens = frames
             .iter()
@@ -783,7 +815,7 @@ impl AgentSessions {
             .into_iter()
             .chain([PromptAttachment {
                 filename: BOARD_INDEX_FILENAME.into(),
-                bytes: board_index(&found.name, &screens).into_bytes(),
+                bytes: board_index(&found.name, &screens, None).into_bytes(),
             }])
             .chain(frames.into_iter().map(|frame| PromptAttachment {
                 filename: handoff_filename(&frame),
@@ -792,8 +824,9 @@ impl AgentSessions {
             .collect())
     }
 
-    /// Drops the frames into the running session's private directory and queues a message
-    /// naming them; `true` asks the caller to start the session's delivery worker.
+    /// Mirrors the session's board and drops the frames into the running session's private
+    /// directory, then queues a message naming them; `true` asks the caller to start the
+    /// session's delivery worker. An empty board still tells the agent how to draw in it.
     pub fn send_design_to_session(
         &self,
         session_id: &str,
@@ -802,7 +835,7 @@ impl AgentSessions {
         update: bool,
     ) -> Result<(AgentSessionMessage, bool)> {
         id(session_id)?;
-        let (found, frames, message_id) = {
+        let (found, frames, message_id, run) = {
             let store = lock(&self.store)?;
             if require_session(&store, session_id)?.design {
                 return Err("Seul un agent de code peut recevoir un tableau Design.".into());
@@ -810,11 +843,14 @@ impl AgentSessions {
             if runtime_status(&store, session_id)?.state != "running" {
                 return Err(NOT_RUNNING.into());
             }
+            let run = Run::current(&store, session_id).ok_or(NOT_RUNNING)?;
             let (found, frames) = selected_frames(&store.db, board_id, frame_ids)?;
             let message_id =
                 crate::sqlite::random_id(&store.db).map_err(|error| error.to_string())?;
-            (found, frames, message_id)
+            (found, frames, message_id, run)
         };
+        let (local, remote) = run.files();
+        let instructions = self.write_design_mirror(session_id, local, remote)?;
         let screens = frames
             .iter()
             .map(|frame| {
@@ -828,7 +864,7 @@ impl AgentSessions {
                 ))
             })
             .collect::<Result<String>>()?;
-        let index = board_index(&found.name, &screens);
+        let index = board_index(&found.name, &screens, instructions.as_deref());
         let index = self.attach_file(session_id, BOARD_INDEX_FILENAME, index.as_bytes())?;
         let body = if update {
             format!(
@@ -836,8 +872,13 @@ impl AgentSessions {
                 found.name
             )
         } else {
+            let how = if instructions.is_some() {
+                ", which also says how to create or change them when the user asks"
+            } else {
+                ""
+            };
             format!(
-                "Soreno: this session is now linked to design board \"{}\"; its screens are listed in {index}. These static HTML/CSS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks.",
+                "Soreno: this session is now linked to design board \"{}\"; its screens are listed in {index}{how}. These static HTML/CSS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks.",
                 found.name
             )
         };
@@ -962,28 +1003,29 @@ fn clear_mirror(local: &Mutex<Option<PathBuf>>, remote: Option<&RemoteClipboard>
 impl AgentSessions {
     /// Writes the run's design instruction file, then mirrors every frame of the session's board,
     /// dropping the mirror of frames deleted since; any frame left unwritten fails it, after the
-    /// others are written, so the caller retries.
+    /// others are written, so the caller retries. Returns the agent-visible directory holding the
+    /// instruction file; `None` for a session without a board or a run without a directory.
     pub(super) fn write_design_mirror(
         &self,
         session_id: &str,
         local: &Mutex<Option<PathBuf>>,
         remote: Option<&RemoteClipboard>,
-    ) -> Result<()> {
+    ) -> Result<Option<String>> {
+        // An unlinked session never waits behind another session's slow SSH mirror.
+        if session_board(&lock(&self.store)?.db, session_id)?.is_none() {
+            return Ok(None);
+        }
         let _mirror = lock(&self.design_mirror)?;
-        let (frames, environment) = {
+        let (frames, environment, designer) = {
             let store = lock(&self.store)?;
             let session = require_session(&store, session_id)?;
-            let board_id: String = store
-                .db
-                .query_row(
-                    "SELECT id FROM design_boards WHERE session_id=?1",
-                    [session_id],
-                    |row| row.get(0),
-                )
-                .map_err(|error| error.to_string())?;
+            let Some(board_id) = session_board(&store.db, session_id)? else {
+                return Ok(None);
+            };
             (
                 query_frames(&store.db, &board_id, None)?,
                 require_project(&store, &session.project_id)?.environment,
+                session.design,
             )
         };
         let directory = match lock(local)?.clone() {
@@ -996,7 +1038,7 @@ impl AgentSessions {
             )?,
             None => match remote {
                 Some(remote) => remote.ensure_directory()?,
-                None => return Ok(()),
+                None => return Ok(None),
             },
         };
         write_private(
@@ -1004,7 +1046,7 @@ impl AgentSessions {
             remote,
             false,
             INSTRUCTION_FILENAME,
-            Some(instruction(&directory).as_bytes()),
+            Some(instruction(&directory, designer).as_bytes()),
         )?;
         clear_mirror(local, remote)?;
         let windows_local = cfg!(windows) && lock(local)?.is_some();
@@ -1025,35 +1067,50 @@ impl AgentSessions {
                 "Miroir des cadres Design incomplet, nouvel essai au prochain passage.".into(),
             );
         }
-        Ok(())
+        Ok(Some(directory))
     }
 
-    /// Mirrors the stored state of one frame into the board session's running run, if any;
-    /// a failure is only logged: the next start rewrites the mirror.
+    /// Mirrors the stored state of one frame into the running runs of the board's designer and
+    /// linked sessions; a failure is only logged: the next start rewrites the mirror.
     pub(super) fn sync_design_frame(&self, board_id: &str, frame_id: &str) {
         let sync = || -> Result<()> {
             let _mirror = lock(&self.design_mirror)?;
-            let (runtime, html) = {
+            let (runs, html) = {
                 let store = lock(&self.store)?;
-                let session_id = board(&store.db, board_id)?.session_id;
-                let Some(runtime) = store.runtimes.get(&session_id).cloned() else {
-                    return Ok(());
-                };
+                let mut statement = store
+                    .db
+                    .prepare("SELECT session_id FROM design_boards WHERE id=?1 UNION ALL SELECT session_id FROM design_board_sessions WHERE board_id=?1")
+                    .map_err(|error| error.to_string())?;
+                let sessions = statement
+                    .query_map([board_id], |row| row.get::<_, String>(0))
+                    .and_then(|rows| rows.collect::<rusqlite::Result<Vec<_>>>())
+                    .map_err(|error| error.to_string())?;
+                let runs = sessions
+                    .iter()
+                    .filter_map(|session_id| Run::current(&store, session_id))
+                    .collect::<Vec<_>>();
                 let html = query_frames(&store.db, board_id, Some(frame_id))?
                     .pop()
                     .map(|frame| frame.html);
-                (runtime, html)
+                (runs, html)
             };
-            if lock(&runtime.output)?.exited {
-                return Ok(());
+            for run in runs {
+                if run.exited()? {
+                    continue;
+                }
+                let (local, remote) = run.files();
+                let written = write_private(
+                    local,
+                    remote,
+                    true,
+                    &mirror_name(frame_id),
+                    html.as_deref().map(str::as_bytes),
+                );
+                if let Err(error) = written {
+                    eprintln!("Miroir du cadre Design {frame_id} : {error}");
+                }
             }
-            write_private(
-                &runtime.local_attachment_directory,
-                runtime.remote_clipboard.as_ref(),
-                true,
-                &mirror_name(frame_id),
-                html.as_deref().map(str::as_bytes),
-            )
+            Ok(())
         };
         if let Err(error) = sync() {
             eprintln!("Miroir du cadre Design {frame_id} : {error}");

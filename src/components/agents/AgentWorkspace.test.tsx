@@ -1997,7 +1997,7 @@ it("links a session to a Design board from its side panel, sends it the board an
   );
 });
 
-it("creates a Design board in the session's project from its side panel and links the session", async () => {
+it("creates a Design board in the session's project from its side panel, links the session and sends it the board", async () => {
   designBoardSetup();
   vi.mocked(designApi.createDesignBoard).mockResolvedValue({
     id: "board-2",
@@ -2008,6 +2008,15 @@ it("creates a Design board in the session's project from its side panel and link
     updatedAt: "",
   });
   vi.mocked(designApi.linkDesignSession).mockResolvedValue();
+  vi.mocked(designApi.sendDesignToSession).mockResolvedValue({
+    id: "m1",
+    sessionId: "s1",
+    body: "",
+    status: "queued",
+    error: null,
+    createdAt: "",
+    deliveredAt: null,
+  });
   const gitPanel = document.createElement("div");
   setGitPanelContainer(gitPanel);
   document.body.append(gitPanel);
@@ -2029,5 +2038,10 @@ it("creates a Design board in the session's project from its side panel and link
     "s1",
     "board-2",
   );
-  expect(designApi.sendDesignToSession).not.toHaveBeenCalled();
+  expect(designApi.sendDesignToSession).toHaveBeenCalledExactlyOnceWith(
+    "s1",
+    "board-2",
+    null,
+    false,
+  );
 });
