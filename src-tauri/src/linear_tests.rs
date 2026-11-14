@@ -1,7 +1,7 @@
 use super::mutations::{upload_target, validate_image};
-use super::responses::{FileUploadData, RawIssueCreate};
+use super::responses::{FileUploadData, RawComment, RawIssue, RawIssueCreate};
 use super::*;
-use crate::kanban::{KanbanSubIssueState, KanbanUserRef, KanbanWorkflowState};
+use crate::kanban::{KanbanSubIssue, KanbanSubIssueState, KanbanUserRef, KanbanWorkflowState};
 
 fn team(id: &str, name: &str) -> KanbanTeam {
     KanbanTeam {

@@ -4,8 +4,7 @@
 use crate::kanban::{
     self, KanbanBoard, KanbanComment, KanbanIssue, KanbanIssueCreateInput,
     KanbanIssueDescriptionUpdate, KanbanIssueDetail, KanbanIssueInput, KanbanIssueUpdate,
-    KanbanLabel, KanbanLinearFields, KanbanLinearProjectRef, KanbanProjectRef, KanbanPullRequest,
-    KanbanSource, KanbanSubIssue, KanbanTeam, KanbanUserRef,
+    KanbanLabel, KanbanLinearProjectRef, KanbanProjectRef, KanbanSource, KanbanTeam, KanbanUserRef,
 };
 use reqwest::header::{HeaderValue, AUTHORIZATION};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -922,108 +921,6 @@ fn select_team<'a>(teams: &'a [LinearTeam], team_id: Option<&str>) -> Option<&'a
         .or_else(|| teams.first())
 }
 
-fn attachment_pull_requests(attachments: &[RawAttachment]) -> Vec<KanbanPullRequest> {
-    // API-created attachments can point into a PR (e.g. a comment) without being that PR.
-    kanban::extract_pull_requests(
-        attachments
-            .iter()
-            .filter(|attachment| {
-                matches!(attachment.source_type.as_deref(), Some("github" | "gitlab"))
-            })
-            .map(|attachment| attachment.url.as_str()),
-    )
-}
-
-fn sorted_labels(mut labels: Vec<KanbanLabel>) -> Vec<KanbanLabel> {
-    labels.sort_by(|left, right| kanban::compare_names(&left.name, &right.name));
-    labels
-}
-
-fn map_issue(raw: RawIssue, links: &ProjectLinks) -> KanbanIssue {
-    KanbanIssue {
-        source: KanbanSource::Linear,
-        pull_requests: attachment_pull_requests(&raw.attachments.nodes),
-        project: links.project(raw.project.as_ref()),
-        id: raw.id,
-        identifier: raw.identifier,
-        title: raw.title,
-        priority: normalize_priority(raw.priority),
-        state_id: raw.state.id,
-        created_at: raw.created_at,
-        updated_at: raw.updated_at,
-        labels: sorted_labels(raw.labels.nodes),
-        linear: Some(KanbanLinearFields {
-            url: raw.url,
-            assignee: raw.assignee,
-            linear_project: raw.project,
-        }),
-    }
-}
-
-fn map_update(raw: RawUpdatedIssue, links: &ProjectLinks) -> KanbanIssueUpdate {
-    KanbanIssueUpdate {
-        project: links.project(raw.project.as_ref()),
-        id: raw.id,
-        title: raw.title,
-        state_id: raw.state.id,
-        priority: normalize_priority(raw.priority),
-        labels: sorted_labels(raw.labels.nodes),
-        updated_at: raw.updated_at,
-        linear: Some(KanbanLinearFields {
-            url: raw.url,
-            assignee: raw.assignee,
-            linear_project: raw.project,
-        }),
-    }
-}
-
-fn map_issue_detail(
-    raw: RawIssueDetail,
-    more_children: Vec<KanbanSubIssue>,
-    more_comments: Vec<RawComment>,
-    links: &ProjectLinks,
-) -> KanbanIssueDetail {
-    let mut children = raw.children.nodes;
-    children.extend(more_children);
-    let mut comments: Vec<KanbanComment> = raw
-        .comments
-        .nodes
-        .into_iter()
-        .chain(more_comments)
-        .map(KanbanComment::from)
-        .collect();
-    // Linear returns uniform ISO-8601 UTC timestamps, so string order is chronological.
-    comments.sort_by(|left, right| left.created_at.cmp(&right.created_at));
-
-    KanbanIssueDetail {
-        source: KanbanSource::Linear,
-        pull_requests: attachment_pull_requests(&raw.attachments.nodes),
-        team_id: Some(raw.team.id),
-        project: links.project(raw.project.as_ref()),
-        id: raw.id,
-        identifier: raw.identifier,
-        title: raw.title,
-        description: raw.description,
-        branch_name: raw.branch_name,
-        priority: normalize_priority(raw.priority),
-        state_id: raw.state.id,
-        created_at: raw.created_at,
-        updated_at: raw.updated_at,
-        labels: sorted_labels(raw.labels.nodes),
-        children,
-        comments,
-        linear: Some(KanbanLinearFields {
-            url: raw.url,
-            assignee: raw.assignee,
-            linear_project: raw.project,
-        }),
-    }
-}
-
-fn normalize_priority(priority: f64) -> u8 {
-    priority.round().clamp(0.0, 4.0) as u8
-}
-
 fn stored_workspaces() -> Result<Vec<StoredWorkspace>> {
     load_workspaces(&mut cached_workspaces())
 }
@@ -1211,6 +1108,8 @@ fn storage_detail(error: &keyring::Error) -> String {
 
 #[path = "linear/images.rs"]
 pub(crate) mod images;
+#[path = "linear/mapping.rs"]
+mod mapping;
 #[path = "linear/mutations.rs"]
 mod mutations;
 #[path = "linear/queries.rs"]
@@ -1218,6 +1117,7 @@ mod queries;
 #[path = "linear/responses.rs"]
 mod responses;
 
+use mapping::{map_issue, map_issue_detail, map_update};
 use mutations::{
     applied_description_update, applied_issue_update, comment_create_input, confirmed,
     created_comment, created_issue, created_label, issue_create_input, issue_update_input,
@@ -1235,9 +1135,8 @@ use responses::{
     CommentCreateData, CommentDeleteData, CommentUpdateData, GraphqlResponse, IssueConnectionData,
     IssueCreateData, IssueDeleteData, IssueDescriptionUpdateData, IssueDetailData, IssueLabelsData,
     IssuePlacementData, IssueUpdateData, IssueWorkflowData, LabelCreateData, LabelNodesData,
-    OrganizationData, OwnerData, ProjectIdsData, ProjectTeamsData, ProjectsData, RawAttachment,
-    RawComment, RawIssue, RawIssueChildren, RawIssueComment, RawIssueComments, RawIssueDetail,
-    RawLabel, RawUpdatedIssue, TeamBoardData, TeamsData,
+    OrganizationData, OwnerData, ProjectIdsData, ProjectTeamsData, ProjectsData, RawIssueChildren,
+    RawIssueComment, RawIssueComments, RawLabel, TeamBoardData, TeamsData,
 };
 
 #[cfg(test)]
