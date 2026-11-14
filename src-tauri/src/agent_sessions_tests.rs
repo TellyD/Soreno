@@ -15,7 +15,7 @@ fn project() -> AgentProject {
         color: None,
     }
 }
-fn memory_state() -> AgentSessions {
+pub(super) fn memory_state() -> AgentSessions {
     AgentSessions::from_connection(Connection::open_in_memory().unwrap()).unwrap()
 }
 pub(crate) fn unique_temp_path(prefix: &str) -> PathBuf {
@@ -57,7 +57,7 @@ fn ssh_project(project_id: &str) -> AgentProject {
         color: None,
     }
 }
-fn insert_project(state: &AgentSessions, project: &AgentProject) {
+pub(super) fn insert_project(state: &AgentSessions, project: &AgentProject) {
     lock(&state.store)
         .unwrap()
         .db

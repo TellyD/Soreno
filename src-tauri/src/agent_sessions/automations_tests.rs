@@ -1,4 +1,5 @@
 use super::*;
+use crate::agent_sessions::tests::{insert_project, memory_state};
 use crate::agent_sessions::AgentEnvironment;
 
 fn input() -> AgentAutomationInput {
@@ -133,18 +134,9 @@ fn schedules_are_validated_then_written_for_systemd() {
 
 #[test]
 fn a_scheduled_session_cannot_be_deleted_before_its_automation() {
-    let state = AgentSessions::from_connection(Connection::open_in_memory().unwrap()).unwrap();
+    let state = memory_state();
     let project = project("/tmp");
-    {
-        let store = lock(&state.store).unwrap();
-        store
-            .db
-            .execute(
-                "INSERT INTO agent_projects(id,data) VALUES (?1,?2)",
-                params![project.id, serde_json::to_string(&project).unwrap()],
-            )
-            .unwrap();
-    }
+    insert_project(&state, &project);
     state
         .save_session(AgentSession {
             favorite: false,
@@ -181,16 +173,9 @@ fn a_scheduled_session_cannot_be_deleted_before_its_automation() {
 
 #[test]
 fn a_failed_creation_is_forgotten_only_once_its_timer_is_removed() {
-    let state = AgentSessions::from_connection(Connection::open_in_memory().unwrap()).unwrap();
+    let state = memory_state();
     let project = project("/tmp");
-    lock(&state.store)
-        .unwrap()
-        .db
-        .execute(
-            "INSERT INTO agent_projects(id,data) VALUES (?1,?2)",
-            params![project.id, serde_json::to_string(&project).unwrap()],
-        )
-        .unwrap();
+    insert_project(&state, &project);
     state
         .save_session(session("session", "claude", &[]))
         .unwrap();
@@ -215,16 +200,9 @@ fn a_failed_creation_is_forgotten_only_once_its_timer_is_removed() {
 
 #[test]
 fn a_group_overview_agent_is_scheduled_with_the_group_repositories() {
-    let state = AgentSessions::from_connection(Connection::open_in_memory().unwrap()).unwrap();
+    let state = memory_state();
     let member = project("/srv/api");
-    lock(&state.store)
-        .unwrap()
-        .db
-        .execute(
-            "INSERT INTO agent_projects(id,data) VALUES (?1,?2)",
-            params![member.id, serde_json::to_string(&member).unwrap()],
-        )
-        .unwrap();
+    insert_project(&state, &member);
     state
         .save_group(super::super::AgentProjectGroupInput {
             id: "g1".into(),
