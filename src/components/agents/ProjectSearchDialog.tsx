@@ -46,7 +46,7 @@ export type ProjectSearchState = {
   options: ProjectTextSearchOptions;
 };
 
-export type ProjectSearchSelection = {
+type ProjectSearchSelection = {
   projectId: string;
   path: string;
   line: number;

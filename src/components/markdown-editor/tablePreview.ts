@@ -20,7 +20,7 @@ type Cell = {
   suffix?: string;
 };
 type Insert = { from: number; insert: string };
-export type PreviewTable = {
+type PreviewTable = {
   rows: Cell[][];
   align: ("left" | "right" | "center" | null)[];
   newRow: Insert;
@@ -263,7 +263,7 @@ export function prepareTableCell(view: EditorView) {
   });
 }
 
-export type TableLabels = { cell: string; addRow: string; addColumn: string };
+type TableLabels = { cell: string; addRow: string; addColumn: string };
 const actionRoots = new WeakMap<HTMLElement, { root: Root; key?: string }>();
 
 function renderActions(dom: HTMLElement, labels: TableLabels, hidden: boolean) {

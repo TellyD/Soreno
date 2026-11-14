@@ -39,7 +39,7 @@ export type KanbanIssueAgentSession = {
   projectName: string;
 };
 
-export type KanbanIssueAgents = {
+type KanbanIssueAgents = {
   live: ReadonlyMap<string, KanbanIssueAgentSession>;
   ended: ReadonlyMap<string, AgentSessionKanbanIssue>;
 };
@@ -393,7 +393,7 @@ export function signAgentSummary(summary: string, executable: string): string {
   return `${summary.trimEnd()}\n\n— ${agentProviderLabel(executable)}${AGENT_SIGNATURE_SUFFIX}`;
 }
 
-export type KanbanAgentComment = {
+type KanbanAgentComment = {
   name: string;
   executable: string;
   /** The body without its signature. */

@@ -17,8 +17,8 @@ import {
   type GitSide,
 } from "../domain/projectGit";
 
-export type GitView = "changes" | "history" | "branches" | "requests";
-export type GitDraft = {
+type GitView = "changes" | "history" | "branches" | "requests";
+type GitDraft = {
   view: GitView;
   message: string;
   selection: { path: string; side: GitSide } | null;

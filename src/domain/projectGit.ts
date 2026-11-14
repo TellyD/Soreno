@@ -269,7 +269,7 @@ export function buildGitGraphRows(commits: GitCommit[]): GitGraphRow[] {
   });
 }
 
-export type GitReferenceBadge = {
+type GitReferenceBadge = {
   kind: GitCommitReference["kind"];
   label: string;
   title: string;

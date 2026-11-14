@@ -49,7 +49,7 @@ export type RelaySocket = Pick<
   | "onclose"
 >;
 
-export type ChannelOptions = {
+type ChannelOptions = {
   server: string;
   keyPair: CryptoKeyPair;
   /** The phone's raw public key for this server. */
@@ -75,7 +75,7 @@ const BACKLOG_LIMIT = 2 * MESSAGE_LIMIT;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export const RELAY_HOST = "relay.soreno.dev";
+const RELAY_HOST = "relay.soreno.dev";
 
 export function relayUrl(
   location: Pick<Location, "protocol" | "host">,

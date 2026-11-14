@@ -496,7 +496,7 @@ export function transferDescription(
 export const allKanbanProjectsFilter = "all";
 export const noKanbanProjectFilter = "none";
 
-export type KanbanIssueProjects = {
+type KanbanIssueProjects = {
   projects: KanbanProjectRef[];
   hasIssueWithoutProject: boolean;
 };

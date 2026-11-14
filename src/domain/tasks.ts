@@ -22,7 +22,7 @@ export type TaskStatus = (typeof taskStatuses)[number];
 
 export const defaultTaskStatus: TaskStatus = "todo";
 
-export type TasksByStatus = Record<TaskStatus, Task[]>;
+type TasksByStatus = Record<TaskStatus, Task[]>;
 
 export function groupTasksByStatus(tasks: Task[]): TasksByStatus {
   const groups = createEmptyTaskGroups();

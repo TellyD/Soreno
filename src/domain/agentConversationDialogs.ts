@@ -36,7 +36,7 @@ function waitingToolCall(state: AgentConversationState, tool: string) {
 const APPROVAL = /^Allow tool: (\S+)\n?([\s\S]*)$/;
 
 /** The questions of an `ask` request or tool call. */
-export function agentConversationAskQuestions(
+function agentConversationAskQuestions(
   value: unknown,
 ): AgentConversationAskQuestion[] {
   return (Array.isArray(value) ? value : [])

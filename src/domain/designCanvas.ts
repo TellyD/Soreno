@@ -2,14 +2,14 @@ import type { DesignFrame, DesignTarget } from "./design";
 
 /** Screen = board × scale + (x, y), in the canvas's pixels. */
 export type DesignView = { x: number; y: number; scale: number };
-export type DesignRect = Pick<DesignFrame, "x" | "y" | "width" | "height">;
+type DesignRect = Pick<DesignFrame, "x" | "y" | "width" | "height">;
 /** Edges a resize handle moves: n, s, e, w or a corner such as "se". */
 export type DesignHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
-export const DESIGN_FRAME_MIN = 120;
+const DESIGN_FRAME_MIN = 120;
 // design_update_frame refuses larger frames.
-export const DESIGN_FRAME_MAX = 4096;
-export const DESIGN_ZOOM_MIN = 0.05;
+const DESIGN_FRAME_MAX = 4096;
+const DESIGN_ZOOM_MIN = 0.05;
 export const DESIGN_ZOOM_MAX = 4;
 export const DESIGN_ZOOM_STEP = 1.25;
 

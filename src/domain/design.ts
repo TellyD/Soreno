@@ -34,7 +34,7 @@ export type DesignTarget =
   | { kind: "element"; frameId: string; selector: string; outerHTML: string };
 
 /** The agent message channel's limit, checked in bytes before sending. */
-export const DESIGN_PROMPT_MAX_BYTES = 64 * 1024;
+const DESIGN_PROMPT_MAX_BYTES = 64 * 1024;
 export class DesignPromptTooLargeError extends Error {}
 
 /** The draft with each `[Image #n]` replaced by the nth image's path; images without a marker follow the text. */

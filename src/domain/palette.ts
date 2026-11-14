@@ -1,4 +1,4 @@
-export type PaletteColorId =
+type PaletteColorId =
   | "blue"
   | "purple"
   | "green"

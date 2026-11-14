@@ -11,7 +11,7 @@ import "./NotePassphraseDialog.css";
 
 const MIN_PASSPHRASE_LENGTH = 8;
 
-export type NotePassphraseMode = "create" | "unlock" | "change";
+type NotePassphraseMode = "create" | "unlock" | "change";
 
 type NotePassphraseDialogProps = {
   mode: NotePassphraseMode;

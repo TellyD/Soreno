@@ -33,7 +33,7 @@ import {
   type CodeLanguageLabels,
 } from "./CodeLanguageWidget";
 
-export type PreviewLabels = CodeCopyLabels &
+type PreviewLabels = CodeCopyLabels &
   CodeLanguageLabels & {
     selectImage: string;
     resizeImage: string;

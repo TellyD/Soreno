@@ -29,7 +29,7 @@ import { useGitStrings } from "./gitStrings";
 
 const controlCharacter = /[\u0000-\u001f\u007f]/;
 
-export type ProjectPathActions = {
+type ProjectPathActions = {
   copy: (path: string) => Promise<void>;
   insert: (agent: GitDiffCommentTarget, path: string) => Promise<void>;
 };

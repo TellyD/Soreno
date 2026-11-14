@@ -17,7 +17,7 @@ const WEBP_QUALITY = 0.82;
 export const MAX_SOURCE_IMAGE_SIZE_BYTES = 50 * 1024 * 1024;
 const MAX_STORED_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
 
-export type ImageUploadErrorCode =
+type ImageUploadErrorCode =
   | "canvas-unavailable"
   | "encoding-failed"
   | "source-too-large"

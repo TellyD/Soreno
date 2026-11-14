@@ -28,7 +28,7 @@ export type AgentAutomation = AgentAutomationInput & {
   seenRunAt: number | null;
 };
 
-export type AutomationRunState =
+type AutomationRunState =
   "never" | "running" | "finished" | "skipped" | "missingAgent" | "failed";
 
 // Mirrors MISSING_EXECUTABLE_EXIT_CODE in src-tauri/src/agent_sessions.rs.

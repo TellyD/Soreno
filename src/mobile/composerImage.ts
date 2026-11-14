@@ -7,7 +7,7 @@ const SAVED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const DIMENSIONS = [4096, 2560, 1920];
 const QUALITY = 0.85;
 
-export type ComposerImage = { mimeType: string; data: string };
+type ComposerImage = { mimeType: string; data: string };
 
 export class ComposerImageError extends Error {
   constructor(readonly reason: "unsupported" | "tooLarge") {

@@ -109,7 +109,7 @@ function startedMove(
     : null;
 }
 
-export type KanbanControllerOptions = {
+type KanbanControllerOptions = {
   // Non-group Soreno projects, so a chip still opens an issue's worktree project.
   projects: AgentProject[];
   // Soreno projects an issue can belong to.
@@ -144,7 +144,7 @@ export type KanbanControllerOptions = {
   onUnlinkSessionIssue: (sessionId: string) => Promise<void>;
 };
 
-export type KanbanAgentPrompt = {
+type KanbanAgentPrompt = {
   issue: KanbanIssue;
   project: AgentProject;
   stateName: string;

@@ -156,7 +156,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type AppearanceIconOption = {
+type AppearanceIconOption = {
   icon: LucideIcon;
   id: string;
   label: string;

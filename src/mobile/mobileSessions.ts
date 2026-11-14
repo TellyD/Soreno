@@ -2,12 +2,12 @@ import type { RemoteHost, RemoteSession } from "./mobileApi";
 import type { MobileStrings } from "./mobileStrings";
 import { unreadKey } from "./sessionUnread";
 
-export type SessionActivity = "awaiting" | "working" | "unread" | "active";
+type SessionActivity = "awaiting" | "working" | "unread" | "active";
 
 /** `server` is the server id, its public key in base64url. */
-export type SessionRoute = { server: string; key: string };
+type SessionRoute = { server: string; key: string };
 
-export type HostSession = { host: RemoteHost; session: RemoteSession };
+type HostSession = { host: RemoteHost; session: RemoteSession };
 
 const SESSION_ROUTE = /^#\/s\/([A-Za-z0-9_-]{43})\/([0-9a-f]{32})$/;
 

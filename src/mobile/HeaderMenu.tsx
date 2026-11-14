@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { IconButton } from "@/components/ui/IconButton";
 import { MenuItem, MenuSurface } from "@/components/ui/Menu";
 
-export type HeaderMenuAction = {
+type HeaderMenuAction = {
   id: string;
   label: string;
   icon: ReactNode;

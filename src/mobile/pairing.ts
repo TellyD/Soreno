@@ -18,7 +18,7 @@ export type PairingRequest = PairingCode & {
   pairedAt: number | null;
 };
 
-export type PairingResult =
+type PairingResult =
   { ok: true; server: PairedServer } | { ok: false; end: ChannelEnd };
 
 const PAIRING_FRAGMENT = /^#p=([A-Za-z0-9_-]{43})\.([A-Za-z0-9_-]{43})$/;

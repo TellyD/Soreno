@@ -18,7 +18,7 @@ export type NotificationInput = {
   onDismiss?: () => void;
 };
 
-export type NotificationOptions = Omit<NotificationInput, "message" | "tone">;
+type NotificationOptions = Omit<NotificationInput, "message" | "tone">;
 
 export type AppNotification = {
   id: number;

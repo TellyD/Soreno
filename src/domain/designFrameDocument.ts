@@ -15,7 +15,7 @@ export function designFrameDocument(
   return `<!doctype html>${policy}${html.replace(/^\s*<!doctype[^>]*>/i, "")}`;
 }
 
-export type DesignFramePick =
+type DesignFramePick =
   | {
       type: "pick";
       /** Null for the whole frame. */

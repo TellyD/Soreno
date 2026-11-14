@@ -3,7 +3,7 @@ import type { NoteType } from "../../domain/noteTypes";
 import { paletteColorOptions } from "../../domain/palette";
 import { appearanceIconOptions, findAppearanceIcon } from "../appearanceIcons";
 
-export type NoteTypeAppearance = {
+type NoteTypeAppearance = {
   accent: string;
   border: string;
   icon: LucideIcon;

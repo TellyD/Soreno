@@ -10,7 +10,7 @@ export type SaveStatusLabels = {
   saving: string;
 };
 
-export type SaveStatusSnapshot = {
+type SaveStatusSnapshot = {
   lastSavedAt: string | null;
   saveState: SaveState;
   saveStateText: string;
