@@ -313,6 +313,7 @@ export function KanbanIssueContent({
           </ol>
           <KanbanCommentComposer
             formatError={formatError}
+            issueId={detail.id}
             onAddComment={onAddComment}
           />
         </section>

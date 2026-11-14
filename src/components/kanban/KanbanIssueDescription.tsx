@@ -7,6 +7,11 @@ import { MarkdownEditor } from "../markdown-editor/MarkdownEditor";
 
 const DESCRIPTION_SAVE_DELAY_MS = 700;
 
+// Descriptions whose save failed once their issue was closed, by issue id; reopening retries them.
+const unsavedDrafts = new Map<string, string>();
+// Latest save attempt by issue id, across mounted and closed views: only its outcome owns the entry above.
+const latestSaves = new Map<string, object>();
+
 // Object URLs of recently shown Linear uploads; a failed load is tried again next time.
 const linearImages = new Map<string, Promise<string>>();
 const LINEAR_IMAGE_CACHE_LIMIT = 50;
@@ -52,14 +57,19 @@ export function KanbanIssueDescription({
   onSave: (description: string) => Promise<string | null>;
 }) {
   const { t } = useI18n();
-  const [draft, setDraft] = useState(description ?? "");
+  const [draft, setDraft] = useState(
+    () => unsavedDrafts.get(issueId) ?? description ?? "",
+  );
   // Written with the state so a blur or unmount right after a keystroke saves it.
   const draftRef = useRef(draft);
   // Last text sent or received; compared trimmed since the backend trims what it stores.
-  const savedRef = useRef(draft);
+  const savedRef = useRef(description ?? "");
   const savingRef = useRef(false);
+  const unmountedRef = useRef(false);
   // Our last save: the text sent and the one stored, which comes back as an outside change.
   const echoRef = useRef<{ sent: string; stored: string } | null>(null);
+  // Whether this view restored a failed save; only it may drop that entry once it matches the stored text.
+  const restoredRef = useRef(unsavedDrafts.has(issueId));
   const latest = useRef({ formatError, onSave });
   latest.current = { formatError, onSave };
 
@@ -72,22 +82,36 @@ export function KanbanIssueDescription({
         const text = draftRef.current;
         const previous = savedRef.current;
         savedRef.current = text;
+        const save = {};
+        latestSaves.set(issueId, save);
         try {
           const stored = await latest.current.onSave(text);
           echoRef.current = { sent: text, stored: stored ?? "" };
+          if (latestSaves.get(issueId) === save) {
+            latestSaves.delete(issueId);
+            unsavedDrafts.delete(issueId);
+          }
         } catch (error) {
           savedRef.current = previous;
           notifyError(latest.current.formatError(error));
+          if (unmountedRef.current && latestSaves.get(issueId) === save)
+            unsavedDrafts.set(issueId, draftRef.current);
           return;
         }
       }
     } finally {
       savingRef.current = false;
     }
-  }, []);
+  }, [issueId]);
 
   useEffect(() => {
-    if (draft.trim() === savedRef.current.trim()) return;
+    if (draft.trim() === savedRef.current.trim()) {
+      if (restoredRef.current) {
+        restoredRef.current = false;
+        unsavedDrafts.delete(issueId);
+      }
+      return;
+    }
     const timer = window.setTimeout(
       () => void flush(),
       DESCRIPTION_SAVE_DELAY_MS,
@@ -96,7 +120,13 @@ export function KanbanIssueDescription({
   }, [draft, flush]);
 
   // Leaving the issue keeps the last keystrokes.
-  useEffect(() => () => void flush(), [flush]);
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      void flush();
+    };
+  }, [flush]);
 
   // An outside change, e.g. by an agent, replaces the text once no local edit is pending.
   useEffect(() => {
