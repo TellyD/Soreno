@@ -19,6 +19,7 @@ import {
   scanAgentSshHost,
 } from "../../data/agentSessionsApi";
 import {
+  compareByName,
   agentEnvironmentLabel,
   agentProjectNameFromPath,
   type AgentProject,
@@ -220,15 +221,17 @@ export function SshProjectFields({
   }, [id, trustPrompt]);
   const sshProjects = useMemo(() => {
     const seen = new Set<string>();
-    return projects.filter((project) => {
-      const ssh =
-        project.environment.kind === "ssh" ? project.environment.ssh : null;
-      if (!ssh?.host) return false;
-      const key = JSON.stringify(ssh);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    return projects
+      .filter((project) => {
+        const ssh =
+          project.environment.kind === "ssh" ? project.environment.ssh : null;
+        if (!ssh?.host) return false;
+        const key = JSON.stringify(ssh);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort(compareByName);
   }, [projects]);
 
   function updateTrustPrompt(next: TrustPrompt | null) {

@@ -10,6 +10,7 @@ import {
 import { pickAgentProjectDirectory } from "../../data/agentSessionsApi";
 import { listLinearProjects, listLinearWorkspaces } from "../../data/kanbanApi";
 import {
+  compareByName,
   agentEnvironmentKey,
   agentEnvironmentLabel,
   agentProjectNameFromPath,
@@ -206,7 +207,7 @@ export function AgentProjectGroupForm({
         role="group"
         aria-labelledby={`${id}-projects`}
       >
-        {projects.map((project) => {
+        {[...projects].sort(compareByName).map((project) => {
           const otherMachine =
             anchorKey !== null &&
             agentEnvironmentKey(project.environment) !== anchorKey;

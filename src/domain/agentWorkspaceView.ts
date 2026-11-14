@@ -1,4 +1,5 @@
 import {
+  compareByName,
   designProjectId,
   agentEnvironmentKey,
   orderAgentItems,
@@ -275,7 +276,7 @@ export function findWorktreeProject(
   );
 }
 
-/** Repositories and group overviews an issue or Design agent can start in: never a worktree or a missing project. */
+/** Repositories and group overviews an issue or Design agent can start in, by name: never a worktree or a missing project. */
 export function agentLaunchProjects(
   listedProjects: readonly AgentProject[],
   missingProjectIds: readonly string[],
@@ -290,7 +291,7 @@ export function agentLaunchProjects(
           project.id) === project.id,
     ),
     ...groupOverviewProjects,
-  ];
+  ].sort(compareByName);
 }
 
 /** Repository projects of the same machine, those likely on `branch` first. */

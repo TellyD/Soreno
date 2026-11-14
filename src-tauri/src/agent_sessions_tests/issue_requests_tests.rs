@@ -1205,19 +1205,20 @@ fn remote_scripts_skip_invalid_names_and_claim_a_request_once() {
         )
     };
     let path = directory.to_str().unwrap();
-    let scan = |requests| {
+    let scan = |kinds: &[issue_requests::Requests]| {
         run(issue_requests::remote_request_script(
             path,
-            requests,
+            kinds,
             &HashSet::new(),
         ))
     };
+    let both = [
+        issue_requests::Requests::Kanban,
+        issue_requests::Requests::DesignFrames,
+    ];
+    assert_eq!(scan(&both), (true, "kanban-issue-b.json\n{}".to_owned()));
     assert_eq!(
-        scan(issue_requests::Requests::Kanban),
-        (true, "kanban-issue-b.json\n{}".to_owned())
-    );
-    assert_eq!(
-        scan(issue_requests::Requests::DesignFrames),
+        scan(&[issue_requests::Requests::DesignFrames]),
         (true, "design-frame-a.html\n<p>".to_owned())
     );
     let claim = |requests, name: &str, content: &str| {
@@ -1231,6 +1232,7 @@ fn remote_scripts_skip_invalid_names_and_claim_a_request_once() {
         "kanban-issue-b.json",
         "{}",
     );
+    assert_eq!(scan(&both), (true, "design-frame-a.html\n<p>".to_owned()));
     claim(
         issue_requests::Requests::DesignFrames,
         "design-frame-a.html",

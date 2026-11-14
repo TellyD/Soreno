@@ -580,25 +580,31 @@ fn reply(title: &str, updated: bool, result: &Result<CreatedIssue>) -> String {
     }
 }
 
+/// The first request of `kinds`, in that order, then by name.
 fn read_local_request(
     directory: &Path,
-    requests: Requests,
+    kinds: &[Requests],
     skipped: &HashSet<String>,
-) -> Result<Option<(String, Vec<u8>)>> {
-    let mut names = std::fs::read_dir(directory)
+) -> Result<Option<(Requests, String, Vec<u8>)>> {
+    let names = std::fs::read_dir(directory)
         .map_err(|error| error.to_string())?
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
         .filter_map(|entry| entry.file_name().into_string().ok())
-        .filter(|name| requests.stem(name).is_some() && !skipped.contains(name))
+        .filter(|name| !skipped.contains(name))
         .collect::<Vec<_>>();
-    names.sort();
-    let Some(name) = names.into_iter().next() else {
+    let Some((requests, name)) = kinds.iter().find_map(|&requests| {
+        names
+            .iter()
+            .filter(|name| requests.stem(name).is_some())
+            .min()
+            .map(|name| (requests, name))
+    }) else {
         return Ok(None);
     };
-    let bytes = read_local_file(&directory.join(&name), requests.limit())
+    let bytes = read_local_file(&directory.join(name), requests.limit())
         .map_err(|error| error.to_string())?;
-    Ok(Some((name, bytes)))
+    Ok(Some((requests, name.clone(), bytes)))
 }
 
 /// Reads at most one byte past the limit of a regular file, never through a symlink.
@@ -635,12 +641,12 @@ fn read_local_file(path: &Path, limit: usize) -> std::io::Result<Vec<u8>> {
     Ok(bytes)
 }
 
+/// One SSH call for every kind: prints the first request's name, then its content.
 pub(super) fn remote_request_script(
     directory: &str,
-    requests: Requests,
+    kinds: &[Requests],
     skipped: &HashSet<String>,
 ) -> String {
-    let (prefix, suffix) = requests.affixes();
     let skipped = skipped
         .iter()
         .map(|name| {
@@ -650,37 +656,57 @@ pub(super) fn remote_request_script(
             )
         })
         .collect::<String>();
+    let loops = kinds
+        .iter()
+        .map(|requests| {
+            let (prefix, suffix) = requests.affixes();
+            format!(
+                "for f in {prefix}*{suffix}; do\n  case $f in *[!A-Za-z0-9._-]*) continue ;; esac\n{skipped}  [ -f \"$f\" ] && [ ! -h \"$f\" ] && [ ${{#f}} -gt {} ] && [ ${{#f}} -le {} ] || continue\n  printf '%s\\n' \"$f\"\n  exec head -c {} -- \"$f\"\ndone\n",
+                prefix.len() + suffix.len(),
+                prefix.len() + REQUEST_STEM_LIMIT + suffix.len(),
+                requests.limit() + 1,
+            )
+        })
+        .collect::<String>();
     format!(
-        "cd -- {} 2>/dev/null || exit 0\nfor f in {prefix}*{suffix}; do\n  case $f in *[!A-Za-z0-9._-]*) continue ;; esac\n{skipped}  [ -f \"$f\" ] && [ ! -h \"$f\" ] && [ ${{#f}} -gt {} ] && [ ${{#f}} -le {} ] || continue\n  printf '%s\\n' \"$f\"\n  exec head -c {} -- \"$f\"\ndone\n",
-        crate::ssh::quote(directory),
-        prefix.len() + suffix.len(),
-        prefix.len() + REQUEST_STEM_LIMIT + suffix.len(),
-        requests.limit() + 1,
+        "cd -- {} 2>/dev/null || exit 0\n{loops}",
+        crate::ssh::quote(directory)
     )
 }
 
 impl RemoteClipboard {
     fn read_issue_request(
         &self,
-        requests: Requests,
+        kinds: &[Requests],
         skipped: &HashSet<String>,
-    ) -> Result<Option<(String, Vec<u8>)>> {
+    ) -> Result<Option<(Requests, String, Vec<u8>)>> {
         let mut state = lock(&self.state)?;
         let directory = Self::directory(&mut state)?;
+        let limit = kinds.iter().map(|requests| requests.limit()).max();
         let output = crate::ssh::run(
             &state.connection,
-            &remote_request_script(&directory, requests, skipped),
+            &remote_request_script(&directory, kinds, skipped),
             None,
-            requests.limit() + 256,
+            limit.unwrap_or_default() + 256,
         )?;
         let Some(split) = output.iter().position(|byte| *byte == b'\n') else {
             return Ok(None);
         };
-        let name = std::str::from_utf8(&output[..split])
+        let (requests, name) = std::str::from_utf8(&output[..split])
             .ok()
-            .filter(|name| requests.stem(name).is_some())
+            .and_then(|name| {
+                let requests = kinds
+                    .iter()
+                    .copied()
+                    .find(|requests| requests.stem(name).is_some())?;
+                Some((requests, name))
+            })
             .ok_or("Nom de demande d’issue distante invalide.")?;
-        Ok(Some((name.to_owned(), output[split + 1..].to_vec())))
+        Ok(Some((
+            requests,
+            name.to_owned(),
+            output[split + 1..].to_vec(),
+        )))
     }
 
     fn claim_issue_request(
@@ -728,15 +754,15 @@ pub(super) fn remote_claim_script(
 
 fn read_request(
     run: &Run,
-    requests: Requests,
+    kinds: &[Requests],
     skipped: &HashSet<String>,
-) -> Result<Option<(String, Vec<u8>)>> {
+) -> Result<Option<(Requests, String, Vec<u8>)>> {
     let (local, remote) = run.files();
     if let Some(directory) = lock(local)?.clone() {
-        return read_local_request(&directory, requests, skipped);
+        return read_local_request(&directory, kinds, skipped);
     }
     match remote {
-        Some(remote) => remote.read_issue_request(requests, skipped),
+        Some(remote) => remote.read_issue_request(kinds, skipped),
         None => Ok(None),
     }
 }
@@ -830,13 +856,14 @@ impl AgentSessions {
         }
         let (local, remote) = run.files();
         for _ in 0..design::FRAME_CAPACITY {
-            let Some((name, _)) = read_request(&run, Requests::DesignFrames, &HashSet::new())?
+            let Some((_, name, _)) =
+                read_request(&run, &[Requests::DesignFrames], &HashSet::new())?
             else {
                 return Ok(());
             };
             design::write_private(local, remote, false, &name, None)?;
         }
-        if read_request(&run, Requests::DesignFrames, &HashSet::new())?.is_some() {
+        if read_request(&run, &[Requests::DesignFrames], &HashSet::new())?.is_some() {
             return Err(
                 "Trop de cadres Design en attente : réessayez une fois l’agent arrêté.".into(),
             );
@@ -863,10 +890,10 @@ impl AgentSessions {
             (false, Some(_)) => &[Requests::Kanban, Requests::DesignFrames],
             (false, None) => &[Requests::Kanban],
         };
-        let Some((requests, name, bytes)) = kinds.iter().find_map(|&requests| {
-            let found = read_request(&run, requests, &watcher.skipped).ok()??;
-            Some((requests, found.0, found.1))
-        }) else {
+        // shortcut: an unreadable request file hides every request after it, the other kind's included, until it is removed; skip it by name if agents leave such files.
+        let Some((requests, name, bytes)) =
+            read_request(&run, kinds, &watcher.skipped).ok().flatten()
+        else {
             return Ok(IssueRequestScan::Idle);
         };
         let board_id = (requests == Requests::DesignFrames)

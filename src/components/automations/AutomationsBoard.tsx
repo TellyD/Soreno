@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useId, useState } from "react";
 import {
+  compareByName,
   agentLaunchPresets,
   ompConversationExecutable,
   type AgentProject,
@@ -110,9 +111,9 @@ export function AutomationsBoard({
   onAutomationDeleted,
 }: AutomationsBoardProps) {
   const { t, locale } = useI18n();
-  const sshProjects = projects.filter(
-    (project) => project.environment.kind === "ssh",
-  );
+  const sshProjects = projects
+    .filter((project) => project.environment.kind === "ssh")
+    .sort(compareByName);
   const sessionById = new Map(sessions.map((session) => [session.id, session]));
   const projectById = new Map(projects.map((project) => [project.id, project]));
   const connectedProjectIds = sshProjects

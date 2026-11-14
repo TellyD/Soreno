@@ -1,5 +1,6 @@
 import { assetFileName } from "./assetUrl";
 import { compareDate } from "./dateTime";
+import { compareByName } from "./agentSessions";
 
 export type KanbanSource = "local" | "linear";
 
@@ -514,9 +515,7 @@ export function kanbanIssueProjects(
   }
   return {
     hasIssueWithoutProject,
-    projects: [...projects.values()].sort((left, right) =>
-      left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
-    ),
+    projects: [...projects.values()].sort(compareByName),
   };
 }
 

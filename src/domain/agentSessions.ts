@@ -542,6 +542,11 @@ export function visibleIssueAgentPresets(hidden: readonly AgentProvider[]) {
   return visible.length > 0 ? visible : agentLaunchPresets;
 }
 
+export const compareByName = (
+  left: { name: string },
+  right: { name: string },
+) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
+
 export function orderAgentItems<T extends { id: string }>(
   items: T[],
   ids: readonly string[] = [],

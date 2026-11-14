@@ -32,6 +32,7 @@ import {
 const noneValue = "none";
 
 // Keeps the current value selectable when it is missing from the options.
+// shortcut: the missing value is appended after the name-sorted projects, sort the merge if users find it out of place.
 function withCurrent<T extends { id: string }>(
   options: readonly T[],
   current: readonly T[],

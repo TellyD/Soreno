@@ -123,6 +123,7 @@ export function DesignImplement({
         onClick={() =>
           setForm({
             scope: targetFrame ? "frame" : "board",
+            // shortcut: boards without a project default to the first project by name, not the top of the rail; pass the rail order if users expect it.
             projectId: board.projectId ?? projects[0]?.id ?? "",
             executable: null,
             worktree: true,

@@ -487,56 +487,64 @@ fn watch_issue_requests(app: AppHandle, mut watcher: IssueRequestWatcher) {
     let state = app.state::<AgentSessions>();
     loop {
         thread::sleep(ISSUE_REQUEST_POLL);
-        let request = match state.scan_issue_request(&mut watcher) {
-            Ok(IssueRequestScan::Request(request)) => request,
-            Ok(IssueRequestScan::Idle) => continue,
-            Ok(IssueRequestScan::Stopped) => return,
-            Err(error) => {
-                eprintln!("Demandes d’issues Kanban : {error}");
-                return;
-            }
-        };
-        if request.is_design() {
-            match state.handle_design_frame(&mut watcher, request) {
-                Ok(Some(outcome)) => {
-                    notify_reply(
-                        &app,
-                        &outcome.session_id,
-                        outcome.queued,
-                        outcome.start_worker,
-                    );
-                    if let Some(board_id) = outcome.board_id {
-                        let _ = app.emit(
-                            DESIGN_FRAMES_EVENT,
-                            serde_json::json!({ "boardId": board_id }),
+        // Pending requests follow one another without the poll delay; an error waits for the next poll.
+        loop {
+            let request = match state.scan_issue_request(&mut watcher) {
+                Ok(IssueRequestScan::Request(request)) => request,
+                Ok(IssueRequestScan::Idle) => break,
+                Ok(IssueRequestScan::Stopped) => return,
+                Err(error) => {
+                    // shortcut: a poisoned lock fails every scan, so this logs each poll until the app quits; end the watcher on poison if such logs show up.
+                    eprintln!("Demandes d’issues Kanban : {error}");
+                    break;
+                }
+            };
+            if request.is_design() {
+                match state.handle_design_frame(&mut watcher, request) {
+                    Ok(Some(outcome)) => {
+                        notify_reply(
+                            &app,
+                            &outcome.session_id,
+                            outcome.queued,
+                            outcome.start_worker,
                         );
+                        if let Some(board_id) = outcome.board_id {
+                            let _ = app.emit(
+                                DESIGN_FRAMES_EVENT,
+                                serde_json::json!({ "boardId": board_id }),
+                            );
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(error) => {
+                        eprintln!("Cadre Design : {error}");
+                        break;
                     }
                 }
-                Ok(None) => {}
-                Err(error) => eprintln!("Cadre Design : {error}"),
-            }
-            continue;
-        }
-        // shortcut: a local request also waits on this keychain read, which may prompt on macOS; resolve it only for Linear requests if that delay is reported.
-        let linear_request = |request| linear_issue_request(&app, request);
-        let linear = linear::has_api_key()
-            .map(|has_key| has_key.then_some(&linear_request as LinearIssueCreator));
-        let outcome = match state.handle_issue_request(&mut watcher, request, linear) {
-            Ok(Some(outcome)) => outcome,
-            // Another watcher of the same directory handles it.
-            Ok(None) => continue,
-            Err(error) => {
-                eprintln!("Demande d’issue Kanban : {error}");
                 continue;
             }
-        };
-        notify_reply(
-            &app,
-            &outcome.event.session_id,
-            outcome.queued,
-            outcome.start_worker,
-        );
-        let _ = app.emit(ISSUE_REQUESTS_EVENT, &outcome.event);
+            // shortcut: a local request also waits on this keychain read, which may prompt on macOS; resolve it only for Linear requests if that delay is reported.
+            let linear_request = |request| linear_issue_request(&app, request);
+            let linear = linear::has_api_key()
+                .map(|has_key| has_key.then_some(&linear_request as LinearIssueCreator));
+            let outcome = match state.handle_issue_request(&mut watcher, request, linear) {
+                Ok(Some(outcome)) => outcome,
+                // Another watcher of the same directory handles it.
+                Ok(None) => continue,
+                Err(error) => {
+                    eprintln!("Demande d’issue Kanban : {error}");
+                    break;
+                }
+            };
+            // shortcut: a failed request does not pause the drain, so a burst of Linear requests during a brief outage all fail; break on `outcome.event.error` if agents hit it.
+            notify_reply(
+                &app,
+                &outcome.event.session_id,
+                outcome.queued,
+                outcome.start_worker,
+            );
+            let _ = app.emit(ISSUE_REQUESTS_EVENT, &outcome.event);
+        }
     }
 }
 pub(super) fn notify_reply(app: &AppHandle, session_id: &str, queued: bool, start_worker: bool) {

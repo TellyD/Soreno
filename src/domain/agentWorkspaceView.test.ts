@@ -81,19 +81,24 @@ it("counts agents of a worktree for its repository, not services or closed sessi
   expect([...ids].sort()).toEqual(["repository", "worktree"]);
 });
 
-it("launches agents in repositories and overviews, never in a worktree or a missing project", () => {
+it("launches agents in repositories and overviews by name, never in a worktree or a missing project", () => {
   const repository = group("repository", ["repository", "worktree"]);
   expect(
     agentLaunchProjects(
-      [project("repository"), project("worktree"), project("missing")],
+      [
+        project("zeta"),
+        project("repository"),
+        project("worktree"),
+        project("missing"),
+      ],
       ["missing"],
       new Map([
         ["repository", repository],
         ["worktree", repository],
       ]),
-      [project("overview")],
+      [project("Overview")],
     ).map(({ id }) => id),
-  ).toEqual(["repository", "overview"]);
+  ).toEqual(["Overview", "repository", "zeta"]);
 });
 
 it("orders tabs per project with pins first and hides split children", () => {
