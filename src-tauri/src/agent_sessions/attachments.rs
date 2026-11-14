@@ -5,7 +5,6 @@ use super::{
 };
 use crate::project_files::media::valid_image_signature;
 use crate::ssh::SshConnection;
-use sha2::{Digest, Sha256};
 use std::{
     io::Write,
     path::{Path, PathBuf},
@@ -151,8 +150,7 @@ pub(super) fn attachment_root(links_dir: &Path) -> PathBuf {
         .join("agent-attachments")
 }
 pub(super) fn attachment_directory(instance_directory: &Path, session_id: &str) -> PathBuf {
-    let key = format!("{:x}", Sha256::digest(session_id.as_bytes()));
-    instance_directory.join(&key[..32])
+    instance_directory.join(remote_host::key(session_id))
 }
 pub(super) fn create_unique_attachment_directory(parent: &Path, prefix: &str) -> Result<PathBuf> {
     static NEXT: AtomicU64 = AtomicU64::new(1);
