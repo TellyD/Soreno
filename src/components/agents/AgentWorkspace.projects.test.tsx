@@ -16,6 +16,7 @@ import {
   dialog,
   input,
   check,
+  choose,
   context,
   action,
   escape,
@@ -1717,7 +1718,7 @@ it("launches a group agent from the overview row", async () => {
   );
 });
 
-it("only offers projects of the first selected machine in a group", async () => {
+it("lists one machine at a time in the group dialog and saves only its projects", async () => {
   data.projects.push({
     ...project,
     id: "remote",
@@ -1739,14 +1740,24 @@ it("only offers projects of the first selected machine in a group", async () => 
   await click("Ajouter un projet");
   await click("Créer un groupe", document.querySelector('[role="menu"]')!);
 
-  await check("Remote");
+  const names = () =>
+    [...dialog().querySelectorAll(".agent-group-projects strong")].map(
+      (name) => name.textContent,
+    );
+  expect(names()).toEqual(["Soreno"]);
+  await check("Soreno");
 
-  const local = [...dialog().querySelectorAll("label")].find(
-    (label) => label.querySelector("strong")?.textContent === "Soreno",
-  )!;
-  expect(
-    local.querySelector('[role="checkbox"]')?.getAttribute("aria-disabled"),
-  ).toBe("true");
+  await choose("Machine", "SSH · dev@dev.example1");
+  expect(names()).toEqual(["Remote"]);
+  await check("Remote");
+  await input("Nom du groupe", "Serveurs");
+  await click("Enregistrer", dialog());
+
+  await vi.waitFor(() =>
+    expect(api.saveAgentProjectGroup).toHaveBeenCalledWith(
+      expect.objectContaining({ projectIds: ["remote"] }),
+    ),
+  );
 });
 
 it("confirms deleting a group, optionally with its projects", async () => {

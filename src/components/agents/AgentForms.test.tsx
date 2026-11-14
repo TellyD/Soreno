@@ -260,6 +260,47 @@ it("shows the selected project count", async () => {
   expect(container.textContent).toContain("2 sélectionnés");
 });
 
+it("keeps every group project on the same SSH machine when keys differ", async () => {
+  const sshProject = (id: string, identityFile: string): AgentProject => ({
+    id,
+    name: id,
+    path: `/srv/${id}`,
+    environment: {
+      kind: "ssh",
+      distribution: null,
+      ssh: {
+        host: "server.example",
+        user: "dev",
+        port: 22,
+        identityFile,
+        hostKey: null,
+      },
+    },
+  });
+  const save = vi.fn();
+  await act(async () =>
+    root.render(
+      <AgentProjectGroupForm
+        group={{
+          id: "group",
+          name: "Group",
+          projectIds: ["one", "two"],
+          groupProjectId: null,
+          collapsed: false,
+        }}
+        projects={[sshProject("one", "/keys/a"), sshProject("two", "/keys/b")]}
+        busy={false}
+        onCancel={onCancel}
+        onSave={save}
+      />,
+    ),
+  );
+  await click("Enregistrer");
+  expect(save).toHaveBeenCalledWith(
+    expect.objectContaining({ projectIds: ["one", "two"] }),
+  );
+});
+
 it("selects a local folder exactly, suggests a blank name, restores focus, and never saves automatically", async () => {
   vi.mocked(api.pickAgentProjectDirectory).mockResolvedValue({
     path: "/tmp/source  ",
