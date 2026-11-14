@@ -173,6 +173,31 @@ fn set_nonblocking(descriptor: std::os::fd::RawFd) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Waits up to `IO_POLL_INTERVAL`; false on timeout or a signal interruption.
+#[cfg(unix)]
+fn poll_ready(descriptor: std::os::fd::RawFd, events: libc::c_short) -> std::io::Result<bool> {
+    let mut descriptor = libc::pollfd {
+        fd: descriptor,
+        events: events | libc::POLLHUP | libc::POLLERR,
+        revents: 0,
+    };
+    let polled = unsafe {
+        libc::poll(
+            &mut descriptor,
+            1,
+            IO_POLL_INTERVAL.as_millis() as libc::c_int,
+        )
+    };
+    if polled < 0 {
+        let error = std::io::Error::last_os_error();
+        if error.kind() == std::io::ErrorKind::Interrupted {
+            return Ok(false);
+        }
+        return Err(error);
+    }
+    Ok(polled > 0)
+}
+
 #[cfg(unix)]
 pub(super) fn drain_pipe(
     stream: &mut (impl Read + std::os::fd::AsRawFd),
@@ -187,26 +212,7 @@ pub(super) fn drain_pipe(
         if cancelled.load(Ordering::Acquire) {
             break;
         }
-        let mut descriptor = libc::pollfd {
-            fd: stream.as_raw_fd(),
-            events: libc::POLLIN | libc::POLLHUP | libc::POLLERR,
-            revents: 0,
-        };
-        let polled = unsafe {
-            libc::poll(
-                &mut descriptor,
-                1,
-                IO_POLL_INTERVAL.as_millis() as libc::c_int,
-            )
-        };
-        if polled < 0 {
-            let error = std::io::Error::last_os_error();
-            if error.kind() == std::io::ErrorKind::Interrupted {
-                continue;
-            }
-            return Err(error);
-        }
-        if polled == 0 {
+        if !poll_ready(stream.as_raw_fd(), libc::POLLIN)? {
             continue;
         }
         match stream.read(&mut buffer) {
@@ -251,26 +257,7 @@ pub(super) fn write_pipe(
     set_nonblocking(stream.as_raw_fd())?;
     let mut written = 0;
     while written < input.len() && !cancelled.load(Ordering::Acquire) {
-        let mut descriptor = libc::pollfd {
-            fd: stream.as_raw_fd(),
-            events: libc::POLLOUT | libc::POLLHUP | libc::POLLERR,
-            revents: 0,
-        };
-        let polled = unsafe {
-            libc::poll(
-                &mut descriptor,
-                1,
-                IO_POLL_INTERVAL.as_millis() as libc::c_int,
-            )
-        };
-        if polled < 0 {
-            let error = std::io::Error::last_os_error();
-            if error.kind() == std::io::ErrorKind::Interrupted {
-                continue;
-            }
-            return Err(error);
-        }
-        if polled > 0 {
+        if poll_ready(stream.as_raw_fd(), libc::POLLOUT)? {
             match stream.write(&input[written..]) {
                 Ok(0) => {
                     return Err(std::io::Error::new(
