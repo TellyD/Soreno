@@ -415,6 +415,7 @@ export function KanbanIssueCreateDialog({
                 agent.enabled ? t("kanban.agent.chooseProject") : undefined
               }
               onChange={(project) => changeFields({ project })}
+              overviewProjectIds={overviewProjectIds}
               projects={kanbanProjects}
               value={fields.project}
             />

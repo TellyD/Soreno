@@ -40,6 +40,7 @@ type ControllerProps = {
   onOpenSession: (sessionId: string) => void;
   onIssueDeleted?: (issueId: string) => void;
   onStartIssueAgent: (request: KanbanIssueAgentRequest) => Promise<void>;
+  onPrepareProject: (projectId: string) => Promise<void>;
 };
 // `props` are the Kanban controller's, set once it is enabled.
 const board = vi.hoisted(() => ({
@@ -510,6 +511,34 @@ it("offers a prepared group overview as an issue project and starts its agent th
   await startIssueAgent(request({ projectId: "group-g1", worktree: true }));
   expect(gitApi.createGitWorktree).not.toHaveBeenCalled();
   expect(savedSession().projectId).toBe("group-g1");
+});
+
+it("offers an unopened group overview and prepares it when its agent starts", async () => {
+  data.groups = [
+    { id: "g1", name: "Suite", projectIds: ["p1"], groupProjectId: null },
+  ];
+  await renderBoard();
+
+  expect(board.props!.kanbanProjects).toEqual([
+    expect.objectContaining({ id: "p1" }),
+    expect.objectContaining({ id: "group-g1", name: "Suite" }),
+  ]);
+  await startIssueAgent(request({ projectId: "group-g1", worktree: true }));
+  expect(api.prepareAgentGroupProject).toHaveBeenCalledWith("g1");
+  expect(gitApi.createGitWorktree).not.toHaveBeenCalled();
+  expect(savedSession().projectId).toBe("group-g1");
+});
+
+it("prepares an unopened group overview before an issue points at it", async () => {
+  data.groups = [
+    { id: "g1", name: "Suite", projectIds: ["p1"], groupProjectId: null },
+  ];
+  await renderBoard();
+
+  await act(() => board.props!.onPrepareProject("p1"));
+  expect(api.prepareAgentGroupProject).not.toHaveBeenCalled();
+  await act(() => board.props!.onPrepareProject("group-g1"));
+  expect(api.prepareAgentGroupProject).toHaveBeenCalledExactlyOnceWith("g1");
 });
 
 it("reuses the Soreno worktree project already on the issue branch", async () => {

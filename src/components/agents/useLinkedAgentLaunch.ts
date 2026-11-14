@@ -3,6 +3,7 @@ import * as api from "../../data/agentSessionsApi";
 import * as designApi from "../../data/designApi";
 import {
   defaultAgentArgs,
+  groupOverviewProjectId,
   ompConversationExecutable,
   sessionLaunchBlocked,
   type AgentProject,
@@ -120,8 +121,17 @@ export function useLinkedAgentLaunch({
     launch: AgentLaunch;
   }) {
     if (closing.current) throw new LocalizedOperationError(s.issueAgentBusy);
-    const { projects } = current.current.workspace;
-    const source = projects.find((project) => project.id === projectId);
+    const { projects, groups = [] } = current.current.workspace;
+    const overview = groups.find(
+      (group) => groupOverviewProjectId(group) === projectId,
+    );
+    const prepared: { project?: AgentProject } = {};
+    if (overview && !overview.groupProjectId)
+      await runIssueAgentStep(async () => {
+        prepared.project = await api.prepareAgentGroupProject(overview.id);
+      });
+    const source =
+      projects.find((project) => project.id === projectId) ?? prepared.project;
     if (!source || missingProjectIds.includes(projectId))
       throw new LocalizedOperationError(s.issueAgentProjectUnavailable);
     if (sessionLaunchBlocked(current.current.workspace, projectId))
@@ -139,12 +149,7 @@ export function useLinkedAgentLaunch({
     };
     await runIssueAgentStep(async () => {
       // A group overview folder is not a Git repository: run in it directly.
-      if (
-        worktree &&
-        !(current.current.workspace.groups ?? []).some(
-          (group) => group.groupProjectId === projectId,
-        )
-      ) {
+      if (worktree && !overview) {
         // The worktree needs Git on the server before the session can wake it.
         let group;
         if (

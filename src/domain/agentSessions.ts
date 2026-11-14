@@ -285,6 +285,12 @@ export type AgentProjectGroupRecord = AgentProjectAppearance & {
 };
 
 export const groupCollapseKey = (groupId: string) => `group:${groupId}`;
+// Mirrors `group_project_id` in groups.rs: an unopened overview is offered under its future id.
+export const groupOverviewProjectId = ({
+  id,
+  groupProjectId,
+}: Pick<AgentProjectGroupRecord, "id" | "groupProjectId">) =>
+  groupProjectId ?? `group-${id}`;
 
 export type AgentSessionEndReason =
   "session" | "project" | "worktree" | "merged";
