@@ -1,7 +1,13 @@
 use super::{transport_error, GitError};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
+use std::{
+    io::Read,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::{SyncSender, TrySendError},
+    },
+};
 
 pub(super) const RESPONSE_FRAME_LIMIT: usize = 12 * 1024 * 1024;
 
@@ -44,6 +50,30 @@ pub(super) fn read_response_frame(stream: &mut impl Read) -> Result<WireResponse
         .map_err(|error| format!("Réponse tronquée du relais Git WSL : {error}"))?;
     serde_json::from_slice(&payload)
         .map_err(|error| format!("Réponse JSON du relais Git WSL invalide : {error}"))
+}
+
+pub(super) fn forward_responses(
+    stream: &mut impl Read,
+    sender: &SyncSender<Result<WireResponse, String>>,
+    protocol_broken: &AtomicBool,
+) -> std::io::Result<()> {
+    loop {
+        let response = read_response_frame(stream);
+        let finished = response.is_err();
+        if finished {
+            protocol_broken.store(true, Ordering::Release);
+        }
+        match sender.try_send(response) {
+            Ok(()) if !finished => {}
+            Ok(()) => break,
+            Err(TrySendError::Full(_)) => {
+                protocol_broken.store(true, Ordering::Release);
+                break;
+            }
+            Err(TrySendError::Disconnected(_)) => break,
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn decode_capture(encoded: &str, limit: usize) -> Result<Vec<u8>, GitError> {

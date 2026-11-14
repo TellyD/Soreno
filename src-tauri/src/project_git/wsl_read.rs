@@ -7,7 +7,7 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
-    io::{Read, Write},
+    io::Write,
     process::{Child, Command, Stdio},
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -27,9 +27,9 @@ mod protocol;
 mod relay_spec;
 
 use admission::{Admission, AdmissionPermit};
+use protocol::{decode_capture, forward_responses, WireRequest, WireResponse};
 #[cfg(test)]
-use protocol::RESPONSE_FRAME_LIMIT;
-use protocol::{decode_capture, read_response_frame, WireRequest, WireResponse};
+use protocol::{read_response_frame, RESPONSE_FRAME_LIMIT};
 use relay_spec::{relay_spec, RelaySpec};
 
 const DISPLAY_BUDGET: Duration = Duration::from_secs(30);
@@ -1057,30 +1057,6 @@ fn wire_timeout_ms(deadline: Instant, now: Instant) -> u64 {
         .saturating_sub(STOP_TIMEOUT)
         .as_millis()
         .clamp(1, super::LOCAL_MUTATION_TIMEOUT.as_millis()) as u64
-}
-
-fn forward_responses(
-    stream: &mut impl Read,
-    sender: &SyncSender<Result<WireResponse, String>>,
-    protocol_broken: &AtomicBool,
-) -> std::io::Result<()> {
-    loop {
-        let response = read_response_frame(stream);
-        let finished = response.is_err();
-        if finished {
-            protocol_broken.store(true, Ordering::Release);
-        }
-        match sender.try_send(response) {
-            Ok(()) if !finished => {}
-            Ok(()) => break,
-            Err(TrySendError::Full(_)) => {
-                protocol_broken.store(true, Ordering::Release);
-                break;
-            }
-            Err(TrySendError::Disconnected(_)) => break,
-        }
-    }
-    Ok(())
 }
 
 fn transport_error(message: &str) -> GitError {
