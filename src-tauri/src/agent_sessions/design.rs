@@ -341,7 +341,9 @@ pub(super) fn ingest_frame(
         .map_err(|error| error.to_string())?;
     if let Some(previous) = previous {
         // A draft copied from the mirror keeps the old meta: only a new size overrides a user resize.
-        let resized = frame.size.filter(|size| meta_size(&previous) != Some(*size));
+        let resized = frame
+            .size
+            .filter(|size| meta_size(&previous) != Some(*size));
         db.execute(
             "UPDATE design_frames SET html=?3, title=COALESCE(?4,title), width=COALESCE(?5,width), height=COALESCE(?6,height), updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE board_id=?1 AND id=?2",
             params![

@@ -929,7 +929,8 @@
   outline: 1.5px solid var(--surface);
   pointer-events: none;
 }
-.agent-priority-toggle:not(.selected):hover:not(:disabled) .agent-priority-mark {
+.agent-priority-toggle:not(.selected):hover:not(:disabled)
+  .agent-priority-mark {
   outline-color: var(--app-icon-button-hover-bg, var(--surface-active));
 }
 .agent-priority-toggle.selected .agent-priority-mark {
