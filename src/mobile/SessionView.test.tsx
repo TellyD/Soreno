@@ -87,15 +87,8 @@ async function reset(
 
 /** The composer: hidden, or whether a typed message can be sent. */
 async function composer() {
-  const field = container.querySelector("textarea");
-  if (!field) return "hidden";
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(
-      HTMLTextAreaElement.prototype,
-      "value",
-    )!.set!.call(field, "Oui");
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  if (!container.querySelector("textarea")) return "hidden";
+  await typeMessage("Oui");
   const send = container.querySelector<HTMLButtonElement>(
     ".mobile-composer-send",
   )!;

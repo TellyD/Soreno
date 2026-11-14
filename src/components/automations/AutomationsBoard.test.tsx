@@ -7,6 +7,7 @@ import { listSkills } from "../../data/skillsApi";
 import type { AgentProject, AgentSession } from "../../domain/agentSessions";
 import { I18nProvider } from "../../i18n";
 import { notifyError } from "../../notifications";
+import { setInputValue } from "../ui/testInput";
 import { AutomationsBoard } from "./AutomationsBoard";
 
 vi.mock("../../settings", () => ({
@@ -108,15 +109,6 @@ async function render(sessions = [session]) {
   );
 }
 
-function type(element: HTMLInputElement | HTMLTextAreaElement, value: string) {
-  const prototype = Object.getPrototypeOf(element);
-  Object.getOwnPropertyDescriptor(prototype, "value")!.set!.call(
-    element,
-    value,
-  );
-  element.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
 const button = (label: string) =>
   [...host.querySelectorAll("button")].find(
     (item) => item.textContent === label,
@@ -125,11 +117,11 @@ const button = (label: string) =>
 async function createAutomation() {
   await act(async () => button("Nouvelle automatisation").click());
   await act(async () => {
-    type(
+    setInputValue(
       host.querySelector("label.automations-section input")!,
       "Revue du matin",
     );
-    type(host.querySelector("textarea")!, "/revue-du-matin");
+    setInputValue(host.querySelector("textarea")!, "/revue-du-matin");
   });
   await act(async () => button("Créer").click());
 }
@@ -214,7 +206,9 @@ it("keeps another automation open when a creation finishes behind it", async () 
       .querySelector<HTMLButtonElement>(".automations-list li button")!
       .click(),
   );
-  await act(async () => type(host.querySelector("textarea")!, "/autre"));
+  await act(async () =>
+    setInputValue(host.querySelector("textarea")!, "/autre"),
+  );
   await act(async () => finish());
 
   expect(onServerReached).toHaveBeenCalled();
@@ -289,7 +283,9 @@ it("pauses at once from the saved schedule, leaving a pending edit unsaved", asy
       .querySelector<HTMLButtonElement>(".automations-list li button")!
       .click(),
   );
-  await act(async () => type(host.querySelector("textarea")!, "/autre"));
+  await act(async () =>
+    setInputValue(host.querySelector("textarea")!, "/autre"),
+  );
   const active = host.querySelector<HTMLElement>(
     '.automations-active [role="switch"]',
   )!;
@@ -325,7 +321,7 @@ it("renames an automation without reaching its server", async () => {
       .click(),
   );
   await act(async () =>
-    type(
+    setInputValue(
       host.querySelector("label.automations-section input")!,
       "  Revue du soir ",
     ),
@@ -367,7 +363,9 @@ it("keeps a rename made elsewhere when saving another change", async () => {
   await render([
     { ...session, name: "Revue du soir", customName: "Revue du soir" },
   ]);
-  await act(async () => type(host.querySelector("textarea")!, "/autre"));
+  await act(async () =>
+    setInputValue(host.querySelector("textarea")!, "/autre"),
+  );
   await act(async () => button("Enregistrer").click());
 
   expect(onRenameSession).not.toHaveBeenCalled();
@@ -392,7 +390,7 @@ it("completes `/` with the project's and server's skills in the agent's syntax",
   await render();
   await act(async () => button("Nouvelle automatisation").click());
   const prompt = host.querySelector("textarea")!;
-  await act(async () => type(prompt, "/rev"));
+  await act(async () => setInputValue(prompt, "/rev"));
 
   expect(listSkills).toHaveBeenCalledWith({
     scope: "project",
@@ -427,7 +425,7 @@ it("leaves an IME composition's Enter to the input method", async () => {
   await render();
   await act(async () => button("Nouvelle automatisation").click());
   const prompt = host.querySelector("textarea")!;
-  await act(async () => type(prompt, "/rev"));
+  await act(async () => setInputValue(prompt, "/rev"));
   expect(host.querySelectorAll('[role="option"]')).toHaveLength(1);
 
   // WebKit commits a composition with keyCode 229 and isComposing false.
@@ -465,7 +463,7 @@ it("scrolls the option ↑ wraps to into view", async () => {
     await render();
     await act(async () => button("Nouvelle automatisation").click());
     const prompt = host.querySelector("textarea")!;
-    await act(async () => type(prompt, "/"));
+    await act(async () => setInputValue(prompt, "/"));
     scrollIntoView.mockClear();
     await act(async () =>
       prompt.dispatchEvent(
