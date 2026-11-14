@@ -15,13 +15,11 @@ import {
 } from "lucide-react";
 import {
   useEffect,
-  useLayoutEffect,
   useId,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
-  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import * as forgeApi from "../../data/forgeApi";
@@ -49,6 +47,7 @@ import {
   type GitComparison,
   type GitWorktree,
 } from "../../domain/projectGit";
+import { useFoldWhenTight } from "../../hooks/useFoldWhenTight";
 import type { useProjectGit } from "../../hooks/useProjectGit";
 import { useI18n } from "../../i18n";
 import { notifyError } from "../../notifications";
@@ -87,52 +86,6 @@ const railMin = 15;
 const railMax = 85;
 /** Width kept for the search field before the filters fold into a dropdown. */
 const searchMinWidth = 180;
-
-/**
- * Whether `folding` no longer fits beside `fixed` (and `reserve` px) in `container`, so it should fold
- * into a dropdown. Measured: labels vary by language and the buttons by request state.
- */
-function useFoldWhenTight(
-  container: RefObject<HTMLElement | null>,
-  folding: RefObject<HTMLElement | null>,
-  fixed: RefObject<HTMLElement | null>[],
-  reserve: number,
-  mounted: boolean,
-) {
-  const [folded, setFolded] = useState(false);
-  useLayoutEffect(() => {
-    const box = container.current;
-    const items = folding.current;
-    const others = fixed.map((ref) => ref.current);
-    if (
-      !mounted ||
-      !box ||
-      !items ||
-      others.some((element) => !element) ||
-      typeof ResizeObserver === "undefined"
-    )
-      return;
-    const measure = () => {
-      const style = getComputedStyle(box);
-      const available =
-        box.clientWidth -
-        parseFloat(style.paddingLeft) -
-        parseFloat(style.paddingRight);
-      const gap = parseFloat(style.columnGap) || 0;
-      const needed =
-        items.offsetWidth +
-        others.reduce((sum, element) => sum + gap + element!.offsetWidth, 0) +
-        (reserve ? gap + reserve : 0);
-      setFolded(needed > available);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    for (const element of [box, items, ...others]) observer.observe(element!);
-    return () => observer.disconnect();
-    // The refs are stable; `mounted` re-attaches when the measured elements are replaced.
-  }, [mounted, reserve]);
-  return folded;
-}
 
 const cacheSize = 20;
 
