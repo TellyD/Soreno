@@ -4,7 +4,6 @@ import { expect, it, vi } from "vitest";
 import {
   container,
   data,
-  project,
   render,
   requestAutomations,
   requestKanban,
@@ -15,6 +14,7 @@ import {
   tabNames,
   type AgentProjectWorktreeGroup,
 } from "./AgentWorkspaceTestHarness";
+import { localTestProject as project } from "./testProject";
 import * as api from "../../data/agentSessionsApi";
 import * as gitApi from "../../data/projectGitApi";
 import type {

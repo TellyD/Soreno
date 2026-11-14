@@ -9,7 +9,6 @@ import {
   root,
   data,
   guard,
-  project,
   cacheWorktrees,
   session,
   setStatus,
@@ -32,6 +31,7 @@ import {
   retryFromNotification,
   requestAutomations,
 } from "./AgentWorkspaceTestHarness";
+import { localTestProject as project } from "./testProject";
 import * as api from "../../data/agentSessionsApi";
 import * as gitApi from "../../data/projectGitApi";
 import * as automationsApi from "../../data/automationsApi";

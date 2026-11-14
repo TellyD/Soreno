@@ -8,7 +8,6 @@ import {
   sidebarContainer,
   gitPanelContainer,
   data,
-  project,
   terminalSplitsKey,
   session,
   setStatus,
@@ -26,6 +25,7 @@ import {
   notificationMessages,
   retryFromNotification,
 } from "./AgentWorkspaceTestHarness";
+import { localTestProject as project } from "./testProject";
 import * as api from "../../data/agentSessionsApi";
 import * as attentionApi from "../../data/agentAttentionApi";
 import { getNotifications } from "../../notifications";

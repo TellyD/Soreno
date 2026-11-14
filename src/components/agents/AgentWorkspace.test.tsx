@@ -7,7 +7,6 @@ import {
   gitPanelContainer,
   root,
   data,
-  project,
   worktreeCacheKey,
   cacheWorktrees,
   session,
@@ -31,6 +30,7 @@ import {
   type AgentProjectWorktreeGroup,
   type WorkspaceData,
 } from "./AgentWorkspaceTestHarness";
+import { localTestProject as project } from "./testProject";
 import * as api from "../../data/agentSessionsApi";
 import * as designApi from "../../data/designApi";
 import { designProjectId } from "../../domain/agentSessions";

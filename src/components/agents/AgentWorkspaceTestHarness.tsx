@@ -24,6 +24,7 @@ import {
 } from "./AgentWorkspace";
 import { stubModalSelector } from "../ui/testTopLayer";
 import { setInputValue } from "../ui/testInput";
+import { localTestProject as project } from "./testProject";
 
 const runtime = vi.hoisted(() => ({
   desktop: true,
@@ -321,12 +322,6 @@ let renderArgs: Parameters<typeof render> = [];
 const register = (value: AgentTransitionGuard) => {
   guard = value;
   return () => {};
-};
-const project = {
-  id: "p1",
-  name: "Soreno",
-  path: "/projects/soreno",
-  environment: { kind: "local" as const, distribution: null },
 };
 const worktreeCacheKey = "soreno.agents.worktree-groups.v1";
 const terminalSplitsKey = "soreno.agents.terminal-splits.v1";
@@ -1314,7 +1309,6 @@ export {
   root,
   data,
   guard,
-  project,
   worktreeCacheKey,
   terminalSplitsKey,
   cacheWorktrees,

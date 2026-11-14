@@ -8,7 +8,6 @@ import {
   root,
   data,
   guard,
-  project,
   session,
   setStatus,
   render,
@@ -42,6 +41,7 @@ import {
   notificationMessages,
   retryFromNotification,
 } from "./AgentWorkspaceTestHarness";
+import { localTestProject as project } from "./testProject";
 import * as api from "../../data/agentSessionsApi";
 import * as gitApi from "../../data/projectGitApi";
 import { pinnedTabsKey, projectSectionOrderKey } from "./agentWorkspaceStorage";
