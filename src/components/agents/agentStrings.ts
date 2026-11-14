@@ -38,6 +38,7 @@ const en = {
   groupProjects: "Projects in this group",
   groupProjectsSelected: (count: number) =>
     count === 1 ? "1 selected" : `${count} selected`,
+  groupMachine: "Machine",
   groupProjectsHint: "A project can belong to only one group.",
   groupProjectRequired: "Choose at least one project.",
   groupProjectCount: (count: number) =>
@@ -73,7 +74,6 @@ const en = {
   openGroupMember: (name: string) => `Open ${name}`,
   groupActiveAgents: (count: number) =>
     `${count} active agent${count > 1 ? "s" : ""}`,
-  groupProjectUnavailable: "This project cannot be added to this group",
   projectGroupLocked:
     "Remove this project from its group to change its machine.",
   deleteGroupTitle: (name: string) => `Delete the group “${name}”?`,
@@ -605,6 +605,7 @@ const fr: typeof en = {
   groupProjects: "Projets de ce groupe",
   groupProjectsSelected: (count: number) =>
     count === 1 ? "1 sélectionné" : `${count} sélectionnés`,
+  groupMachine: "Machine",
   groupProjectsHint: "Un projet ne peut appartenir qu’à un seul groupe.",
   groupProjectRequired: "Choisissez au moins un projet.",
   groupProjectCount: (count: number) =>
@@ -640,7 +641,6 @@ const fr: typeof en = {
   openGroupMember: (name: string) => `Ouvrir ${name}`,
   groupActiveAgents: (count: number) =>
     `${count} agent${count > 1 ? "s" : ""} actif${count > 1 ? "s" : ""}`,
-  groupProjectUnavailable: "Ce projet ne peut pas être ajouté à ce groupe",
   projectGroupLocked:
     "Retirez d’abord ce projet du groupe pour changer sa machine.",
   deleteGroupTitle: (name: string) => `Supprimer le groupe « ${name} » ?`,

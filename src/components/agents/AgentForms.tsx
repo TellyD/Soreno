@@ -1,4 +1,10 @@
-import { FolderOpen, LoaderCircle } from "lucide-react";
+import {
+  FolderOpen,
+  Laptop,
+  LoaderCircle,
+  Server,
+  SquareTerminal,
+} from "lucide-react";
 import {
   useEffect,
   useId,
@@ -11,11 +17,11 @@ import { pickAgentProjectDirectory } from "../../data/agentSessionsApi";
 import { listLinearProjects, listLinearWorkspaces } from "../../data/kanbanApi";
 import {
   compareByName,
-  agentEnvironmentKey,
   agentEnvironmentLabel,
   agentProjectNameFromPath,
   agentProjectTargetKey,
   isAbsoluteProjectPath,
+  sameAgentMachine,
   type AgentEnvironment,
   type AgentProject,
   type AgentProjectGroupRecord,
@@ -148,13 +154,54 @@ export function AgentProjectGroupForm({
     () => new Set(group?.projectIds ?? []),
   );
   const notice = useScopedNotification("agent-group-form");
-  const selectedProjectCount = projects.filter((project) =>
-    projectIds.has(project.id),
-  ).length;
-  const anchor =
-    environment ??
-    projects.find((project) => projectIds.has(project.id))?.environment;
-  const anchorKey = anchor ? agentEnvironmentKey(anchor) : null;
+  const machines: {
+    key: string;
+    label: string;
+    icon: ReactNode;
+    environment: AgentEnvironment;
+    projects: AgentProject[];
+  }[] = [];
+  for (const project of [...projects].sort(compareByName)) {
+    const machine = machines.find((item) =>
+      sameAgentMachine(item.environment, project.environment),
+    );
+    if (machine) machine.projects.push(project);
+    else
+      machines.push({
+        key: project.id,
+        label:
+          project.environment.kind === "wsl" && project.environment.distribution
+            ? `WSL · ${project.environment.distribution}`
+            : agentEnvironmentLabel(project.environment, s.local),
+        icon:
+          project.environment.kind === "ssh" ? (
+            <Server size={14} />
+          ) : project.environment.kind === "wsl" ? (
+            <SquareTerminal size={14} />
+          ) : (
+            <Laptop size={14} />
+          ),
+        environment: project.environment,
+        projects: [project],
+      });
+  }
+  machines.sort((a, b) => a.label.localeCompare(b.label));
+  const [lockedEnvironment] = useState(
+    () =>
+      environment ??
+      projects.find((project) => group?.projectIds.includes(project.id))
+        ?.environment,
+  );
+  const [machineKey, setMachineKey] = useState<string | null>(null);
+  const machine = lockedEnvironment
+    ? machines.find((item) =>
+        sameAgentMachine(item.environment, lockedEnvironment),
+      )
+    : (machines.find((item) => item.key === machineKey) ?? machines[0]);
+  const machineProjects = machine?.projects ?? [];
+  const selectedProjectIds = machineProjects
+    .filter((project) => projectIds.has(project.id))
+    .map((project) => project.id);
 
   function submit() {
     const normalizedName = name.trim();
@@ -166,9 +213,6 @@ export function AgentProjectGroupForm({
       notice.error(s.groupNameTooLong);
       return;
     }
-    const selectedProjectIds = projects
-      .filter((project) => projectIds.has(project.id))
-      .map((project) => project.id);
     if (!group && selectedProjectIds.length === 0) {
       notice.error(s.groupProjectRequired);
       return;
@@ -198,54 +242,58 @@ export function AgentProjectGroupForm({
         value={name}
         onChange={(event) => setName(event.target.value)}
       />
+      {machines.length > 1 ? (
+        <>
+          <label htmlFor={`${id}-machine`}>{s.groupMachine}</label>
+          <Select
+            id={`${id}-machine`}
+            aria-label={s.groupMachine}
+            disabled={shared.busy || lockedEnvironment !== undefined}
+            startIcon={machine?.icon}
+            value={machine?.key ?? ""}
+            options={machines.map((item) => ({
+              value: item.key,
+              label: item.label,
+              hint: String(item.projects.length),
+              icon: item.icon,
+            }))}
+            onValueChange={setMachineKey}
+          />
+        </>
+      ) : null}
       <div className="agent-group-projects-header">
         <span id={`${id}-projects`}>{s.groupProjects}</span>
-        <span>{s.groupProjectsSelected(selectedProjectCount)}</span>
+        <span>{s.groupProjectsSelected(selectedProjectIds.length)}</span>
       </div>
       <div
         className="agent-group-projects"
         role="group"
         aria-labelledby={`${id}-projects`}
       >
-        {[...projects].sort(compareByName).map((project) => {
-          const otherMachine =
-            anchorKey !== null &&
-            agentEnvironmentKey(project.environment) !== anchorKey;
-          return (
-            <label
-              key={project.id}
-              data-selected={projectIds.has(project.id) || undefined}
-            >
-              <Checkbox
-                checked={projectIds.has(project.id)}
-                disabled={shared.busy || otherMachine}
-                onCheckedChange={(checked) =>
-                  setProjectIds((current) => {
-                    const next = new Set(current);
-                    if (checked) next.add(project.id);
-                    else next.delete(project.id);
-                    return next;
-                  })
-                }
-              />
-              <span className="agent-group-project-label">
-                <AgentProjectIcon project={project} size={15} />
-                <strong>{project.name}</strong>
-                <small title={project.path}>
-                  {project.environment.kind === "ssh"
-                    ? s.ssh
-                    : agentEnvironmentLabel(project.environment, s.local)}{" "}
-                  · {project.path}
-                </small>
-                {otherMachine ? (
-                  <span className="agent-group-project-unavailable">
-                    {s.groupProjectUnavailable}
-                  </span>
-                ) : null}
-              </span>
-            </label>
-          );
-        })}
+        {machineProjects.map((project) => (
+          <label
+            key={project.id}
+            title={project.path}
+            data-selected={projectIds.has(project.id) || undefined}
+          >
+            <Checkbox
+              checked={projectIds.has(project.id)}
+              disabled={shared.busy}
+              onCheckedChange={(checked) =>
+                setProjectIds((current) => {
+                  const next = new Set(current);
+                  if (checked) next.add(project.id);
+                  else next.delete(project.id);
+                  return next;
+                })
+              }
+            />
+            <span className="agent-group-project-label">
+              <AgentProjectIcon project={project} size={15} />
+              <strong>{project.name}</strong>
+            </span>
+          </label>
+        ))}
       </div>
       <p className="agent-form-hint">{s.groupProjectsHint}</p>
     </FormDialog>
