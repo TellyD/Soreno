@@ -75,7 +75,7 @@ it("ranks sessions from the priority toggle and remembers it", async () => {
   await act(async () => vi.advanceTimersByTimeAsync(1000));
   const toggle = () =>
     container.querySelector<HTMLButtonElement>(
-      'button[title="Vue par priorités"]',
+      'button[aria-label^="Vue par priorités"]',
     )!;
   const sections = () =>
     [...container.querySelectorAll(".agent-rail section")].map((section) => [

@@ -1061,6 +1061,10 @@ export function AgentProjectRail({
       ) : null}
     </div>
   );
+  const priorityLabel =
+    priority.toHandle.length > 0
+      ? `${s.priorityView} · ${s.toHandle} · ${priority.toHandle.length}`
+      : s.priorityView;
   return (
     <aside
       className={`agent-rail${embedded ? " agent-rail-embedded" : ""}`}
@@ -1077,13 +1081,9 @@ export function AgentProjectRail({
         <div className="agent-rail-actions">
           <IconButton
             className="agent-priority-toggle"
-            aria-label={
-              priority.toHandle.length > 0
-                ? `${s.priorityView} · ${s.toHandle} · ${priority.toHandle.length}`
-                : s.priorityView
-            }
+            aria-label={priorityLabel}
             aria-pressed={priorityView}
-            title={s.priorityView}
+            title={priorityLabel}
             selected={priorityView}
             onClick={() => {
               setPriorityView(!priorityView);
@@ -1093,13 +1093,11 @@ export function AgentProjectRail({
             <Inbox aria-hidden="true" />
             {priority.toHandle.length > 0 ? (
               <span
-                className="agent-priority-count"
+                className="agent-priority-mark"
                 // Awaiting sessions come first, so the first mark is the most urgent.
                 data-attention={attentionOf(priority.toHandle[0].id)}
                 aria-hidden="true"
-              >
-                {priority.toHandle.length > 9 ? "9+" : priority.toHandle.length}
-              </span>
+              />
             ) : null}
           </IconButton>
           {priorityView ||
