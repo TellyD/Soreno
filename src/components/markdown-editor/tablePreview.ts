@@ -7,6 +7,10 @@ import { createElement, type MouseEvent as ReactMouseEvent } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { IconButton } from "../ui/IconButton";
 import { isImeComposing } from "../../domain/keyboard";
+import {
+  tableCellAlign,
+  type MarkdownTableAlign,
+} from "../../domain/markdownContent";
 import { children, type Node } from "./syntaxNodes";
 import { markdownDestination, safeLinkUrl } from "./urls";
 
@@ -22,7 +26,7 @@ type Cell = {
 type Insert = { from: number; insert: string };
 type PreviewTable = {
   rows: Cell[][];
-  align: ("left" | "right" | "center" | null)[];
+  align: MarkdownTableAlign[];
   newRow: Insert;
   newColumn: Insert[];
 };
@@ -35,16 +39,7 @@ export function previewTable(state: EditorState, node: Node): PreviewTable {
     .trim()
     .replace(/^\||\|$/gu, "")
     .split("|")
-    .map((part) => {
-      const value = part.trim();
-      return value.startsWith(":")
-        ? value.endsWith(":")
-          ? "center"
-          : "left"
-        : value.endsWith(":")
-          ? "right"
-          : null;
-    });
+    .map((part) => tableCellAlign(part.trim()));
   const newColumn: Insert[] = [];
   const separatorSource = state.doc
     .sliceString(separator.from, separator.to)

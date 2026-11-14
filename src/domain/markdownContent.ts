@@ -57,7 +57,17 @@ export type MarkdownContentBlock =
       type: "table";
     };
 
-type MarkdownTableAlign = "center" | "left" | "right" | null;
+export type MarkdownTableAlign = "center" | "left" | "right" | null;
+
+export function tableCellAlign(cell: string): MarkdownTableAlign {
+  return cell.startsWith(":")
+    ? cell.endsWith(":")
+      ? "center"
+      : "left"
+    : cell.endsWith(":")
+      ? "right"
+      : null;
+}
 
 /** Cells of a GFM table row: split on unescaped pipes, outer pipes optional. */
 function tableCells(line: string): string[] {
@@ -82,15 +92,7 @@ function tableAlignments(line: string): MarkdownTableAlign[] | null {
   if (!line.includes("-")) return null;
   const cells = tableCells(line);
   if (!cells.every((cell) => /^:?-+:?$/.test(cell))) return null;
-  return cells.map((cell) =>
-    cell.startsWith(":") && cell.endsWith(":")
-      ? "center"
-      : cell.endsWith(":")
-        ? "right"
-        : cell.startsWith(":")
-          ? "left"
-          : null,
-  );
+  return cells.map(tableCellAlign);
 }
 
 type ListBlock = Extract<
