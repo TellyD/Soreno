@@ -978,20 +978,15 @@ it("publishes the fresh branch after status confirms it changed", async () => {
 it("falls back to branch invalidation after navigation or a failed post-mutation read", async () => {
   const onMutation = vi.fn();
   await render("a", true, onMutation);
-  let finish!: () => void;
+  const mutation = deferred<void>();
   let pending!: Promise<unknown>;
   await act(async () => {
-    pending = state.mutate(
-      () =>
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-    );
+    pending = state.mutate(() => mutation.promise);
   });
   vi.mocked(api.readGitRepository).mockResolvedValue(repository("project-b"));
   await render("b", true, onMutation);
   await act(async () => {
-    finish();
+    mutation.resolve();
     await pending;
   });
   expect(state.repo?.version).toBe("project-b");
@@ -1042,22 +1037,17 @@ it("loads a selection deferred by a mutation once while retaining project select
     async (_id, path, _side, version) => comparison(path, version),
   );
   await render("a");
-  let finish!: () => void;
+  const mutation = deferred<void>();
   let pending!: Promise<unknown>;
   await act(async () => {
-    pending = state.mutate(
-      () =>
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-    );
+    pending = state.mutate(() => mutation.promise);
   });
   await act(async () =>
     state.updateDraft({ selection: { path: "a.ts", side: "unstaged" } }),
   );
   expect(api.readGitComparison).not.toHaveBeenCalled();
   await act(async () => {
-    finish();
+    mutation.resolve();
     await pending;
   });
   expect(api.readGitComparison).toHaveBeenCalledExactlyOnceWith(
@@ -1082,21 +1072,16 @@ it("waits for a mutation to finish before reloading the same selection", async (
   await act(async () =>
     state.updateDraft({ selection: { path: "a.ts", side: "unstaged" } }),
   );
-  let finish!: () => void;
+  const mutation = deferred<void>();
   let pending!: Promise<unknown>;
   await act(async () => {
-    pending = state.mutate(
-      () =>
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-    );
+    pending = state.mutate(() => mutation.promise);
   });
   expect(api.readGitComparison).toHaveBeenCalledTimes(1);
 
   vi.mocked(api.readGitRepository).mockResolvedValue(repository("2"));
   await act(async () => {
-    finish();
+    mutation.resolve();
     await pending;
   });
   expect(api.readGitComparison).toHaveBeenCalledTimes(2);

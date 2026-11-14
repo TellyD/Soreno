@@ -94,13 +94,11 @@ async function click(label: string) {
 }
 
 it("shows download progress and keeps the downloaded update when closing is blocked", async () => {
-  let finishDownload!: () => void;
+  const download = deferred<void>();
   vi.mocked(downloadAppUpdate).mockImplementation(async (_update, onEvent) => {
     onEvent({ event: "Started", data: { contentLength: 100 } });
     onEvent({ event: "Progress", data: { chunkLength: 50 } });
-    await new Promise<void>((resolve) => {
-      finishDownload = resolve;
-    });
+    await download.promise;
   });
   const prepareToClose = vi.fn(async () => false);
   await renderStatus(prepareToClose);
@@ -114,7 +112,7 @@ it("shows download progress and keeps the downloaded update when closing is bloc
   );
   expect(container.textContent).toContain("Téléchargement… 50 %");
   await act(async () => {
-    finishDownload();
+    download.resolve();
     await Promise.resolve();
   });
 
