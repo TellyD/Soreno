@@ -23,6 +23,7 @@ import {
   closedAgentSessionIds,
   defaultAgentArgs,
   groupCollapseKey,
+  groupOverviewProjectId,
   moveAgentItem,
   ompConversationExecutable,
   orderAgentItems,
@@ -446,9 +447,7 @@ export function AgentWorkspace({
   const projectsRefreshing = hasLoaded && (loading || !worktreesLoaded);
   const projectToolsAvailable = !hasLoaded || workspace.projects.length > 0;
   const groupProjectIds = new Set(
-    (workspace.groups ?? []).flatMap((group) =>
-      group.groupProjectId ? [group.groupProjectId] : [],
-    ),
+    (workspace.groups ?? []).map(groupOverviewProjectId),
   );
   const projectGroups: AgentProjectGroup[] = (workspace.groups ?? []).map(
     (group) => {
@@ -468,22 +467,35 @@ export function AgentWorkspace({
   const listedProjects = orderedProjects.filter(
     (project) => !groupProjectIds.has(project.id),
   );
-  // shortcut: a group appears once its overview folder exists; prepare it on pick if unopened groups are missed.
-  const groupOverviewProjects = (workspace.groups ?? []).flatMap((group) => {
-    const project = workspace.projects.find(
-      (item) => item.id === group.groupProjectId,
-    );
-    return project && !missingProjectIds.includes(project.id)
-      ? [
-          {
-            ...project,
-            color: group.color,
-            icon: group.icon,
-            iconDataUrl: group.iconDataUrl,
-          },
-        ]
-      : [];
-  });
+  const kanbanGroupOverviewProjects = (workspace.groups ?? []).flatMap(
+    (group) => {
+      const first = workspace.projects.find(
+        (item) => item.id === group.projectIds[0],
+      );
+      // An unopened overview borrows its first member's machine, as its folder will; prepared once an issue uses it.
+      const project = group.groupProjectId
+        ? workspace.projects.find((item) => item.id === group.groupProjectId)
+        : first && {
+            ...first,
+            id: groupOverviewProjectId(group),
+            name: group.name,
+          };
+      return project && !missingProjectIds.includes(project.id)
+        ? [
+            {
+              ...project,
+              color: group.color,
+              icon: group.icon,
+              iconDataUrl: group.iconDataUrl,
+            },
+          ]
+        : [];
+    },
+  );
+  // Automations and Design need a persisted overview; only Kanban prepares an unopened one.
+  const groupOverviewProjects = kanbanGroupOverviewProjects.filter((project) =>
+    workspace.projects.some((item) => item.id === project.id),
+  );
   const worktreeGroups = railWorktreeGroups(worktrees, orderedProjects);
   const groupByProjectId = new Map(
     worktreeGroups.flatMap((group) =>
@@ -2860,6 +2872,12 @@ export function AgentWorkspace({
     groupByProjectId,
     groupOverviewProjects,
   );
+  const kanbanProjects = agentLaunchProjects(
+    listedProjects,
+    missingProjectIds,
+    groupByProjectId,
+    kanbanGroupOverviewProjects,
+  );
 
   const content = (
     <>
@@ -3792,7 +3810,7 @@ export function AgentWorkspace({
       projects={listedProjects.filter(
         (project) => !missingProjectIds.includes(project.id),
       )}
-      kanbanProjects={launchProjects}
+      kanbanProjects={kanbanProjects}
       overviewProjectIds={groupProjectIds}
       linearProjectLinks={workspace.linearProjectLinks ?? []}
       issueSessions={kanbanIssueSessions}
@@ -3805,6 +3823,16 @@ export function AgentWorkspace({
           (project) => project.id === projectId,
         );
         if (target) void selectProject(target);
+      }}
+      onPrepareProject={async (projectId) => {
+        const group = current.current.workspace.groups?.find(
+          (item) =>
+            !item.groupProjectId && groupOverviewProjectId(item) === projectId,
+        );
+        if (!group) return;
+        await api.prepareAgentGroupProject(group.id);
+        // shortcut: a reload already running only queues this one, so an overlapping second preparation may start its agent while busy; await the queued reload if it shows up.
+        await retry();
       }}
       onOpenSession={(sessionId) => void reopenSession(sessionId)}
       onIssueDeleted={handleIssueDeleted}

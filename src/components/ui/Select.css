@@ -132,6 +132,12 @@
   margin-top: 2px;
 }
 
+.app-select-separator {
+  height: 1px;
+  margin: 4px;
+  background: var(--border-muted);
+}
+
 .app-select-option[data-highlighted] {
   outline: none;
   color: var(--text-strong);

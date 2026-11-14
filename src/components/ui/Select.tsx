@@ -4,6 +4,7 @@ import type { BaseUIEvent } from "@base-ui/react/types";
 import { Check, ChevronDown } from "lucide-react";
 import {
   forwardRef,
+  Fragment,
   useImperativeHandle,
   useRef,
   useState,
@@ -37,6 +38,8 @@ type SelectOption = {
   hint?: string;
   disabled?: boolean;
   icon?: ReactNode;
+  // A rule above the option starts a new section.
+  separated?: boolean;
 };
 
 // Option texts stay on one line; the full text becomes the tooltip only when clipped.
@@ -177,25 +180,29 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                 </Combobox.Empty>
                 <Combobox.List className="app-select-list">
                   {(option: SelectOption) => (
-                    <Combobox.Item
-                      key={option.value}
-                      className="app-select-option"
-                      value={option}
-                      disabled={option.disabled}
-                      onMouseEnter={(event) =>
-                        revealClippedText(event.currentTarget, option)
-                      }
-                    >
-                      {optionBody(
-                        option,
-                        <span className="app-select-option-label">
-                          {option.label}
-                        </span>,
-                      )}
-                      <Combobox.ItemIndicator className="app-select-indicator">
-                        <Check size={14} />
-                      </Combobox.ItemIndicator>
-                    </Combobox.Item>
+                    <Fragment key={option.value}>
+                      {option.separated ? (
+                        <Combobox.Separator className="app-select-separator" />
+                      ) : null}
+                      <Combobox.Item
+                        className="app-select-option"
+                        value={option}
+                        disabled={option.disabled}
+                        onMouseEnter={(event) =>
+                          revealClippedText(event.currentTarget, option)
+                        }
+                      >
+                        {optionBody(
+                          option,
+                          <span className="app-select-option-label">
+                            {option.label}
+                          </span>,
+                        )}
+                        <Combobox.ItemIndicator className="app-select-indicator">
+                          <Check size={14} />
+                        </Combobox.ItemIndicator>
+                      </Combobox.Item>
+                    </Fragment>
                   )}
                 </Combobox.List>
               </Combobox.Popup>
@@ -251,25 +258,29 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             >
               <SelectPrimitive.List className="app-select-list">
                 {options.map((option) => (
-                  <SelectPrimitive.Item
-                    key={option.value}
-                    className="app-select-option"
-                    value={option.value}
-                    disabled={option.disabled}
-                    onMouseEnter={(event) =>
-                      revealClippedText(event.currentTarget, option)
-                    }
-                  >
-                    {optionBody(
-                      option,
-                      <SelectPrimitive.ItemText className="app-select-option-label">
-                        {option.label}
-                      </SelectPrimitive.ItemText>,
-                    )}
-                    <SelectPrimitive.ItemIndicator className="app-select-indicator">
-                      <Check size={14} />
-                    </SelectPrimitive.ItemIndicator>
-                  </SelectPrimitive.Item>
+                  <Fragment key={option.value}>
+                    {option.separated ? (
+                      <SelectPrimitive.Separator className="app-select-separator" />
+                    ) : null}
+                    <SelectPrimitive.Item
+                      className="app-select-option"
+                      value={option.value}
+                      disabled={option.disabled}
+                      onMouseEnter={(event) =>
+                        revealClippedText(event.currentTarget, option)
+                      }
+                    >
+                      {optionBody(
+                        option,
+                        <SelectPrimitive.ItemText className="app-select-option-label">
+                          {option.label}
+                        </SelectPrimitive.ItemText>,
+                      )}
+                      <SelectPrimitive.ItemIndicator className="app-select-indicator">
+                        <Check size={14} />
+                      </SelectPrimitive.ItemIndicator>
+                    </SelectPrimitive.Item>
+                  </Fragment>
                 ))}
               </SelectPrimitive.List>
             </SelectPrimitive.Popup>
