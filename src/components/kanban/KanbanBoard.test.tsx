@@ -439,6 +439,17 @@ it("opens a tapped card in the side panel beside the board, then closes it", asy
   );
   expect(detailView()).toBeNull();
   expect(document.activeElement).toBe(cardButton());
+
+  // A click on the board outside any card or control closes it; a card or control click keeps it.
+  await tapCard();
+  const column = container.querySelector<HTMLElement>(".kanban-column-body")!;
+  await act(async () => cardButton().click());
+  await act(async () =>
+    container.querySelector<HTMLButtonElement>(".kanban-board-tabs button")!.click(),
+  );
+  expect(detailView()).not.toBeNull();
+  await act(async () => column.click());
+  expect(detailView()).toBeNull();
 });
 
 it("opens the issue of each new request once, then lets it close", async () => {
@@ -1071,6 +1082,93 @@ it("keeps the comment draft and reports the translated error when posting fails"
   );
 });
 
+it("keeps an unsent comment when the issue closes and reopens", async () => {
+  await tapCard();
+  await act(async () => setInputValue(commentField(), "Half written"));
+
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  expect(detailView()).toBeNull();
+  await tapCard();
+  expect(commentField().value).toBe("Half written");
+
+  await act(async () => setInputValue(commentField(), ""));
+  await act(async () =>
+    detailView()!
+      .querySelector<HTMLButtonElement>('[aria-label="Close issue"]')!
+      .click(),
+  );
+  await tapCard();
+  expect(commentField().value).toBe("");
+});
+
+it("keeps a comment typed after reopening while the previous one was posting", async () => {
+  const posting = deferred<KanbanComment>();
+  vi.mocked(api.createKanbanComment).mockReturnValueOnce(posting.promise);
+  await tapCard();
+  await act(async () => setInputValue(commentField(), "First"));
+  await pressKey(commentField(), "Enter", { ctrlKey: true });
+
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  await tapCard();
+  await act(async () => setInputValue(commentField(), "Second"));
+  await act(async () => {
+    posting.resolve({
+      id: "c2",
+      body: "First",
+      createdAt: "2026-09-27T10:00:00.000Z",
+    });
+    await posting.promise;
+  });
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  await tapCard();
+  expect(commentField().value).toBe("Second");
+  await act(async () => setInputValue(commentField(), ""));
+});
+
+it("offers no comment again once reopened while it posts, and restores it if posting fails after closing", async () => {
+  const posting = deferred<KanbanComment>();
+  vi.mocked(api.createKanbanComment).mockReturnValueOnce(posting.promise);
+  await tapCard();
+  await act(async () => setInputValue(commentField(), "First"));
+  await pressKey(commentField(), "Enter", { ctrlKey: true });
+
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  await tapCard();
+  expect(commentField().value).toBe("");
+  await act(async () => {
+    posting.resolve({
+      id: "c2",
+      body: "First",
+      createdAt: "2026-09-27T10:00:00.000Z",
+    });
+    await posting.promise;
+  });
+  expect(commentField().value).toBe("");
+
+  const failing = deferred<KanbanComment>();
+  vi.mocked(api.createKanbanComment).mockReturnValueOnce(failing.promise);
+  await act(async () => setInputValue(commentField(), "Again"));
+  await pressKey(commentField(), "Enter", { ctrlKey: true });
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  await act(async () => {
+    failing.reject(new Error("Offline."));
+    await failing.promise.catch(() => undefined);
+  });
+  await tapCard();
+  expect(commentField().value).toBe("Again");
+  await act(async () => setInputValue(commentField(), ""));
+});
+
 it("deletes a comment once confirmed and stays on the issue", async () => {
   vi.mocked(api.deleteKanbanComment).mockImplementation(
     async (_source, _issueId, id) => {
@@ -1394,6 +1492,121 @@ it("keeps the description draft and reports the error when saving fails", async 
 
   expect(notifyError).toHaveBeenCalledWith("Offline.");
   expect(editor.state.sliceDoc()).toBe("Draft");
+
+  // Closing retries it, fails again, and reopening the issue restores and retries it.
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  expect(detailView()).toBeNull();
+  expect(api.updateKanbanIssueDescription).toHaveBeenCalledTimes(2);
+  vi.mocked(api.updateKanbanIssueDescription).mockImplementation(
+    saveDescription,
+  );
+  await tapCard();
+  expect(descriptionEditor().state.sliceDoc()).toBe("Draft");
+  await blurEditor(descriptionEditor());
+  expect(api.updateKanbanIssueDescription).toHaveBeenLastCalledWith(
+    "local",
+    "i1",
+    "Draft",
+  );
+});
+
+it("restores no description whose failed save a newer save replaced", async () => {
+  const firstSave = deferred<KanbanIssueDescriptionUpdate>();
+  vi.mocked(api.updateKanbanIssueDescription)
+    .mockReturnValueOnce(firstSave.promise)
+    .mockImplementation(saveDescription);
+  await tapCard();
+  await act(async () => setEditorText(descriptionEditor(), "Older"));
+  await blurEditor(descriptionEditor());
+
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  await tapCard();
+  await act(async () => setEditorText(descriptionEditor(), "Newer"));
+  await blurEditor(descriptionEditor());
+  await act(async () => {
+    firstSave.reject(new Error("Offline."));
+    await firstSave.promise.catch(() => undefined);
+  });
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  await tapCard();
+
+  expect(descriptionEditor().state.sliceDoc()).toBe("Newer");
+});
+
+it("keeps a description the issue panel failed to save while the board shows the same issue", async () => {
+  vi.mocked(api.updateKanbanIssueDescription).mockRejectedValue(
+    new Error("Offline."),
+  );
+  await renderBoard({
+    panelIssue: { id: "i1", identifier: "ACM-1", source: "local" },
+  });
+  await tapCard();
+  const panelEditor = editorIn(
+    container.querySelector(
+      '[data-testid="issue-panel"] .kanban-issue-description',
+    )!,
+  );
+  await act(async () => setEditorText(panelEditor, "Panel draft"));
+  await blurEditor(panelEditor);
+
+  // The panel closes and stores its draft; then the board's untouched view closes.
+  await renderBoard();
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  vi.mocked(api.updateKanbanIssueDescription).mockImplementation(
+    saveDescription,
+  );
+  await tapCard();
+  expect(descriptionEditor().state.sliceDoc()).toBe("Panel draft");
+  await blurEditor(descriptionEditor());
+});
+
+it("drops a restored description once stored elsewhere, so a later outside change survives reopening", async () => {
+  vi.mocked(api.updateKanbanIssueDescription).mockRejectedValue(
+    new Error("Offline."),
+  );
+  await tapCard();
+  await act(async () => setEditorText(descriptionEditor(), "Draft"));
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  vi.mocked(api.updateKanbanIssueDescription).mockImplementation(
+    saveDescription,
+  );
+  vi.mocked(api.updateKanbanIssueDescription).mockClear();
+
+  // Another route stored the same text meanwhile.
+  storedIssue = { ...storedIssue, description: "Draft" };
+  await tapCard();
+  expect(descriptionEditor().state.sliceDoc()).toBe("Draft");
+  storedIssue = { ...storedIssue, description: "Written by an agent" };
+  await act(async () =>
+    issueRequestListeners.forEach((listener) =>
+      listener({
+        sessionId: "s1",
+        sessionName: "ACM-1 · Codex",
+        title: "Ship",
+        updated: true,
+        issue: { id: "i1", identifier: "ACM-1", source: "local" },
+        error: null,
+      }),
+    ),
+  );
+  expect(descriptionEditor().state.sliceDoc()).toBe("Written by an agent");
+
+  await act(async () =>
+    container.querySelector<HTMLElement>(".kanban-column-body")!.click(),
+  );
+  await tapCard();
+  expect(descriptionEditor().state.sliceDoc()).toBe("Written by an agent");
+  expect(api.updateKanbanIssueDescription).not.toHaveBeenCalled();
 });
 
 function deleteDialog() {

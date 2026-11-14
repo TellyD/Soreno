@@ -363,7 +363,23 @@ function KanbanBoardContent({
       className="kanban-board"
       ref={boardRef}
     >
-      <div className="kanban-board-pane" inert={createDefaults !== null}>
+      <div
+        className="kanban-board-pane"
+        inert={createDefaults !== null}
+        onClick={(event) => {
+          const { target } = event;
+          // shortcut: closing while a pasted image still uploads drops its insertion, as the close button does; keep the view mounted until uploads settle if users hit it.
+          // Portaled popups bubble here through React; cards and controls keep their own action.
+          if (
+            selectedIssue &&
+            !panel.hidden &&
+            target instanceof Element &&
+            event.currentTarget.contains(target) &&
+            !target.closest("button, a, input, [role], .kanban-card")
+          )
+            closeIssue();
+        }}
+      >
         <header className="kanban-board-header">
           <div className="kanban-board-title">
             <SquareKanban size={15} aria-hidden="true" />
