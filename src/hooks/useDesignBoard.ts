@@ -302,6 +302,7 @@ export function useDesignBoard(
 
   async function updateFrame(gesture: DesignFrameGeometry) {
     // shortcut: `before` is the optimistic geometry, so if an earlier overlapping save fails, undoing this move lands on that unsaved position; take it from the last confirmed frame if users hit it.
+    // shortcut: moves save and undo whole geometry, so a drag spanning an agent's soreno-frame resize, or undoing a move made before it, restores the old size; save only the changed fields if users hit it.
     const previous = framesRef.current.find((item) => item.id === gesture.id);
     if (!previous) return;
     const entry: DesignHistoryEntry = {

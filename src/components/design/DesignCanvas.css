@@ -62,7 +62,7 @@
   outline-offset: calc(2px * var(--design-inverse));
 }
 
-/* Hidden until loaded, or the white page backdrop flashes in the dark theme. */
+/* Transparent until the frame paints, even when re-shown: a white backdrop here flashes in the dark theme. */
 .design-canvas-frame > iframe {
   display: block;
   width: 100%;
@@ -73,7 +73,6 @@
 
 .design-canvas-frame > iframe[data-loaded] {
   visibility: visible;
-  background: #ffffff;
 }
 
 .design-canvas-frame-label {

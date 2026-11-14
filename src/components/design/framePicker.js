@@ -31,6 +31,20 @@ passThrough.textContent = `${disabledControls} { pointer-events: none !important
 :where(*)::-webkit-scrollbar-thumb { min-height: 42px; border: 2px solid transparent; border-radius: 999px; background-color: ${thumb}; background-clip: padding-box; }
 :where(*)::-webkit-scrollbar-thumb:hover { background-color: ${thumbHover}; }`;
 document.documentElement.append(passThrough);
+// The frame paints its own white page when it sets no background: a backdrop behind the iframe would flash.
+// shortcut: checked once at load, so white hides a root background that only a media query applies after a resize, and a translucent root background shows the canvas through; composite white under the authored background if frames use either.
+document.addEventListener("DOMContentLoaded", () => {
+  const bare = (element) => {
+    const style = element && getComputedStyle(element);
+    return (
+      !style ||
+      (style.backgroundImage === "none" &&
+        style.backgroundColor === "rgba(0, 0, 0, 0)")
+    );
+  };
+  if (bare(document.documentElement) && bare(document.body))
+    document.documentElement.style.background = "#ffffff";
+});
 
 function bounds(element) {
   const { left, top, right, bottom } = element.getBoundingClientRect();
