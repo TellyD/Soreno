@@ -32,9 +32,7 @@ pub(super) async fn blocking<T: Send + 'static>(
     app: AppHandle,
     action: impl FnOnce(&AgentSessions) -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
-    tauri::async_runtime::spawn_blocking(move || action(&app.state::<AgentSessions>()))
-        .await
-        .map_err(|e| e.to_string())?
+    super::run_blocking(move || action(&app.state::<AgentSessions>())).await
 }
 
 #[tauri::command]
@@ -51,18 +49,14 @@ pub(crate) async fn agent_environments() -> Result<AgentEnvironments, String> {
 pub(crate) async fn agent_ssh_scan(
     connection: crate::ssh::SshConnection,
 ) -> Result<Vec<crate::ssh::SshHostKey>, String> {
-    tauri::async_runtime::spawn_blocking(move || crate::ssh::scan(&connection))
-        .await
-        .map_err(|error| error.to_string())?
+    super::run_blocking(move || crate::ssh::scan(&connection)).await
 }
 #[tauri::command]
 pub(crate) async fn agent_ssh_browse(
     connection: crate::ssh::SshConnection,
     path: Option<String>,
 ) -> Result<crate::ssh::SshDirectoryListing, String> {
-    tauri::async_runtime::spawn_blocking(move || crate::ssh::browse(&connection, path.as_deref()))
-        .await
-        .map_err(|error| error.to_string())?
+    super::run_blocking(move || crate::ssh::browse(&connection, path.as_deref())).await
 }
 #[tauri::command]
 pub(crate) async fn agent_ssh_forward_list(
@@ -144,7 +138,7 @@ pub(crate) async fn agent_ssh_pick_identity(
     app: AppHandle,
     window: Window,
 ) -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    super::run_blocking(move || {
         app.dialog()
             .file()
             .set_parent(&window)
@@ -161,7 +155,6 @@ pub(crate) async fn agent_ssh_pick_identity(
             .transpose()
     })
     .await
-    .map_err(|error| error.to_string())?
 }
 #[tauri::command]
 pub(crate) async fn agent_pick_project_directory(
@@ -174,7 +167,7 @@ pub(crate) async fn agent_pick_project_directory(
     if title.trim().is_empty() || title.len() > 256 || title.contains('\0') {
         return Err("Titre vide, trop long ou contenant un caractère nul.".into());
     }
-    tauri::async_runtime::spawn_blocking(move || {
+    super::run_blocking(move || {
         let directory =
             agent_sessions::picker_default_directory(&environment, current_path.as_deref())?;
         let mut picker = app.dialog().file().set_parent(&window).set_title(title);
@@ -194,7 +187,6 @@ pub(crate) async fn agent_pick_project_directory(
             .transpose()
     })
     .await
-    .map_err(|error| error.to_string())?
 }
 #[tauri::command]
 pub(crate) async fn agent_save_project(

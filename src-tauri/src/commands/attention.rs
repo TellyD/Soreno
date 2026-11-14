@@ -8,7 +8,7 @@ pub(crate) async fn show_agent_notification(
     notification: AgentNotification,
 ) -> Result<(), String> {
     // macOS waits for the user's answer to the authorization prompt on first use.
-    tauri::async_runtime::spawn_blocking(move || {
+    super::run_blocking(move || {
         let attention = match app.get_webview_window(MAIN_WINDOW) {
             Some(window) => desktop_attention::request_attention(&window),
             None => Ok(()),
@@ -17,7 +17,6 @@ pub(crate) async fn show_agent_notification(
         attention
     })
     .await
-    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]

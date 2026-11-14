@@ -28,9 +28,7 @@ pub(super) async fn with_linear_images(
 // Keyring reads may wait on an OS unlock prompt; keep them off the main thread.
 #[tauri::command]
 pub(crate) async fn list_linear_workspaces() -> Result<Vec<LinearWorkspace>, String> {
-    tauri::async_runtime::spawn_blocking(linear::workspaces)
-        .await
-        .map_err(|error| error.to_string())?
+    super::run_blocking(linear::workspaces).await
 }
 
 #[tauri::command]
@@ -40,9 +38,7 @@ pub(crate) async fn set_linear_api_key(api_key: String) -> Result<(), String> {
 
 #[tauri::command]
 pub(crate) async fn clear_linear_api_key(workspace_id: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || linear::clear_api_key(&workspace_id))
-        .await
-        .map_err(|error| error.to_string())?
+    super::run_blocking(move || linear::clear_api_key(&workspace_id)).await
 }
 
 #[tauri::command]

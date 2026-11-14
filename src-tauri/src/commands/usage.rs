@@ -4,14 +4,12 @@ use crate::{
     codex_cli::CodexRateLimits,
     subscription_usage::{self, UsageAccount},
 };
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 const CODEX_USAGE_LOG_FILE: &str = "codex-usage.log";
 
 async fn usage_environments(app: AppHandle) -> Result<Vec<AgentEnvironment>, String> {
-    tauri::async_runtime::spawn_blocking(move || app.state::<AgentSessions>().usage_environments())
-        .await
-        .map_err(|e| e.to_string())?
+    super::agents::blocking(app, AgentSessions::usage_environments).await
 }
 
 #[tauri::command]
