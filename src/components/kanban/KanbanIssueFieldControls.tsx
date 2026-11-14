@@ -1,5 +1,5 @@
 import { Menu } from "@base-ui/react/menu";
-import { Box, Check, Plus, Tag } from "lucide-react";
+import { Box, Check, Folders, Plus, Tag } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type Ref } from "react";
 import { isImeComposing } from "../../domain/keyboard";
 import type {
@@ -179,18 +179,25 @@ export function KanbanProjectSelect({
   disabled,
   emptyLabel,
   onChange,
+  overviewProjectIds,
   projects,
   value,
 }: FieldControlProps<KanbanProjectRef | null> & {
   emptyLabel?: string;
+  overviewProjectIds: ReadonlySet<string>;
   projects: readonly AgentProject[];
 }) {
   const { t } = useI18n();
   const options = withCurrent<KanbanProjectRef>(projects, value ? [value] : []);
+  // Group overviews first, ruled off from the projects.
+  const overviews = options.filter(({ id }) => overviewProjectIds.has(id));
+  const others = options.filter(({ id }) => !overviewProjectIds.has(id));
+  // Groups without their own icon get the rail's group icon.
   const icon = (id: string) => (
     <AgentProjectIcon
       project={projects.find((project) => project.id === id)}
       size={14}
+      fallback={overviewProjectIds.has(id) ? Folders : undefined}
     />
   );
   return (
@@ -205,13 +212,15 @@ export function KanbanProjectSelect({
       }}
       options={[
         { label: t("kanban.project.none"), value: noneValue },
-        ...options.map((option) =>
-          kanbanProjectOption(
+        ...[...overviews, ...others].map((option, index) => ({
+          ...kanbanProjectOption(
             option,
             projects.find((project) => project.id === option.id),
             t("kanban.project.local"),
           ),
-        ),
+          icon: icon(option.id),
+          separated: index === overviews.length && index > 0,
+        })),
       ]}
       size="small"
       startIcon={value ? icon(value.id) : chip ? <Box size={14} /> : undefined}

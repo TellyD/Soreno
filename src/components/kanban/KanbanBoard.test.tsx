@@ -147,6 +147,7 @@ type BoardProps = {
   kanbanProjects?: AgentProject[];
   linearProjectLinks?: AgentProjectLinearLink[];
   onOpenSession?: (sessionId: string) => void;
+  onPrepareProject?: (projectId: string) => Promise<void>;
   onLinkedIssueRenamed?: () => void;
   onStartIssueAgent?: (request: KanbanIssueAgentRequest) => Promise<void>;
   overviewProjectIds?: ReadonlySet<string>;
@@ -205,6 +206,7 @@ async function renderBoard(props: BoardProps = {}) {
           kanbanProjects={props.kanbanProjects ?? []}
           linearProjectLinks={props.linearProjectLinks ?? []}
           onOpenProject={vi.fn()}
+          onPrepareProject={props.onPrepareProject ?? (async () => {})}
           onOpenSession={props.onOpenSession ?? vi.fn()}
           onLinkedIssueRenamed={props.onLinkedIssueRenamed}
           onStartIssueAgent={props.onStartIssueAgent ?? vi.fn()}
@@ -2226,24 +2228,38 @@ it("creates the issue, then starts an agent in the issue's project", async () =>
   });
 });
 
-it("starts the agent of a group overview issue without a worktree", async () => {
+it("lists group overviews first and starts their agent without a worktree", async () => {
   vi.mocked(api.updateKanbanIssue).mockResolvedValue(
     issueUpdate({ id: "i2", stateId: "doing" }),
   );
   const onStartIssueAgent = vi.fn().mockResolvedValue(undefined);
+  const onPrepareProject = vi.fn(async () => {});
   await openAgentDialog(onStartIssueAgent, {
-    overviewProjectIds: new Set(["sp1"]),
+    onPrepareProject,
+    overviewProjectIds: new Set(["sp2"]),
   });
   const checkbox = '[role="checkbox"]';
   const before = createDialog()!.querySelectorAll(checkbox).length;
 
-  await chooseOption(dialogField("Project"), "Soreno app");
+  await act(async () => dialogField("Project").click());
+  expect(
+    [...document.querySelectorAll('[role="option"]')].map(
+      (option) => option.textContent,
+    ),
+  ).toEqual(["No project", "WebsiteLocal", "Soreno appLocal"]);
+  await act(async () => dialogField("Project").click());
+  await chooseOption(dialogField("Project"), "Website");
   // The overview folder is no Git repo: the worktree option goes away.
   expect(createDialog()!.querySelectorAll(checkbox)).toHaveLength(before - 1);
   await act(async () => agentSubmitButton().click());
 
+  // The issue can only point at the overview once its project exists.
+  expect(onPrepareProject).toHaveBeenCalledExactlyOnceWith("sp2");
+  expect(onPrepareProject.mock.invocationCallOrder[0]).toBeLessThan(
+    vi.mocked(api.createKanbanIssue).mock.invocationCallOrder[0],
+  );
   expect(onStartIssueAgent).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ projectId: "sp1", worktree: false }),
+    expect.objectContaining({ projectId: "sp2", worktree: false }),
   );
 });
 
@@ -3067,6 +3083,33 @@ it("keeps the edited agent settings when the issue moves to a project", async ()
   expect(onStartIssueAgent).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ projectId: "sp3", worktree: false }),
   );
+});
+
+it("keeps the later project pick when an earlier overview preparation finishes last", async () => {
+  vi.mocked(api.updateKanbanIssue).mockResolvedValue(
+    issueUpdate({ project: { id: "sp1", name: "Soreno app" } }),
+  );
+  let finishOverview!: () => void;
+  const onPrepareProject = vi.fn((projectId: string) =>
+    projectId === "sp2"
+      ? new Promise<void>((resolve) => (finishOverview = resolve))
+      : Promise.resolve(),
+  );
+  await remountBoard({
+    kanbanProjects: sorenoProjects,
+    onPrepareProject,
+    projects: sorenoProjects,
+  });
+  await tapCard();
+
+  await chooseOption(agentSelect("Project"), "Website");
+  await chooseOption(agentSelect("Project"), "Soreno app");
+  await act(async () => finishOverview());
+
+  expect(onPrepareProject).toHaveBeenCalledWith("sp2");
+  expect(api.updateKanbanIssue).toHaveBeenCalledExactlyOnceWith("local", "i1", {
+    projectId: "sp1",
+  });
 });
 
 it("keeps the form and reports the error when starting the agent fails", async () => {

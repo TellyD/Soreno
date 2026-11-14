@@ -418,6 +418,7 @@ export function KanbanIssueContent({
             <div className="kanban-issue-project-row">
               <KanbanProjectSelect
                 onChange={(project) => onUpdateIssue(boardIssue, { project })}
+                overviewProjectIds={overviewProjectIds}
                 projects={kanbanProjects}
                 value={knownProject ?? boardIssue.project}
               />

@@ -127,6 +127,8 @@ type KanbanControllerOptions = {
   // The board or an issue panel is on screen; Linear refreshes only then.
   visible: boolean;
   onOpenProject: (projectId: string) => void;
+  // Gives an unopened group overview its project before an issue points at it.
+  onPrepareProject: (projectId: string) => Promise<void>;
   onOpenSession: (sessionId: string) => void;
   // Runs once the issue is deleted; its agent session link is gone with it.
   onIssueDeleted?: (issueId: string) => void;
@@ -163,6 +165,7 @@ export function useKanbanController({
   terminalTitles,
   visible,
   onOpenProject,
+  onPrepareProject,
   onOpenSession,
   onIssueDeleted,
   onIssueTransferred,
@@ -476,7 +479,7 @@ export function useKanbanController({
     setAgentPrompt(null);
   }
   // Moving an issue into the in-progress column offers to start its agent, without waiting for the save.
-  const moveBoardIssue = useCallback(
+  const applyBoardIssue = useCallback(
     (issue: KanbanIssue, patch: KanbanIssuePatch) => {
       const states = (issue.source === "linear" ? linear : board)?.states ?? [];
       const target = states.find(({ id }) => id === patch.stateId);
@@ -510,6 +513,34 @@ export function useKanbanController({
       updateBoardIssue,
       updateIssue,
     ],
+  );
+  // Latest project pick per issue: a slower overview preparation must not overwrite a later pick.
+  // shortcut: the picker still shows the old project while an overview prepares, so reselecting it does not cancel the pending pick; show the pending pick if users hit it.
+  const projectPicksRef = useRef(new Map<string, KanbanIssuePatch>());
+  const moveBoardIssue = useCallback(
+    (issue: KanbanIssue, patch: KanbanIssuePatch) => {
+      const picks = projectPicksRef.current;
+      const projectId = patch.project?.id;
+      if (!projectId || projectId === issue.project?.id) {
+        if ("project" in patch) picks.delete(issue.id);
+        applyBoardIssue(issue, patch);
+        return;
+      }
+      picks.set(issue.id, patch);
+      onPrepareProject(projectId).then(
+        () => {
+          if (picks.get(issue.id) !== patch) return;
+          picks.delete(issue.id);
+          applyBoardIssue(issue, patch);
+        },
+        (error: unknown) => {
+          if (picks.get(issue.id) !== patch) return;
+          picks.delete(issue.id);
+          notifyError(formatError(error));
+        },
+      );
+    },
+    [applyBoardIssue, formatError, onPrepareProject],
   );
   const dismissAgentPrompt = useCallback(() => setAgentPrompt(null), []);
   const confirmAgentPrompt = useCallback(() => {
@@ -559,6 +590,7 @@ export function useKanbanController({
       creatingRef.current = true;
       let issue: KanbanIssue;
       try {
+        if (input.projectId) await onPrepareProject(input.projectId);
         issue = await createIssue(source, input);
       } finally {
         creatingRef.current = false;
@@ -572,7 +604,7 @@ export function useKanbanController({
       if (agent) void startBoardIssueAgent(issue, agent);
       return issue;
     },
-    [createIssue, startBoardIssueAgent],
+    [createIssue, onPrepareProject, startBoardIssueAgent],
   );
 
   // Takes a session started without an issue onto it, as if the agent had been started from it.
