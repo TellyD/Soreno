@@ -129,10 +129,11 @@
 .git-diff-editor .cm-content:focus-visible {
   outline: none;
 }
+/* Whole-pixel line height: fractional lines leave seams between clipped highlights. */
 .git-diff-editor .cm-scroller {
   overflow: auto;
   font:
-    13px/1.6 "SFMono-Regular",
+    13px/20px "SFMono-Regular",
     Consolas,
     "Liberation Mono",
     monospace;
@@ -156,13 +157,14 @@
 .git-diff-editor .cm-editor .cm-deletedChunk {
   background: color-mix(in srgb, var(--danger-text) 14%, transparent);
 }
+/* Opaque, pre-blended over the line tint: wrapped fragments overlap and would stack. */
 .git-diff-view
   .git-diff-editor
   .cm-editor.cm-merge-b
   .cm-content
   .cm-changedText {
   padding-block: 0.25em;
-  background: color-mix(in srgb, var(--success) 24%, transparent);
+  background: color-mix(in srgb, var(--success) 33%, var(--editor-bg));
 }
 .git-diff-view
   .git-diff-editor
@@ -176,7 +178,7 @@
   .cm-deletedChunk
   .cm-deletedText {
   padding-block: 0.25em;
-  background: color-mix(in srgb, var(--danger-text) 24%, transparent);
+  background: color-mix(in srgb, var(--danger-text) 35%, var(--editor-bg));
 }
 .git-diff-view
   .git-diff-editor
