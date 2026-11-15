@@ -346,6 +346,7 @@ export function AgentProjectForm({
   project,
   environment = { kind: "local", distribution: null },
   projects = [],
+  groups = [],
   hasSessions = false,
   groupLocked = false,
   linearLinkable = false,
@@ -358,6 +359,8 @@ export function AgentProjectForm({
   /** Preselected for a new project. */
   environment?: AgentEnvironment;
   projects?: AgentProject[];
+  /** Offered to a new project on the same machine. */
+  groups?: AgentProjectGroupRecord[];
   hasSessions?: boolean;
   groupLocked?: boolean;
   // Group and worktree projects cannot be linked to a Linear project.
@@ -366,6 +369,7 @@ export function AgentProjectForm({
   onSave: (
     project: AgentProject,
     linearProjectId: string | null,
+    groupId: string | null,
   ) => Promise<void>;
   onSaveMany: (
     projects: AgentProject[],
@@ -428,6 +432,30 @@ export function AgentProjectForm({
     linearProjectLinks.find((link) => link.projectId === draft.id)
       ?.linearProjectId ?? null;
   const [linearProjectId, setLinearProjectId] = useState(linkedLinearProjectId);
+  const [groupId, setGroupId] = useState<string | null>(null);
+  // Groups on another machine stay listed, disabled with their machine, so the field never vanishes.
+  // shortcut: a worktree added to a group other than its grouped repository's ends up with the repository's group once topology reconciles; resolve to the representative if users hit it.
+  const groupChoices =
+    project || batchSelection?.groupName
+      ? []
+      : groups.map((group) => {
+          const member = projects.find(
+            (item) =>
+              item.id === group.groupProjectId ||
+              group.projectIds.includes(item.id),
+          );
+          return {
+            group,
+            // shortcut: compares the raw SSH draft, so a host or user typed with surrounding spaces disables its group; normalize the draft if that shows up.
+            otherMachine:
+              member && !sameAgentMachine(member.environment, draft.environment)
+                ? agentEnvironmentLabel(member.environment, s.local)
+                : undefined,
+          };
+        });
+  const selectedGroup = groupChoices.find(
+    ({ group, otherMachine }) => group.id === groupId && !otherMachine,
+  )?.group;
   // Hidden until a Linear key is known to exist.
   const [linearChoices, setLinearChoices] = useState<
     | { status: "hidden" | "loading" | "error" }
@@ -617,12 +645,13 @@ export function AgentProjectForm({
         await onSave(
           selectedProjects[0],
           linearFieldVisible ? linearProjectId : linkedLinearProjectId,
+          selectedGroup?.id ?? null,
         );
       else
         await onSaveMany(
           selectedProjects,
-          batchSelection?.groupName ?? null,
-          batchGroupId,
+          selectedGroup?.name ?? batchSelection?.groupName ?? null,
+          selectedGroup?.id ?? batchGroupId,
         );
     } finally {
       operationInFlight.current = false;
@@ -665,6 +694,27 @@ export function AgentProjectForm({
           <p className="agent-form-hint">{s.projectLocked}</p>
         ) : groupLocked ? (
           <p className="agent-form-hint">{s.projectGroupLocked}</p>
+        ) : null}
+        {groupChoices.length ? (
+          <>
+            <label htmlFor={`${id}-group`}>{s.projectGroup}</label>
+            <Select
+              id={`${id}-group`}
+              aria-label={s.projectGroup}
+              disabled={busy}
+              value={selectedGroup?.id ?? ""}
+              options={[
+                { value: "", label: s.projectGroupNone },
+                ...groupChoices.map(({ group, otherMachine }) => ({
+                  value: group.id,
+                  label: group.name,
+                  hint: otherMachine,
+                  disabled: otherMachine !== undefined,
+                })),
+              ]}
+              onValueChange={(value) => setGroupId(value || null)}
+            />
+          </>
         ) : null}
         {draft.environment.kind !== "ssh" ? (
           <div className="agent-folder-row">

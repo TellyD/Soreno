@@ -1893,6 +1893,7 @@ export function AgentWorkspace({
   async function saveProject(
     project: AgentProject,
     linearProjectId: string | null,
+    groupId: string | null,
   ) {
     if (closing.current) return;
     const existingProject =
@@ -1903,8 +1904,21 @@ export function AgentWorkspace({
               agentProjectTargetKey(project.environment, project.path),
           )
         : undefined;
+    const group = projectGroups.find((item) => item.id === groupId);
     // The form reuses its generated id, so a match on that id is this form's own earlier save.
     if (existingProject && existingProject.id !== project.id) {
+      if (
+        group &&
+        !group.projectIds.includes(existingProject.id) &&
+        !(await execute(() =>
+          api.saveAgentProjectGroup({
+            id: group.id,
+            name: group.name,
+            projectIds: [...group.projectIds, existingProject.id],
+          }),
+        ))
+      )
+        return;
       if (await selectProject(existingProject)) setForm(null);
       return;
     }
@@ -1945,6 +1959,15 @@ export function AgentWorkspace({
         await saveWithLatestAppearance();
         if (linearProjectId !== currentLinearProjectId)
           await api.setAgentProjectLinearLink(project.id, linearProjectId);
+        if (group)
+          await api.saveAgentProjectGroup({
+            id: group.id,
+            name: group.name,
+            projectIds: [
+              ...group.projectIds.filter((id) => id !== project.id),
+              project.id,
+            ],
+          });
       })
     ) {
       rememberSshConnection(project.environment);
@@ -1982,12 +2005,20 @@ export function AgentWorkspace({
       await execute(async () => {
         for (const project of selectedProjects)
           if (!existingIds.has(project.id)) await api.saveAgentProject(project);
-        if (groupName)
+        if (groupName) {
+          const projectIds = selectedProjects.map((project) => project.id);
+          // An existing group keeps its members; a project grouped elsewhere moves here.
+          const members =
+            projectGroups.find((item) => item.id === groupId)?.projectIds ?? [];
           await api.saveAgentProjectGroup({
             id: groupId,
             name: groupName,
-            projectIds: selectedProjects.map((project) => project.id),
+            projectIds: [
+              ...members.filter((id) => !projectIds.includes(id)),
+              ...projectIds,
+            ],
           });
+        }
       })
     ) {
       rememberSshConnection(selectedProjects[0].environment);
@@ -3651,6 +3682,7 @@ export function AgentWorkspace({
                 project={form.project}
                 environment={form.environment}
                 projects={workspace.projects}
+                groups={projectGroups}
                 hasSessions={fullWorkspace.sessions.some(
                   (session) => session.projectId === form.project?.id,
                 )}

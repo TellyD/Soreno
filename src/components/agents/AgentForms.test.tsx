@@ -337,6 +337,7 @@ it("selects a local folder exactly, suggests a blank name, restores focus, and n
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ name: "source", path: "/tmp/source  " }),
     null,
+    null,
   );
 });
 
@@ -356,6 +357,7 @@ it("keeps a project's appearance when renaming it", async () => {
   await click("Enregistrer");
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ name: "Renommé", ...appearance }),
+    null,
     null,
   );
 });
@@ -378,6 +380,7 @@ it("switches a local picker result to WSL and saves its Linux path", async () =>
       path: "/home/user/Projects/Example",
       environment,
     }),
+    null,
     null,
   );
 });
@@ -426,6 +429,7 @@ it("links a project to a Linear project only once a Linear key exists", async ()
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ id: "p1", path: "/fixed" }),
     "linear-alpha",
+    null,
   );
 });
 
@@ -560,6 +564,7 @@ it("replaces a picker error with path validation and clears it once valid", asyn
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ path: "/valid" }),
     null,
+    null,
   );
 });
 
@@ -628,6 +633,7 @@ it("locks environment and folder for projects with sessions but still permits re
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ name: "New", path: "/fixed" }),
     null,
+    null,
   );
   expect(api.pickAgentProjectDirectory).not.toHaveBeenCalled();
 });
@@ -681,6 +687,7 @@ it("saves visible SSH settings", async () => {
   await click("Enregistrer");
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ environment: sshProject.environment }),
+    null,
     null,
   );
 
@@ -766,6 +773,7 @@ it("derives a new SSH project name from its selected folder", async () => {
 
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ name: "mode", path: "/home/mode" }),
+    null,
     null,
   );
 });
@@ -1328,6 +1336,7 @@ it("unpins trust when the SSH target changes and blocks save or environment race
       }),
     }),
     null,
+    null,
   );
 });
 
@@ -1385,6 +1394,7 @@ it("updates SSH authentication for an existing project while its sessions lock t
         },
       },
     }),
+    null,
     null,
   );
 });

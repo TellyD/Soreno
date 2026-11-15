@@ -76,6 +76,8 @@ const en = {
     `${count} active agent${count > 1 ? "s" : ""}`,
   projectGroupLocked:
     "Remove this project from its group to change its machine.",
+  projectGroup: "Group",
+  projectGroupNone: "None",
   deleteGroupTitle: (name: string) => `Delete the group “${name}”?`,
   deleteGroupDescription:
     "Overview sessions and their conversations will be deleted. The group’s projects are kept.",
@@ -645,6 +647,8 @@ const fr: typeof en = {
     `${count} agent${count > 1 ? "s" : ""} actif${count > 1 ? "s" : ""}`,
   projectGroupLocked:
     "Retirez d’abord ce projet du groupe pour changer sa machine.",
+  projectGroup: "Groupe",
+  projectGroupNone: "Aucun",
   deleteGroupTitle: (name: string) => `Supprimer le groupe « ${name} » ?`,
   deleteGroupDescription:
     "Les sessions de la vue d’ensemble et leurs conversations seront supprimées. Les projets du groupe sont conservés.",

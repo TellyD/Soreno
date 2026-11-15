@@ -173,6 +173,104 @@ it("saves a distinct WSL project whose path ends with a backslash", async () => 
   );
 });
 
+it("adds a new project to an existing group on its machine", async () => {
+  data.projects.push({
+    ...project,
+    id: "remote",
+    name: "Remote",
+    path: "/srv/remote",
+    environment: {
+      kind: "ssh",
+      distribution: null,
+      ssh: {
+        host: "dev.example",
+        user: null,
+        port: null,
+        identityFile: null,
+        hostKey: null,
+      },
+    },
+  });
+  data.groups = [
+    { id: "local", name: "Local", projectIds: ["p1"], groupProjectId: null },
+    {
+      id: "ssh",
+      name: "Servers",
+      projectIds: ["remote"],
+      groupProjectId: null,
+    },
+  ];
+  vi.mocked(api.pickAgentProjectDirectory).mockResolvedValue({
+    path: "/projects/new",
+    suggestedName: "new",
+    environment: project.environment,
+  });
+
+  await render();
+  await addProject("Ajouter un projet");
+  await click("Choisir un dossier…", dialog());
+  await click("Groupe", dialog());
+  // The other machine's group stays visible but cannot be chosen.
+  expect(
+    [...document.querySelectorAll('[role="option"]')]
+      .filter((option) => option.getAttribute("aria-disabled") !== "true")
+      .map((option) => option.textContent),
+  ).toEqual(["Aucun", "Local"]);
+  expect(document.querySelectorAll('[role="option"]')).toHaveLength(3);
+  await chooseOption("Local");
+  await click("Enregistrer", dialog());
+
+  await vi.waitFor(() => expect(dialog()).toBeNull());
+  const saved = vi.mocked(api.saveAgentProject).mock.calls[0][0];
+  expect(api.saveAgentProjectGroup).toHaveBeenCalledExactlyOnceWith({
+    id: "local",
+    name: "Local",
+    projectIds: ["p1", saved.id],
+  });
+});
+
+it("adds an existing project picked again to the chosen group", async () => {
+  data.projects.push({
+    ...project,
+    id: "p2",
+    name: "Other",
+    path: "/projects/other",
+  });
+  data.groups = [
+    { id: "local", name: "Local", projectIds: ["p1"], groupProjectId: null },
+  ];
+  vi.mocked(api.pickAgentProjectDirectory).mockResolvedValue({
+    path: "/projects/other",
+    suggestedName: "other",
+    environment: project.environment,
+  });
+
+  await render();
+  await addProject("Ajouter un projet");
+  await click("Choisir un dossier…", dialog());
+  await click("Groupe", dialog());
+  await chooseOption("Local");
+  await click("Enregistrer", dialog());
+
+  await vi.waitFor(() => expect(dialog()).toBeNull());
+  expect(api.saveAgentProjectGroup).toHaveBeenCalledExactlyOnceWith({
+    id: "local",
+    name: "Local",
+    projectIds: ["p1", "p2"],
+  });
+  expect(api.saveAgentProject).not.toHaveBeenCalled();
+});
+
+async function chooseOption(name: string) {
+  const option = [
+    ...document.querySelectorAll<HTMLElement>('[role="option"]'),
+  ].find((item) => item.textContent === name)!;
+  await act(async () => {
+    option.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    option.click();
+  });
+}
+
 it("uses the live project branch for an expanded worktree row", async () => {
   vi.mocked(api.listAgentBranches).mockResolvedValue([
     { projectId: "p1", branch: "feature" },
