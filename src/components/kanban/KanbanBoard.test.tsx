@@ -447,7 +447,9 @@ it("opens a tapped card in the side panel beside the board, then closes it", asy
   const column = container.querySelector<HTMLElement>(".kanban-column-body")!;
   await act(async () => cardButton().click());
   await act(async () =>
-    container.querySelector<HTMLButtonElement>(".kanban-board-tabs button")!.click(),
+    container
+      .querySelector<HTMLButtonElement>(".kanban-board-tabs button")!
+      .click(),
   );
   expect(detailView()).not.toBeNull();
   await act(async () => column.click());
