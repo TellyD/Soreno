@@ -47,7 +47,6 @@ import {
 
 export type MarkdownEditorHandle = {
   focus: () => void;
-  requestImage: () => void;
 };
 
 export type MarkdownEditorProps = {
@@ -243,7 +242,6 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     props.ref,
     () => ({
       focus: () => viewRef.current?.focus(),
-      requestImage: () => requestImage.current(),
     }),
     [],
   );

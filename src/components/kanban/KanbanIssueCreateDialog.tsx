@@ -1,4 +1,4 @@
-import { ImagePlus, LoaderCircle, X } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import { useId, useRef, useState, type RefObject } from "react";
 import { uploadKanbanImage } from "../../data/kanbanApi";
 import {
@@ -461,17 +461,6 @@ export function KanbanIssueCreateDialog({
           ) : null}
 
           <footer className="kanban-create-footer">
-            <IconButton
-              aria-label={t("kanban.create.addImage")}
-              // Without the agent toggle, the image button keeps the footer's start.
-              className={forSession ? "kanban-create-footer-start" : undefined}
-              disabled={creating}
-              onClick={() => editorRef.current?.requestImage()}
-              size="small"
-              title={t("kanban.create.addImage")}
-            >
-              <ImagePlus size={14} />
-            </IconButton>
             {forSession ? null : (
               <>
                 <label

@@ -166,7 +166,6 @@ export const en = {
   "kanban.attach.noMatch": "No matching issue.",
   "kanban.attach.search": "Search issues",
   "kanban.attach.title": "Link an issue",
-  "kanban.create.addImage": "Add images",
   "kanban.create.agent": "Start an agent",
   "kanban.create.agentUnavailable": "Add a Soreno project to start an agent",
   "kanban.create.close": "Close",
