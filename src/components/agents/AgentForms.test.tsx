@@ -94,6 +94,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   clearNotifications();
+  localStorage.clear();
   container.remove();
   vi.resetAllMocks();
   vi.restoreAllMocks();
@@ -180,8 +181,24 @@ async function input(label: string, value: string) {
 async function click(text: string) {
   await act(async () => button(text).click());
 }
+function environmentButtons() {
+  return [
+    ...document.querySelectorAll<HTMLButtonElement>(
+      '[aria-label="Environnement"] button',
+    ),
+  ];
+}
+function selectedEnvironment() {
+  return environmentButtons().find(
+    (item) => item.getAttribute("aria-pressed") === "true",
+  )?.textContent;
+}
 async function choose(option: string) {
-  await chooseField("Environnement", option);
+  await act(async () =>
+    environmentButtons()
+      .find((item) => item.textContent === option)!
+      .click(),
+  );
 }
 async function chooseField(label: string, option: string) {
   const select = field(label) as unknown as HTMLSelectElement;
@@ -196,10 +213,8 @@ async function chooseField(label: string, option: string) {
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
 }
-function environmentControl() {
-  return document.querySelector<HTMLSelectElement>(
-    '[aria-label="Environnement"]',
-  )!;
+function environmentDisabled() {
+  return environmentButtons().every((item) => item.disabled);
 }
 function selectedPath() {
   return (
@@ -354,7 +369,8 @@ it("switches a local picker result to WSL and saves its Linux path", async () =>
   });
   await render();
   await click("Choisir un dossier…");
-  expect(environmentControl().value).toBe("wsl:Ubuntu-24.04");
+  expect(selectedEnvironment()).toBe("WSL");
+  expect(field("Distribution").value).toBe("wsl:Ubuntu-24.04");
   expect(selectedPath()).toBe("/home/user/Projects/Example");
   await click("Enregistrer");
   expect(onSave).toHaveBeenCalledWith(
@@ -467,7 +483,7 @@ it("uses the selected WSL environment for folder selection", async () => {
     environment: { kind: "wsl", distribution: "Ubuntu" },
   });
   await render({ ...localProject, name: "Projet", path: "/old" });
-  await choose("WSL · Ubuntu");
+  await choose("WSL");
   expect(selectedPath()).toBe("");
   await click("Choisir un dossier…");
   expect(api.pickAgentProjectDirectory).toHaveBeenCalledWith(
@@ -486,11 +502,13 @@ it("clears a selected path only when environment or WSL distribution really chan
   await render({ ...localProject, name: "Projet", path: "/keep" });
   await choose("Local");
   expect(selectedPath()).toBe("/keep");
-  await choose("WSL · Ubuntu");
+  await choose("WSL");
   expect(selectedPath()).toBe("");
   await click("Choisir un dossier…");
   expect(selectedPath()).toBe("/ubuntu");
-  await choose("WSL · Debian");
+  await choose("WSL");
+  expect(selectedPath()).toBe("/ubuntu");
+  await chooseField("Distribution", "Debian");
   expect(selectedPath()).toBe("");
   expect(field("Nom affiché").value).toBe("Projet");
 });
@@ -556,12 +574,9 @@ it("synchronously blocks duplicate picking, submit, close, Escape, outside click
       .querySelector("form")!
       .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     button("Annuler").click();
-    const environment = environmentControl();
-    Object.getOwnPropertyDescriptor(
-      HTMLSelectElement.prototype,
-      "value",
-    )!.set!.call(environment, "wsl:Ubuntu");
-    environment.dispatchEvent(new Event("change", { bubbles: true }));
+    environmentButtons()
+      .find((item) => item.textContent === "WSL")!
+      .click();
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
     );
@@ -572,9 +587,9 @@ it("synchronously blocks duplicate picking, submit, close, Escape, outside click
   expect(api.pickAgentProjectDirectory).toHaveBeenCalledTimes(1);
   expect(onSave).not.toHaveBeenCalled();
   expect(onCancel).not.toHaveBeenCalled();
-  expect(environmentControl().disabled).toBe(true);
+  expect(environmentDisabled()).toBe(true);
   expect(button("Enregistrer").disabled).toBe(true);
-  expect(environmentControl().value).toBe("local");
+  expect(selectedEnvironment()).toBe("Local");
   expect(button("Sélection du dossier…").disabled).toBe(true);
   await act(async () =>
     pending.resolve({
@@ -605,7 +620,7 @@ it("ignores a picker resolution after unmount", async () => {
 
 it("locks environment and folder for projects with sessions but still permits renaming", async () => {
   await render({ ...localProject, name: "Old", path: "/fixed" }, true);
-  expect(environmentControl().disabled).toBe(true);
+  expect(environmentDisabled()).toBe(true);
   expect(button("Choisir un dossier…").disabled).toBe(true);
   expect(selectedPath()).toBe("/fixed");
   await input("Nom affiché", "  New  ");
@@ -1229,10 +1244,35 @@ it("keeps the host field while typing a host matching a project connection", asy
     },
   ]);
   await choose("SSH");
+  await chooseField("Connexion SSH", "Nouvelle connexion SSH");
   await input("Hôte ou alias OpenSSH", "prod");
   expect(container.textContent).toContain("Hôte ou alias OpenSSH");
   await input("Hôte ou alias OpenSSH", "prod-backup");
   expect(field("Hôte ou alias OpenSSH").value).toBe("prod-backup");
+});
+
+it("preselects the first known SSH connection for a new project without a folder", async () => {
+  const remote = (id: string): AgentProject => ({
+    id,
+    name: id,
+    path: `/srv/${id}`,
+    environment: {
+      kind: "ssh",
+      distribution: null,
+      ssh: {
+        host: `${id}.example`,
+        user: null,
+        port: null,
+        identityFile: null,
+        hostKey: null,
+      },
+    },
+  });
+  const projects = [remote("alpha"), remote("beta")];
+  await render(null, false, projects);
+  await choose("SSH");
+  expect(field("Connexion SSH").value).toBe("project:alpha");
+  expect(selectedPath()).toBe("");
 });
 
 it("unpins trust when the SSH target changes and blocks save or environment races during a request", async () => {
@@ -1266,15 +1306,12 @@ it("unpins trust when the SSH target changes and blocks save or environment race
     document
       .querySelector("form")!
       .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-    const environment = environmentControl();
-    Object.getOwnPropertyDescriptor(
-      HTMLSelectElement.prototype,
-      "value",
-    )!.set!.call(environment, "local");
-    environment.dispatchEvent(new Event("change", { bubbles: true }));
+    environmentButtons()
+      .find((item) => item.textContent === "Local")!
+      .click();
   });
   expect(onSave).not.toHaveBeenCalled();
-  expect(environmentControl().value).toBe("ssh");
+  expect(selectedEnvironment()).toBe("SSH");
   await act(async () =>
     pending.resolve({
       path: "/srv/app",

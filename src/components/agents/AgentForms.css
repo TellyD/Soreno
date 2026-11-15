@@ -160,7 +160,8 @@
   gap: 8px;
   min-width: 0;
 }
-.agent-folder-row .app-input {
+.agent-folder-row .app-input,
+.agent-folder-row .app-select {
   flex: 1;
   min-width: 0;
 }

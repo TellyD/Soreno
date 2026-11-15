@@ -99,7 +99,11 @@ export function GitCloneForm({
 
   function changeEnvironment(value: string) {
     if (requestInFlight()) return;
-    const environment = selectedAgentEnvironment(value, draft.environment);
+    const environment = selectedAgentEnvironment(
+      value,
+      draft.environment,
+      projects,
+    );
     const changed =
       environment.kind !== draft.environment.kind ||
       environment.distribution !== draft.environment.distribution;

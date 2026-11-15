@@ -21,8 +21,10 @@ import {
 } from "../../data/agentSessionsApi";
 import {
   compareByName,
+  agentEnvironmentKey,
   agentEnvironmentLabel,
   agentProjectNameFromPath,
+  type AgentEnvironment,
   type AgentProject,
   type SshBrowseResult,
   type SshConnection,
@@ -45,6 +47,31 @@ export const emptySshConnection = (): SshConnection => ({
   identityFile: null,
   hostKey: null,
 });
+
+const lastSshConnectionStorageKey = "soreno:last-ssh-connection";
+
+export function rememberSshConnection(environment: AgentEnvironment) {
+  if (environment.kind === "ssh")
+    localStorage.setItem(
+      lastSshConnectionStorageKey,
+      agentEnvironmentKey(environment),
+    );
+}
+
+/** The last saved SSH connection still used by a project, else the first known one. */
+export function lastSshConnection(projects: AgentProject[]): SshConnection {
+  const stored = localStorage.getItem(lastSshConnectionStorageKey);
+  const known = projects.filter(
+    (project) =>
+      project.environment.kind === "ssh" && project.environment.ssh?.host,
+  );
+  const ssh = (
+    known.find(
+      (project) => agentEnvironmentKey(project.environment) === stored,
+    ) ?? known[0]
+  )?.environment.ssh;
+  return ssh ? { ...ssh } : emptySshConnection();
+}
 
 export function normalizedConnection(connection: SshConnection): SshConnection {
   return {
@@ -508,33 +535,32 @@ export function SshProjectFields({
       {sshProjects.length ? (
         <>
           <label htmlFor={`${id}-ssh-connection`}>{s.sshConnection}</label>
-          <Select
-            id={`${id}-ssh-connection`}
-            value={connectionValue}
-            disabled={disabled || targetLocked}
-            options={[
-              { value: "new", label: s.sshNewConnection },
-              ...sshProjects.map((project) => ({
-                value: `project:${project.id}`,
-                label: `${project.name} · ${agentEnvironmentLabel(project.environment).replace("SSH · ", "")}`,
-              })),
-            ]}
-            onValueChange={(value) => {
-              if (interactionLockRef.current || disabled || targetLocked)
-                return;
-              const selected = sshProjects.find(
-                (project) => value === `project:${project.id}`,
-              )?.environment.ssh;
-              change(selected ? { ...selected } : emptySshConnection(), true);
-              setEditingConnection(false);
-              onPathChange("");
-            }}
-          />
-          {showDetails ? null : (
-            <div className="agent-ssh-actions">
+          <div className="agent-folder-row">
+            <Select
+              id={`${id}-ssh-connection`}
+              value={connectionValue}
+              disabled={disabled || targetLocked}
+              options={[
+                { value: "new", label: s.sshNewConnection },
+                ...sshProjects.map((project) => ({
+                  value: `project:${project.id}`,
+                  label: `${project.name} · ${agentEnvironmentLabel(project.environment).replace("SSH · ", "")}`,
+                })),
+              ]}
+              onValueChange={(value) => {
+                if (interactionLockRef.current || disabled || targetLocked)
+                  return;
+                const selected = sshProjects.find(
+                  (project) => value === `project:${project.id}`,
+                )?.environment.ssh;
+                change(selected ? { ...selected } : emptySshConnection(), true);
+                setEditingConnection(false);
+                onPathChange("");
+              }}
+            />
+            {showDetails ? null : (
               <Button
                 startIcon={<Pencil />}
-                size="small"
                 disabled={disabled}
                 onClick={() => {
                   focusConnection.current = true;
@@ -543,8 +569,8 @@ export function SshProjectFields({
               >
                 {s.sshEditConnection}
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </>
       ) : null}
       {showDetails ? (

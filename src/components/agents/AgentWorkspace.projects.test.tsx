@@ -2,6 +2,8 @@
 import { act } from "react";
 import { expect, it, vi } from "vitest";
 import {
+  addProject,
+  field,
   runtime,
   container,
   gitPanelContainer,
@@ -2059,6 +2061,48 @@ it("guards edits to the displayed fallback project instead of the stale stored s
 
   expect(runtime.projectNavigationPrepare).toHaveBeenCalledOnce();
   expect(api.saveAgentProject).not.toHaveBeenCalled();
+});
+
+it("remembers an SSH connection only after the project save succeeds", async () => {
+  const remote = (id: string, name: string) => ({
+    id,
+    name,
+    path: `/srv/${id}`,
+    environment: {
+      kind: "ssh" as const,
+      distribution: null,
+      ssh: {
+        host: `${id}.example`,
+        user: null,
+        port: null,
+        identityFile: null,
+        hostKey: null,
+      },
+    },
+  });
+  data.projects = [remote("alpha", "Alpha"), remote("beta", "Beta")];
+  data.sessions = [];
+  data.statuses = [];
+  await render();
+  const preselected = async () => {
+    await addProject("Ajouter un projet");
+    await click("SSH", dialog());
+    const value = field("Connexion SSH").textContent;
+    await click("Annuler", dialog());
+    return value;
+  };
+
+  await action("Beta", "Modifier le projet");
+  await click("Enregistrer", dialog());
+  expect(await preselected()).toBe("Beta · beta.example");
+
+  vi.mocked(api.saveAgentProject).mockRejectedValueOnce(
+    new Error("Save failed"),
+  );
+  await action("Alpha", "Modifier le projet");
+  await click("Enregistrer", dialog());
+  await click("Annuler", dialog());
+  expect(await preselected()).toBe("Beta · beta.example");
 });
 
 it("guards deletion of the displayed fallback project instead of the stale stored selection", async () => {

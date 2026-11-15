@@ -381,7 +381,10 @@ export function AgentProjectForm({
         id: crypto.randomUUID(),
         name: "",
         path: "",
-        environment,
+        environment:
+          environment.kind === "ssh"
+            ? selectedAgentEnvironment("ssh", environment, projects)
+            : environment,
       },
   );
   const [batchSelection, setBatchSelection] = useState<{
@@ -508,7 +511,11 @@ export function AgentProjectForm({
         ];
   function changeEnvironment(value: string) {
     if (operationInFlight.current) return;
-    const environment = selectedAgentEnvironment(value, draft.environment);
+    const environment = selectedAgentEnvironment(
+      value,
+      draft.environment,
+      projects,
+    );
     const changed =
       environment.kind !== draft.environment.kind ||
       environment.distribution !== draft.environment.distribution;

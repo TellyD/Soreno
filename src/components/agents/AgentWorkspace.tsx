@@ -112,6 +112,7 @@ import {
   type SshTransition,
 } from "./AgentSshStatusControl";
 import { NewSessionMenu } from "./AgentWorkspaceMenus";
+import { rememberSshConnection } from "./SshProjectFields";
 import {
   confirmationDialogText,
   groupDeletionProjectIds,
@@ -1946,6 +1947,7 @@ export function AgentWorkspace({
           await api.setAgentProjectLinearLink(project.id, linearProjectId);
       })
     ) {
+      rememberSshConnection(project.environment);
       if (
         form?.kind === "project" &&
         !form.project &&
@@ -1988,6 +1990,7 @@ export function AgentWorkspace({
           });
       })
     ) {
+      rememberSshConnection(selectedProjects[0].environment);
       const firstProject = selectedProjects[0];
       if (await prepareProjectNavigation(firstProject.id))
         showProject(firstProject.id);
@@ -2170,6 +2173,7 @@ export function AgentWorkspace({
       }
     });
     if (result.cloned) {
+      rememberSshConnection(result.cloned.environment);
       if (succeeded && (await prepareProjectNavigation(result.cloned.id)))
         showProject(result.cloned.id);
       setForm(null);
@@ -2257,6 +2261,7 @@ export function AgentWorkspace({
       environment: recovery.request.environment,
       path: recovery.path,
     };
+    // shortcut: does not update the last SSH connection; call rememberSshConnection here if preserved SSH clones become common.
     if (await execute(() => api.saveAgentProject(project))) {
       if (await prepareProjectNavigation(project.id)) showProject(project.id);
       setForm(null);

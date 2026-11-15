@@ -16,7 +16,6 @@ import {
   click,
   dialog,
   input,
-  choose,
   context,
   action,
   escape,
@@ -828,7 +827,7 @@ it("reuses batch IDs after reload failure and closes when navigation is refused"
   document.body.append(gitPanelContainer);
   await render(false, null, gitPanelContainer);
   await addProject("Ajouter un projet");
-  await choose("Environnement", "SSH");
+  await click("SSH", dialog());
   await input("Hôte ou alias OpenSSH", "server.example");
   await click("Choisir un dossier…", dialog());
   await act(async () =>
@@ -1052,17 +1051,17 @@ it("keeps a clone failure path and opens it as a project without cloning again",
   expect(button("repo").getAttribute("aria-current")).toBe("page");
 });
 
-it("keeps the environment label stable and usable during discovery", async () => {
+it("keeps the environment control usable during discovery", async () => {
   const discovery = deferred<AgentEnvironments>();
   vi.mocked(api.discoverAgentEnvironments).mockReturnValueOnce(
     discovery.promise,
   );
   await render();
   await addProject("Ajouter un projet");
-  const environment = button("Environnement", dialog());
-  expect(environment.textContent).toBe("Local");
+  const environment = dialog().querySelector('[aria-label="Environnement"]')!;
+  expect(button("Local", dialog()).getAttribute("aria-pressed")).toBe("true");
   expect(environment.getAttribute("aria-busy")).toBe("true");
-  expect(environment.disabled).toBe(false);
+  expect(button("SSH", dialog()).disabled).toBe(false);
   await act(async () =>
     discovery.resolve({
       localLabel: "Windows",
@@ -1070,10 +1069,9 @@ it("keeps the environment label stable and usable during discovery", async () =>
       wslError: null,
     }),
   );
-  expect(environment.textContent).toBe("Local");
   expect(environment.getAttribute("aria-busy")).toBe("false");
-  await choose("Environnement", "WSL · Ubuntu");
-  expect(environment.textContent).toBe("WSL · Ubuntu");
+  await click("WSL", dialog());
+  expect(button("WSL", dialog()).getAttribute("aria-pressed")).toBe("true");
 });
 
 it("customizes the sidebar icon from the row menu: reset to the folder, then catalog picks", async () => {
@@ -1273,7 +1271,7 @@ it("creates a WSL project with the small plus and locks existing project paths w
   await render();
   await click("Pi notes");
   await action("Soreno", "Modifier le projet");
-  expect(button("Environnement", dialog()).disabled).toBe(true);
+  expect(button("Local", dialog()).disabled).toBe(true);
   expect(button("Choisir un dossier…", dialog()).disabled).toBe(true);
   await input("Nom affiché", "Renamed");
   await click("Enregistrer", dialog());
@@ -1287,7 +1285,7 @@ it("creates a WSL project with the small plus and locks existing project paths w
   });
   await addProject("Ajouter un projet");
   await input("Nom affiché", "Sandbox");
-  await choose("Environnement", "WSL · Ubuntu");
+  await click("WSL", dialog());
   await click("Choisir un dossier…", dialog());
   await click("Enregistrer", dialog());
   expect(api.saveAgentProject).toHaveBeenLastCalledWith(
