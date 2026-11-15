@@ -22,7 +22,10 @@ function placeIndicator(control: HTMLElement, animate: boolean) {
   if (!animate) delete control.dataset.animated;
   const item = control.querySelector<HTMLElement>(selectedItemSelector);
   if (item) {
-    control.style.setProperty("--segmented-indicator-x", `${item.offsetLeft}px`);
+    control.style.setProperty(
+      "--segmented-indicator-x",
+      `${item.offsetLeft}px`,
+    );
     control.style.setProperty(
       "--segmented-indicator-width",
       `${item.offsetWidth}px`,
