@@ -1186,6 +1186,10 @@ it("reuses a project SSH connection to browse known_hosts and clone without mand
     "Connexion SSH",
     "Build server · builder@build.example:2222",
   );
+  expect(container.textContent).not.toContain("Hôte ou alias OpenSSH");
+  await click("Modifier la connexion");
+  expect(document.activeElement).toBe(field("Hôte ou alias OpenSSH"));
+  expect(field("Hôte ou alias OpenSSH").value).toBe("build.example");
   await click("Choisir un dossier…");
   expect(api.scanAgentSshHost).not.toHaveBeenCalled();
   expect(api.browseAgentSsh).toHaveBeenCalledWith(connection, null);
@@ -1203,6 +1207,32 @@ it("reuses a project SSH connection to browse known_hosts and clone without mand
     folderName: "app",
     url: "ssh://git.example/app.git",
   });
+});
+
+it("keeps the host field while typing a host matching a project connection", async () => {
+  await renderClone([
+    {
+      id: "prod",
+      name: "Prod",
+      path: "/srv/prod",
+      environment: {
+        kind: "ssh",
+        distribution: null,
+        ssh: {
+          host: "prod",
+          user: null,
+          port: null,
+          identityFile: null,
+          hostKey: null,
+        },
+      },
+    },
+  ]);
+  await choose("SSH");
+  await input("Hôte ou alias OpenSSH", "prod");
+  expect(container.textContent).toContain("Hôte ou alias OpenSSH");
+  await input("Hôte ou alias OpenSSH", "prod-backup");
+  expect(field("Hôte ou alias OpenSSH").value).toBe("prod-backup");
 });
 
 it("unpins trust when the SSH target changes and blocks save or environment races during a request", async () => {

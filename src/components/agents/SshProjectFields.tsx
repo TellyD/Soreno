@@ -4,6 +4,7 @@ import {
   FolderOpen,
   FolderUp,
   KeyRound,
+  Pencil,
 } from "lucide-react";
 import {
   useEffect,
@@ -173,12 +174,14 @@ export function SshProjectFields({
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [groupProjects, setGroupProjects] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [editingConnection, setEditingConnection] = useState(false);
   const connectionRef = useRef(connection);
   connectionRef.current = connection;
   const mounted = useRef(false);
   const identityInput = useRef<HTMLInputElement>(null);
   const browseStartPath = useRef(path);
   const restoreIdentityFocus = useRef(false);
+  const focusConnection = useRef(false);
   const restoreBrowserFocus = useRef(false);
   const restoreTrustFocus = useRef<"browse" | "recheck" | null>(null);
   const renderedConnectionKey = connectionKey(connection);
@@ -219,6 +222,13 @@ export function SshProjectFields({
   useEffect(() => {
     if (trustPrompt) document.getElementById(`${id}-ssh-trust`)?.focus();
   }, [id, trustPrompt]);
+  useEffect(() => {
+    if (!editingConnection || !focusConnection.current) return;
+    focusConnection.current = false;
+    document
+      .getElementById(`${id}-ssh-${targetLocked ? "identity" : "host"}`)
+      ?.focus();
+  }, [editingConnection, id, targetLocked]);
   const sshProjects = useMemo(() => {
     const seen = new Set<string>();
     return projects
@@ -250,6 +260,8 @@ export function SshProjectFields({
   function change(next: SshConnection, reset = false, unpin = false) {
     if (interactionLockRef.current || disabled) return;
     applyChange(next, reset, unpin);
+    // Typing a value that matches a saved project must not collapse the focused field.
+    setEditingConnection(true);
   }
   function changeTarget(next: SshConnection) {
     if (targetLocked || interactionLockRef.current || disabled) return;
@@ -480,6 +492,7 @@ export function SshProjectFields({
   const connectionValue = selectedProject
     ? `project:${selectedProject.id}`
     : "new";
+  const showDetails = !selectedProject || editingConnection;
   let trustTarget = "";
   if (trustPrompt) {
     const { user, host, port } = trustPrompt.connection;
@@ -513,100 +526,122 @@ export function SshProjectFields({
                 (project) => value === `project:${project.id}`,
               )?.environment.ssh;
               change(selected ? { ...selected } : emptySshConnection(), true);
+              setEditingConnection(false);
               onPathChange("");
             }}
           />
+          {showDetails ? null : (
+            <div className="agent-ssh-actions">
+              <Button
+                startIcon={<Pencil />}
+                size="small"
+                disabled={disabled}
+                onClick={() => {
+                  focusConnection.current = true;
+                  setEditingConnection(true);
+                }}
+              >
+                {s.sshEditConnection}
+              </Button>
+            </div>
+          )}
         </>
       ) : null}
-      <label htmlFor={`${id}-ssh-host`}>{s.sshHost}</label>
-      <Input
-        id={`${id}-ssh-host`}
-        required
-        disabled={disabled || targetLocked}
-        spellCheck={false}
-        value={connection.host}
-        onChange={(event) =>
-          changeTarget({ ...connection, host: event.target.value })
-        }
-      />
-      <div className="agent-ssh-pair">
-        <div>
-          <label htmlFor={`${id}-ssh-user`}>{s.sshUser}</label>
+      {showDetails ? (
+        <>
+          <label htmlFor={`${id}-ssh-host`}>{s.sshHost}</label>
           <Input
-            id={`${id}-ssh-user`}
+            id={`${id}-ssh-host`}
+            required
             disabled={disabled || targetLocked}
             spellCheck={false}
-            value={connection.user ?? ""}
+            value={connection.host}
             onChange={(event) =>
-              changeTarget({
-                ...connection,
-                user: event.target.value || null,
-              })
+              changeTarget({ ...connection, host: event.target.value })
             }
           />
-        </div>
-        <div>
-          <label htmlFor={`${id}-ssh-port`}>{s.sshPort}</label>
-          <Input
-            id={`${id}-ssh-port`}
-            disabled={disabled || targetLocked}
-            type="number"
-            min={1}
-            max={65535}
-            placeholder="22"
-            value={connection.port ?? ""}
-            onChange={(event) =>
-              changeTarget({
-                ...connection,
-                port: event.target.value ? Number(event.target.value) : null,
-              })
-            }
-          />
-        </div>
-      </div>
-      <label htmlFor={`${id}-ssh-identity`}>{s.sshIdentity}</label>
-      <div className="agent-folder-row">
-        <Input
-          ref={identityInput}
-          id={`${id}-ssh-identity`}
-          disabled={disabled}
-          spellCheck={false}
-          aria-invalid={identityIsPublic || undefined}
-          aria-describedby={`${id}-ssh-identity-hint`}
-          value={connection.identityFile ?? ""}
-          onInvalid={() => notice.error(s.sshPublicKeyInvalid)}
-          onChange={(event) =>
-            change(
-              { ...connection, identityFile: event.target.value || null },
-              true,
-            )
-          }
-        />
-        <Button
-          id={`${id}-ssh-pick-identity`}
-          startIcon={<KeyRound />}
-          disabled={disabled}
-          onClick={() => void pickIdentity()}
-        >
-          {s.sshChooseIdentity}
-        </Button>
-      </div>
-      <p className="agent-form-hint" id={`${id}-ssh-identity-hint`}>
-        {s.sshIdentityHint}
-      </p>
-      {connection.hostKey ? (
-        <div className="agent-ssh-actions">
-          <strong className="agent-ssh-verified">{s.sshVerified}</strong>
-          <Button
-            id={`${id}-ssh-recheck`}
-            startIcon={<KeyRound />}
-            size="small"
-            disabled={disabled || Boolean(trustPrompt)}
-            onClick={() => void scan()}
-          >
-            {operation === "scan" ? s.sshScanning : s.sshRecheck}
-          </Button>
-        </div>
+          <div className="agent-ssh-pair">
+            <div>
+              <label htmlFor={`${id}-ssh-user`}>{s.sshUser}</label>
+              <Input
+                id={`${id}-ssh-user`}
+                disabled={disabled || targetLocked}
+                spellCheck={false}
+                value={connection.user ?? ""}
+                onChange={(event) =>
+                  changeTarget({
+                    ...connection,
+                    user: event.target.value || null,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <label htmlFor={`${id}-ssh-port`}>{s.sshPort}</label>
+              <Input
+                id={`${id}-ssh-port`}
+                disabled={disabled || targetLocked}
+                type="number"
+                min={1}
+                max={65535}
+                placeholder="22"
+                value={connection.port ?? ""}
+                onChange={(event) =>
+                  changeTarget({
+                    ...connection,
+                    port: event.target.value
+                      ? Number(event.target.value)
+                      : null,
+                  })
+                }
+              />
+            </div>
+          </div>
+          <label htmlFor={`${id}-ssh-identity`}>{s.sshIdentity}</label>
+          <div className="agent-folder-row">
+            <Input
+              ref={identityInput}
+              id={`${id}-ssh-identity`}
+              disabled={disabled}
+              spellCheck={false}
+              aria-invalid={identityIsPublic || undefined}
+              aria-describedby={`${id}-ssh-identity-hint`}
+              value={connection.identityFile ?? ""}
+              onInvalid={() => notice.error(s.sshPublicKeyInvalid)}
+              onChange={(event) =>
+                change(
+                  { ...connection, identityFile: event.target.value || null },
+                  true,
+                )
+              }
+            />
+            <Button
+              id={`${id}-ssh-pick-identity`}
+              startIcon={<KeyRound />}
+              disabled={disabled}
+              onClick={() => void pickIdentity()}
+            >
+              {s.sshChooseIdentity}
+            </Button>
+          </div>
+          <p className="agent-form-hint" id={`${id}-ssh-identity-hint`}>
+            {s.sshIdentityHint}
+          </p>
+          {connection.hostKey ? (
+            <div className="agent-ssh-actions">
+              <strong className="agent-ssh-verified">{s.sshVerified}</strong>
+              <Button
+                id={`${id}-ssh-recheck`}
+                startIcon={<KeyRound />}
+                size="small"
+                disabled={disabled || Boolean(trustPrompt)}
+                onClick={() => void scan()}
+              >
+                {operation === "scan" ? s.sshScanning : s.sshRecheck}
+              </Button>
+            </div>
+          ) : null}
+        </>
       ) : null}
       <div className="agent-ssh-actions">
         <Button
