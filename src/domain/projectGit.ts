@@ -447,6 +447,39 @@ export function orderGitRefs(
   };
 }
 
+export type GitGroupBranchRef = Pick<GitBranch, "name" | "remote" | "current">;
+export type GitGroupBranch = {
+  name: string;
+  // Per project: its local branch, else the first remote branch with that name.
+  refs: Record<string, GitGroupBranchRef>;
+};
+
+/** Merges each repository's branches by local name; branches checked out somewhere come first. */
+export function groupGitBranches(
+  repositories: readonly {
+    projectId: string;
+    branches: readonly GitBranch[];
+  }[],
+): GitGroupBranch[] {
+  const rows = new Map<string, GitGroupBranch>();
+  for (const { projectId, branches } of repositories)
+    for (const { name, remote, current } of branches) {
+      const local = remote ? name.slice(name.indexOf("/") + 1) : name;
+      const row = rows.get(local) ?? { name: local, refs: {} };
+      rows.set(local, row);
+      if (!remote || !row.refs[projectId])
+        row.refs[projectId] = { name, remote, current };
+    }
+  const count = (row: GitGroupBranch, current: boolean) =>
+    Object.values(row.refs).filter((ref) => !current || ref.current).length;
+  return [...rows.values()].sort(
+    (a, b) =>
+      count(b, true) - count(a, true) ||
+      count(b, false) - count(a, false) ||
+      compareGitNames(a.name, b.name),
+  );
+}
+
 export type GitRemote = {
   name: string;
   url: string;

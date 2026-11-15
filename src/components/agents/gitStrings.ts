@@ -348,6 +348,17 @@ const en = {
     "Local changes carry over to the target branch. Git refuses the switch if they would be overwritten.",
   destination: "Local destination",
   remoteSource: "Remote source",
+  groupBranchCurrentIn: (current: string, others: string) =>
+    others ? `Current: ${current} · Also: ${others}` : `Current: ${current}`,
+  groupSwitchRepositories: "Repositories",
+  groupSwitchMissing: "Not in",
+  groupCreateDescription:
+    "Each selected repository creates the branch from its current position, or from the remote branch of the same name, and switches to it. Local changes carry over; Git refuses the switch if they would be overwritten.",
+  groupCreateAndSwitch: "Create and switch",
+  groupCreateFrom: (branch: string) => `from ${branch}`,
+  groupBranchExists: "already exists",
+  groupSharedBranches: "Shared",
+  groupBranchesByRepository: "By repository",
   resolve: "Mark resolved…",
   resolveAll: "Mark all resolved…",
   resolveTitle: "Mark conflicts resolved",
@@ -725,6 +736,19 @@ const fr: typeof en = {
     "Les modifications locales suivent sur la branche cible. Git refuse le changement si elles seraient écrasées.",
   destination: "Destination locale",
   remoteSource: "Source distante",
+  groupBranchCurrentIn: (current: string, others: string) =>
+    others
+      ? `Courante : ${current} · Aussi : ${others}`
+      : `Courante : ${current}`,
+  groupSwitchRepositories: "Dépôts",
+  groupSwitchMissing: "Absente de",
+  groupCreateDescription:
+    "Chaque dépôt sélectionné crée la branche depuis sa position actuelle, ou depuis la branche distante du même nom, et bascule dessus. Les modifications locales suivent ; Git refuse le changement si elles seraient écrasées.",
+  groupCreateAndSwitch: "Créer et basculer",
+  groupCreateFrom: (branch: string) => `depuis ${branch}`,
+  groupBranchExists: "existe déjà",
+  groupSharedBranches: "Communes",
+  groupBranchesByRepository: "Par dépôt",
   resolve: "Marquer résolu…",
   resolveAll: "Tout marquer résolu…",
   resolveTitle: "Marquer les conflits résolus",

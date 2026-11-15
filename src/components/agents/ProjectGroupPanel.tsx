@@ -67,6 +67,10 @@ import {
   useGitFilesVisiblePreference,
 } from "./GitChangesWorkspace";
 import { GitForgeView } from "./GitForgeView";
+import {
+  ProjectGroupBranchesView,
+  type GroupBranchRef,
+} from "./ProjectGroupBranchesView";
 import { ProjectGroupMemberChanges } from "./ProjectGroupMemberChanges";
 import type { GitDiffCommentTarget } from "./GitDiffLineComment";
 import { LoadingState } from "../ui/LoadingState";
@@ -155,9 +159,13 @@ export function ProjectGroupPanel({
   const s = useAgentStrings();
   const g = useGitStrings();
   const fileListId = useId();
-  const [view, setView] = useState<"changes" | "requests">("changes");
-  // The requests view mounts on first use, then keeps its list and selection.
-  const [requestsOpened, setRequestsOpened] = useState(false);
+  const [view, setView] = useState<"changes" | "branches" | "requests">(
+    "changes",
+  );
+  // Branches and requests mount on first use, then keep their state.
+  const [openedViews, setOpenedViews] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [forgeKind, setForgeKind] = useState<ForgeKind | null>(null);
   const [storedReads, setReads] = useState<Record<string, MemberRead>>(() =>
     Object.fromEntries(
@@ -731,7 +739,14 @@ export function ProjectGroupPanel({
   }
 
   async function mutateProjects<T extends MutationTarget>(
-    operation: "commit" | "stage" | "unstage" | "restore" | "resolve",
+    operation:
+      | "commit"
+      | "stage"
+      | "unstage"
+      | "restore"
+      | "resolve"
+      | "branch"
+      | "switch",
     targets: T[],
     mutate: (target: T) => Promise<GitMutationResult>,
   ) {
@@ -795,6 +810,38 @@ export function ProjectGroupPanel({
       }
     }
   }
+
+  const mutateBranches = (
+    operation: "branch" | "switch",
+    refs: GroupBranchRef[],
+  ) =>
+    mutateProjects(
+      operation,
+      refs.flatMap((ref) => {
+        const member = connected.find(
+          (current) => current.id === ref.projectId,
+        );
+        return member
+          ? [
+              {
+                ...ref,
+                name: member.name,
+                ref,
+                scope: gitReadScope(member),
+              },
+            ]
+          : [];
+      }),
+      async ({ projectId, ref, version }) => {
+        if (operation === "switch" || ref.remote)
+          return api.switchGitBranch(projectId, ref.name, ref.remote, version);
+        await api.createGitBranch(projectId, ref.name, version);
+        // The switch checks the snapshot the creation just produced.
+        // shortcut: a member retargeted between creation and this read switches the new target, still under Git's overwrite refusal; carry the original identity if retargets mid-batch show up.
+        const created = await api.readGitRepository(projectId);
+        return api.switchGitBranch(projectId, ref.name, false, created.version);
+      },
+    );
 
   const stageAll = () =>
     mutateProjects("stage", stageTargets, (target) =>
@@ -956,27 +1003,30 @@ export function ProjectGroupPanel({
         <header className="agent-git-panel-header">
           <div className="git-panel-heading">
             <GitPanelViewSwitch
-              views={["changes", "requests"] as const}
+              views={["changes", "branches", "requests"] as const}
               active={view}
               label={(current) =>
                 current === "changes"
                   ? g.changesView
-                  : g.forgeRequests(forgeKind)
+                  : current === "branches"
+                    ? g.branches
+                    : g.forgeRequests(forgeKind)
               }
               onSelect={(next) => {
                 setView(next);
-                if (next === "requests") setRequestsOpened(true);
+                setOpenedViews((opened) => new Set(opened).add(next));
               }}
             />
             <p title={groupName}>{groupName}</p>
           </div>
           <GitPanelHeaderActions
             busy={
-              view === "changes" &&
-              (loading || mutationBusy) &&
-              !waiting &&
-              // The commit button already spins next to its action.
-              !(committing && filesVisible)
+              (view === "branches" && mutationBusy) ||
+              (view === "changes" &&
+                (loading || mutationBusy) &&
+                !waiting &&
+                // The commit button already spins next to its action.
+                !(committing && filesVisible))
             }
             busyLabel={g.operationPending}
             filesVisible={filesVisible}
@@ -988,7 +1038,33 @@ export function ProjectGroupPanel({
             onClose={onClose}
           />
         </header>
-        {requestsOpened ? (
+        {openedViews.has("branches") ? (
+          <div
+            hidden={view !== "branches"}
+            style={{ display: view === "branches" ? "contents" : "none" }}
+          >
+            <ProjectGroupBranchesView
+              active={visible && view === "branches"}
+              members={connected.filter(
+                (member) => reads[member.id]?.repo?.availability === "ready",
+              )}
+              versions={Object.fromEntries(
+                connected.map((member) => [
+                  member.id,
+                  reads[member.id]?.repo?.version ?? "",
+                ]),
+              )}
+              readCache={groupReadCache}
+              busy={mutationBusy}
+              blocked={(projectId) =>
+                actionBlockedFor(projectId) ||
+                !!reads[projectId]?.repo?.operation
+              }
+              onMutate={mutateBranches}
+            />
+          </div>
+        ) : null}
+        {openedViews.has("requests") ? (
           <div
             hidden={view !== "requests"}
             style={{ display: view === "requests" ? "contents" : "none" }}

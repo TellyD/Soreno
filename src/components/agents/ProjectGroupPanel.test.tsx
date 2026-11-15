@@ -12,6 +12,7 @@ import type {
 import type { DiffLineSelection } from "../../domain/diffLineComment";
 import type { ForgeRequestDetail } from "../../domain/forge";
 import type {
+  GitBranch,
   GitComparison,
   GitFile,
   GitMutationResult,
@@ -30,6 +31,9 @@ vi.mock("../../settings", () => ({
 vi.mock("../../data/projectGitApi", () => ({
   readGitRepository: vi.fn(),
   readGitComparison: vi.fn(),
+  readGitBranches: vi.fn(),
+  createGitBranch: vi.fn(),
+  switchGitBranch: vi.fn(),
   stageGitFiles: vi.fn(),
   unstageGitFiles: vi.fn(),
   restoreGitFiles: vi.fn(),
@@ -359,6 +363,172 @@ it("lists the members' merge requests together and acts on each one's project", 
     "merge",
     "head-api",
   );
+});
+
+it("creates and switches branches across members, skipping those without them", async () => {
+  const branch = (name: string, current = false) => ({
+    name,
+    oid: "abc",
+    remote: name.startsWith("origin/"),
+    current,
+    upstream: null,
+  });
+  const branches: Record<string, GitBranch[]> = {
+    api: [branch("main"), branch("feature", true), branch("origin/feature")],
+    docs: [branch("main", true), branch("origin/feature")],
+    www: [branch("main", true), branch("hotfix")],
+  };
+  vi.mocked(api.readGitRepository).mockResolvedValue(repository({}));
+  vi.mocked(api.readGitBranches).mockImplementation(
+    async (projectId) => branches[projectId],
+  );
+  const done = { oid: null, message: "Done", warning: null };
+  vi.mocked(api.createGitBranch).mockResolvedValue(done);
+  vi.mocked(api.switchGitBranch).mockResolvedValue(done);
+  await render(undefined, [], []);
+
+  await act(async () =>
+    [...host.querySelectorAll<HTMLButtonElement>(".git-panel-view-tab")]
+      .find((item) => item.textContent === "Branches")!
+      .click(),
+  );
+  const row = (name: string) => getButton(`Basculer · ${name}`);
+  await vi.waitFor(() => expect(row("feature")).not.toBeNull());
+  const rows = () =>
+    [...host.querySelectorAll(".git-branch-main strong")].map(
+      (item) => item.textContent,
+    );
+  // A branch of a single repository stays folded under it.
+  expect(rows()).toEqual(["main", "feature"]);
+  expect(row("feature").querySelector("small")?.textContent).toBe(
+    "Courante : API · Aussi : Docs",
+  );
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>(
+        '.git-branches-view button[aria-expanded="false"]',
+      )!
+      .click(),
+  );
+  expect(rows()).toEqual(["main", "feature", "hotfix"]);
+  // Every member already has a local main.
+  const input = host.querySelector<HTMLInputElement>(
+    'input[aria-label="Nouvelle branche"]',
+  )!;
+  const create = () =>
+    [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+      (item) => item.textContent === "Créer la branche",
+    )!;
+  await act(async () => setInputValue(input, "main"));
+  expect(create().disabled).toBe(true);
+
+  await act(async () => setInputValue(input, "feature"));
+  await act(async () => create().click());
+  const options = [
+    ...document.querySelectorAll<HTMLLabelElement>(
+      '[role="alertdialog"] label',
+    ),
+  ];
+  expect(
+    options.map(
+      (option) =>
+        option
+          .querySelector('[role="checkbox"]')!
+          .getAttribute("aria-checked") === "true",
+    ),
+  ).toEqual([false, true, true]);
+  await act(async () =>
+    [...document.querySelectorAll<HTMLButtonElement>("button")]
+      .find((item) => item.textContent === "Créer et basculer")!
+      .click(),
+  );
+  // A remote-only branch is tracked, not recreated from HEAD.
+  expect(vi.mocked(api.switchGitBranch).mock.calls).toEqual([
+    ["docs", "origin/feature", true, "v1"],
+    ["www", "feature", false, "v1"],
+  ]);
+  expect(api.createGitBranch).toHaveBeenCalledExactlyOnceWith(
+    "www",
+    "feature",
+    "v1",
+  );
+
+  vi.mocked(api.switchGitBranch).mockClear();
+  await act(async () => row("feature").click());
+  const confirmation = document.querySelector<HTMLElement>(
+    '[role="alertdialog"]',
+  )!;
+  expect(confirmation.textContent).toContain("Absente de: Site");
+  await act(async () =>
+    [...confirmation.querySelectorAll("button")]
+      .find((item) => item.textContent === "Basculer")!
+      .click(),
+  );
+  expect(api.switchGitBranch).toHaveBeenCalledExactlyOnceWith(
+    "docs",
+    "origin/feature",
+    true,
+    "v1",
+  );
+});
+
+it("re-reads only changed members' branches and blocks creating from a stale source", async () => {
+  const main = {
+    name: "main",
+    oid: "abc",
+    remote: false,
+    current: true,
+    upstream: null,
+  };
+  vi.mocked(api.readGitRepository).mockResolvedValue(repository({}));
+  vi.mocked(api.readGitBranches).mockResolvedValue([main]);
+  await render(undefined, [], []);
+  await act(async () =>
+    [...host.querySelectorAll<HTMLButtonElement>(".git-panel-view-tab")]
+      .find((item) => item.textContent === "Branches")!
+      .click(),
+  );
+  await vi.waitFor(() => expect(getButton("Basculer · main")).not.toBeNull());
+  await act(async () =>
+    setInputValue(
+      host.querySelector<HTMLInputElement>(
+        'input[aria-label="Nouvelle branche"]',
+      )!,
+      "feature",
+    ),
+  );
+  await act(async () =>
+    [...host.querySelectorAll<HTMLButtonElement>("button")]
+      .find((item) => item.textContent === "Créer la branche")!
+      .click(),
+  );
+  const confirm = () =>
+    [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+      (item) => item.textContent === "Créer et basculer",
+    )!;
+  expect(confirm().disabled).toBe(false);
+
+  const repos: Record<string, (repo: GitRepository) => void> = {};
+  vi.mocked(api.readGitRepository).mockImplementation(
+    (projectId) => new Promise((resolve) => (repos[projectId] = resolve)),
+  );
+  const reads: ((branches: GitBranch[]) => void)[] = [];
+  vi.mocked(api.readGitBranches)
+    .mockClear()
+    .mockImplementation(() => new Promise((resolve) => reads.push(resolve)));
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  // Each member's repository read lands in its own render.
+  await act(async () => repos.api(repository({ version: "v2" })));
+  expect(confirm().disabled).toBe(true);
+  await act(async () => repos.docs(repository({ version: "v2" })));
+  await act(async () => repos.www(repository({})));
+  expect(vi.mocked(api.readGitBranches).mock.calls).toEqual([
+    ["api"],
+    ["docs"],
+  ]);
+  expect(confirm().disabled).toBe(true);
+  await act(async () => reads.forEach((resolve) => resolve([main])));
+  expect(confirm().disabled).toBe(false);
 });
 
 it("closes, hides files and persists the tree layout", async () => {
