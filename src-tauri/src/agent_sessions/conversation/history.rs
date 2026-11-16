@@ -1,4 +1,8 @@
-use super::{clean_name, has_role, message_text, ConversationHistoryEntry, HistoryFile, Result};
+use super::{
+    clean_name,
+    message::{has_role, message_text},
+    ConversationHistoryEntry, HistoryFile, Result,
+};
 use serde_json::Value;
 use std::path::{Component, Path};
 
