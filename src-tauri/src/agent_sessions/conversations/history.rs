@@ -31,11 +31,7 @@ pub(in crate::agent_sessions) fn history_files(
     if project.environment.kind == "ssh" {
         crate::ssh::validate_path(directory)?;
         let output = crate::ssh::run(
-            project
-                .environment
-                .ssh
-                .as_ref()
-                .ok_or("Connexion SSH manquante.")?,
+            project.environment.ssh_connection()?,
             &history_files_script(directory, offset, limit),
             None,
             HISTORY_OUTPUT_LIMIT,
@@ -168,11 +164,7 @@ pub(super) fn history_exists(project: &AgentProject, path: &str) -> Result<bool>
     };
     if project.environment.kind == "ssh" {
         return parse(crate::ssh::run(
-            project
-                .environment
-                .ssh
-                .as_ref()
-                .ok_or("Connexion SSH manquante.")?,
+            project.environment.ssh_connection()?,
             &script(),
             None,
             1,
@@ -201,11 +193,7 @@ fn history_prefix(project: &AgentProject, path: &str) -> Result<Vec<u8>> {
     if project.environment.kind == "ssh" {
         crate::ssh::validate_path(path)?;
         return crate::ssh::run(
-            project
-                .environment
-                .ssh
-                .as_ref()
-                .ok_or("Connexion SSH manquante.")?,
+            project.environment.ssh_connection()?,
             &format!("head -c 65536 -- {}", crate::ssh::quote(path)),
             None,
             PREFIX_LIMIT as usize,

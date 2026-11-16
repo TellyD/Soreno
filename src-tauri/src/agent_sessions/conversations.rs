@@ -796,11 +796,7 @@ pub(super) fn prepare_attach(
             let generation = attach_generation(generation)?;
             crate::ssh::validate_path(&remote_metadata_path)?;
             let data = parse_remote_sidecar(crate::ssh::run(
-                project
-                    .environment
-                    .ssh
-                    .as_ref()
-                    .ok_or("Connexion SSH manquante.")?,
+                project.environment.ssh_connection()?,
                 &remote_sidecar_script(&remote_metadata_path),
                 None,
                 PREFIX_LIMIT as usize + 1,

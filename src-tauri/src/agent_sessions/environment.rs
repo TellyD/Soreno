@@ -7,6 +7,14 @@ use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::{io::Read, thread};
 
+impl AgentEnvironment {
+    pub(super) fn ssh_connection(&self) -> Result<&crate::ssh::SshConnection> {
+        self.ssh
+            .as_ref()
+            .ok_or_else(|| "Connexion SSH manquante.".into())
+    }
+}
+
 pub(crate) fn validate_environment(environment: &AgentEnvironment) -> Result<()> {
     match environment.kind.as_str() {
         "local" if environment.distribution.is_none() && environment.ssh.is_none() => Ok(()),
@@ -242,7 +250,7 @@ fn validate_ssh_directory(environment: &AgentEnvironment, path: &str) -> Result<
     crate::ssh::validate_path(path)?;
     let quoted = crate::ssh::quote(path);
     crate::ssh::run(
-        environment.ssh.as_ref().ok_or("Connexion SSH manquante.")?,
+        environment.ssh_connection()?,
         &format!(
             "test -d {quoted} || {{ printf 'Le dossier SSH n’existe pas.\\n' >&2; exit 10; }}; test -r {quoted} || {{ printf 'Le dossier SSH n’est pas lisible.\\n' >&2; exit 11; }}; test -x {quoted} || {{ printf 'Le dossier SSH n’est pas accessible.\\n' >&2; exit 12; }}"
         ),

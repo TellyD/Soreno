@@ -137,7 +137,7 @@ fn validate_reconnected_project_directory(
     wait_ready: impl FnOnce(&SshConnection) -> Result<()>,
     validate_directory: impl FnOnce(&AgentEnvironment, &str) -> Result<Option<String>>,
 ) -> Result<Option<String>> {
-    wait_ready(environment.ssh.as_ref().ok_or("Connexion SSH manquante.")?)?;
+    wait_ready(environment.ssh_connection()?)?;
     validate_directory(environment, path)
 }
 
@@ -985,13 +985,7 @@ impl AgentSessions {
         if project.environment.kind != "ssh" {
             return Err("Cette action est réservée aux projets SSH.".into());
         }
-        operation(
-            project
-                .environment
-                .ssh
-                .as_ref()
-                .ok_or("Connexion SSH manquante.")?,
-        )
+        operation(project.environment.ssh_connection()?)
     }
     pub(crate) fn ssh_forward_list(
         &self,
@@ -1261,12 +1255,7 @@ impl AgentSessions {
         if store.git_busy {
             return Err("Une opération Git est en cours.".into());
         }
-        let connection = project
-            .environment
-            .ssh
-            .as_ref()
-            .ok_or("Connexion SSH manquante.")?
-            .clone();
+        let connection = project.environment.ssh_connection()?.clone();
         let project_ids = list::<AgentProject>(&store.db, "agent_projects")?
             .into_iter()
             .filter(|candidate| {
@@ -2969,11 +2958,7 @@ fn local_command_with_environment(
         .unwrap_or(&project.path);
     if project.environment.kind == "ssh" {
         crate::ssh::validate_path(directory)?;
-        let connection = project
-            .environment
-            .ssh
-            .as_ref()
-            .ok_or("Connexion SSH manquante.")?;
+        let connection = project.environment.ssh_connection()?;
         let script = remote_host::session_script(
             remote_dtach,
             remote_host,

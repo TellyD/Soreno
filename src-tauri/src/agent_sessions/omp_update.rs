@@ -29,11 +29,7 @@ pub(super) fn install(project: &AgentProject) -> Result<()> {
 fn run(project: &AgentProject, args: &[&str], timeout: Duration) -> Result<String> {
     let script = crate::ssh::login_shell_script(&format!("exec omp {}", args.join(" ")));
     let (success, stdout, stderr) = if project.environment.kind == "ssh" {
-        let connection = project
-            .environment
-            .ssh
-            .as_ref()
-            .ok_or("Connexion SSH manquante.")?;
+        let connection = project.environment.ssh_connection()?;
         let _access = crate::ssh::begin_access(connection)?;
         let output =
             crate::ssh::run_output_with_timeout(connection, &script, None, OUTPUT_LIMIT, timeout)?;

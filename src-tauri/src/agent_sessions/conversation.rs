@@ -380,11 +380,7 @@ pub(super) fn start(
     let (process, initial_prompt) = match project.environment.kind.as_str() {
         "ssh" => {
             crate::ssh::validate_path(directory)?;
-            let connection = project
-                .environment
-                .ssh
-                .as_ref()
-                .ok_or("Connexion SSH manquante.")?;
+            let connection = project.environment.ssh_connection()?;
             // An unsupported server keeps a run that ends with the connection.
             if let Some(dtach) = remote_dtach::ensure(connection)
                 .ok()
@@ -543,11 +539,7 @@ fn start_detachable(
     launch_args: &[String],
     run_token: String,
 ) -> Result<Arc<ConversationProcess>> {
-    let connection = project
-        .environment
-        .ssh
-        .as_ref()
-        .ok_or("Connexion SSH manquante.")?;
+    let connection = project.environment.ssh_connection()?;
     let access = crate::ssh::begin_access(connection)?;
     let host = remote_host::probe(connection, remote_host::CONVERSATIONS, session_id)?;
     let live = host == RemoteHost::Live;
