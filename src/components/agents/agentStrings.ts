@@ -55,7 +55,7 @@ const en = {
     `Disconnected: ${names}. Their changes are not shown.`,
   groupDisconnectedTitle: "Projects disconnected",
   groupDisconnectedBody:
-    "Connect the group’s projects to review their changes.",
+    "Connect the group’s projects to review their Git activity.",
   groupNotRepository: "Not a Git repository",
   groupChangeCounts: ({
     conflicts,
@@ -629,7 +629,7 @@ const fr: typeof en = {
     `Déconnectés : ${names}. Leurs changements ne sont pas affichés.`,
   groupDisconnectedTitle: "Projets déconnectés",
   groupDisconnectedBody:
-    "Connectez les projets du groupe pour consulter leurs changements.",
+    "Connectez les projets du groupe pour consulter leur activité Git.",
   groupNotRepository: "Hors dépôt Git",
   groupChangeCounts: ({
     conflicts,
