@@ -29,7 +29,7 @@ export type SshPortForwardStart = {
   ignoredPorts: string[];
 };
 
-export type SshMobileDevice = {
+type SshMobileDevice = {
   id: string;
   label: string;
   pairedAt: number;

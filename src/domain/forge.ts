@@ -78,7 +78,7 @@ export type ForgeCheckout = { name: string; remote: boolean; oid: string };
 export type ForgeUpdateAction = "close" | "reopen" | "ready";
 
 /** Failures shown in place of the list: nothing useful can be listed until they are fixed. */
-export const forgeStateErrors = [
+const forgeStateErrors = [
   "noRemote",
   "unrecognizedRemote",
   "unsupportedForge",

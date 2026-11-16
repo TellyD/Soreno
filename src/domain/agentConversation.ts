@@ -128,7 +128,7 @@ export type AgentConversationModel = {
   images: boolean;
 };
 
-export type AgentConversationStats = {
+type AgentConversationStats = {
   contextTokens: number | null;
   contextWindow: number | null;
   contextPercent: number | null;
@@ -204,10 +204,10 @@ export type AgentConversationState = {
   btwView: { topic: string } | "history" | null;
 };
 
-export type AgentConversationGoal = { objective: string; status: string };
+type AgentConversationGoal = { objective: string; status: string };
 
 /** One side question; OMP's statuses: running, complete, cancelled, error, interrupted. */
-export type AgentConversationBtwTurn = {
+type AgentConversationBtwTurn = {
   question: string;
   answer: string;
   status: string;
