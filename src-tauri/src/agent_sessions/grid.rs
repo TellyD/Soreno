@@ -1,5 +1,5 @@
 //! Prototype: terminal emulation in Rust, the webview only paints the visible rows.
-use super::{grid_log, lock, output::Output, Result, Runtime};
+use super::{grid_log, lock, output::Output, AgentSessions, Result, Runtime};
 use portable_pty::PtySize;
 pub(super) use soreno_terminal_grid::GridTheme;
 pub use soreno_terminal_grid::{AgentGridConfig, AgentGridFrame, AgentGridScroll, AgentGridSelect};
@@ -53,6 +53,74 @@ impl GridWaker {
     pub(super) fn wake(&self) {
         if !self.pending.swap(true, Ordering::AcqRel) {
             let _ = self.commands.send(GridCommand::Wake);
+        }
+    }
+}
+
+impl AgentSessions {
+    pub fn grid_subscribe(
+        &self,
+        session_id: &str,
+        config: AgentGridConfig,
+        visible: bool,
+        on_frame: tauri::ipc::Channel<AgentGridFrame>,
+        log: Option<PathBuf>,
+    ) -> Result<()> {
+        let theme = GridTheme::parse(&config)?;
+        match self.runtime(session_id)? {
+            Some(runtime) => runtime.grid_subscribe(session_id, theme, visible, on_frame, log),
+            None => on_frame
+                .send(AgentGridFrame::idle())
+                .map_err(|error| error.to_string()),
+        }
+    }
+    pub fn grid_ack(&self, session_id: &str, channel_id: u32, apply_micros: u64) -> Result<()> {
+        self.grid_command(session_id, channel_id, GridCommand::Ack { apply_micros })
+    }
+    pub fn grid_unsubscribe(&self, session_id: &str, channel_id: u32) -> Result<()> {
+        match self.runtime(session_id)? {
+            Some(runtime) => runtime.grid_unsubscribe(channel_id),
+            None => Ok(()),
+        }
+    }
+    pub fn grid_configure(
+        &self,
+        session_id: &str,
+        channel_id: u32,
+        config: AgentGridConfig,
+    ) -> Result<()> {
+        let theme = GridTheme::parse(&config)?;
+        self.grid_command(session_id, channel_id, GridCommand::Configure(theme))
+    }
+    pub fn grid_scroll(
+        &self,
+        session_id: &str,
+        channel_id: u32,
+        scroll: AgentGridScroll,
+    ) -> Result<()> {
+        self.grid_command(session_id, channel_id, GridCommand::Scroll(scroll))
+    }
+    pub fn grid_select(
+        &self,
+        session_id: &str,
+        channel_id: u32,
+        select: AgentGridSelect,
+    ) -> Result<()> {
+        self.grid_command(session_id, channel_id, GridCommand::Select(select))
+    }
+    pub fn grid_visibility(&self, session_id: &str, channel_id: u32, visible: bool) -> Result<()> {
+        self.grid_command(session_id, channel_id, GridCommand::Visibility(visible))
+    }
+    pub fn grid_text(&self, session_id: &str, channel_id: u32) -> Result<String> {
+        match self.runtime(session_id)? {
+            Some(runtime) => runtime.grid_text(channel_id),
+            None => Err("Terminal Rust indisponible.".into()),
+        }
+    }
+    fn grid_command(&self, session_id: &str, channel_id: u32, command: GridCommand) -> Result<()> {
+        match self.runtime(session_id)? {
+            Some(runtime) => runtime.grid_command(channel_id, command),
+            None => Ok(()),
         }
     }
 }
