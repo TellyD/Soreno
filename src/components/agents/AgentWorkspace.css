@@ -647,8 +647,15 @@
   white-space: nowrap;
 }
 .agent-project-details > span:first-child,
-.agent-project-details > svg {
+.agent-project-details > svg,
+.agent-project-details > .agent-project-separator,
+.agent-project-details > .agent-project-worktree-count {
   flex-shrink: 0;
+}
+.agent-project-separator,
+.agent-project-worktree-count,
+.agent-project-details.is-branch-unavailable > :not(:first-child) {
+  color: var(--text-faint);
 }
 .agent-worktree-list {
   position: relative;
@@ -671,10 +678,13 @@
   content: "";
   pointer-events: none;
 }
-.agent-worktree {
+.agent-worktree,
+.agent-worktree-main {
   position: relative;
 }
-.agent-worktree::before {
+/* Main-checkout sessions run along the guide between the project row and the first node. */
+.agent-worktree::before,
+.agent-worktree-main::before {
   position: absolute;
   top: 12px;
   bottom: -22px;
@@ -691,7 +701,11 @@
   display: none;
 }
 .agent-worktree-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   min-width: 0;
+  padding-right: 4px;
 }
 .agent-worktree-select {
   align-items: start;
@@ -770,11 +784,15 @@
   list-style: none;
 }
 :is(.agent-project, .agent-project-group) > .agent-activity-list,
-.agent-worktree .agent-activity-list {
+:is(.agent-worktree, .agent-worktree-main) .agent-activity-list {
   margin-left: 19px;
 }
-.agent-project-group > .agent-activity-list {
-  margin-top: 10px;
+/* Same 8px under the project or overview row; the worktree list already adds 4px. */
+:is(.agent-project, .agent-project-group) > .agent-activity-list {
+  margin-top: 8px;
+}
+.agent-worktree-main > .agent-activity-list {
+  margin-top: 4px;
 }
 .agent-activity-item {
   display: flex;

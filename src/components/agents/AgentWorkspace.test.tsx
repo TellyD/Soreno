@@ -124,7 +124,7 @@ it("shows projects while initial worktree grouping finishes", async () => {
     finish({ groups, complete: true, missingProjectIds: [] }),
   );
   await vi.waitFor(() => expect(projectNames()).toEqual(["Soreno"]));
-  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2);
+  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1);
   expect(
     container.querySelector(".agent-project-list")?.hasAttribute("aria-busy"),
   ).toBe(false);
@@ -271,21 +271,41 @@ async function chooseOption(name: string) {
   });
 }
 
-it("uses the live project branch for an expanded worktree row", async () => {
+it("shows the main checkout's live branch on the repository row", async () => {
+  const detached = {
+    ...project,
+    id: "p2",
+    name: "Detached",
+    path: "/worktrees/detached",
+  };
+  data.projects.push(detached);
   vi.mocked(api.listAgentBranches).mockResolvedValue([
     { projectId: "p1", branch: "feature" },
+    { projectId: "p2", branch: "HEAD @ ccccccc" },
   ]);
   vi.mocked(api.listAgentWorktrees).mockResolvedValue({
     groups: [
       {
         repositoryProjectId: "p1",
-        projectIds: ["p1"],
+        projectIds: ["p1", "p2"],
         worktrees: [
           {
             path: project.path,
             head: "a".repeat(40),
             branch: "main",
             projectIds: ["p1"],
+          },
+          {
+            path: detached.path,
+            head: "d".repeat(40),
+            branch: null,
+            projectIds: ["p2"],
+          },
+          {
+            path: "/worktrees/fix",
+            head: "b".repeat(40),
+            branch: null,
+            projectIds: [],
           },
         ],
       },
@@ -297,10 +317,24 @@ it("uses the live project branch for an expanded worktree row", async () => {
   await render();
 
   await vi.waitFor(() =>
-    expect(container.querySelector(".agent-worktree-name")?.textContent).toBe(
-      "feature",
-    ),
+    expect(
+      button("Soreno").querySelector(".agent-project-details")?.textContent,
+    ).toContain("feature"),
   );
+  expect(button("Soreno").getAttribute("aria-current")).toBe("page");
+  // Only linked checkouts are tree nodes; a detached one names its HEAD and folder.
+  expect(
+    [...container.querySelectorAll(".agent-worktree-select")].map(
+      (row) => row.textContent,
+    ),
+  ).toEqual([
+    "HEAD détachéeccccccc · detached",
+    "HEAD détachéebbbbbbb · fix · Worktree externe · Ouvrir",
+  ]);
+  await click("Replier le projet · Soreno");
+  expect(
+    button("Soreno").querySelector(".agent-project-details")?.textContent,
+  ).toContain("+2 worktrees");
 });
 
 it("keeps existing worktrees visible while refreshing after adding a project", async () => {
@@ -314,6 +348,12 @@ it("keeps existing worktrees visible while refreshing after adding a project", a
           head: "a".repeat(40),
           branch: "main",
           projectIds: ["p1"],
+        },
+        {
+          path: "/worktrees/feature",
+          head: "b".repeat(40),
+          branch: "feature",
+          projectIds: [],
         },
       ],
     },
@@ -336,14 +376,14 @@ it("keeps existing worktrees visible while refreshing after adding a project", a
   });
 
   await render();
-  await vi.waitFor(() => expect(button("main")).not.toBeNull());
+  await vi.waitFor(() => expect(button("feature")).not.toBeNull());
   await addProject("Ajouter un projet");
   await input("Nom affiché", "Second project");
   await click("Choisir un dossier…", dialog());
   await click("Enregistrer", dialog());
   await vi.waitFor(() => expect(dialog()).toBeNull());
 
-  expect(button("main")).not.toBeNull();
+  expect(button("feature")).not.toBeNull();
   expect(projectNames()).toEqual(["Soreno", "Second project"]);
   expect(api.listAgentWorktrees).toHaveBeenCalledTimes(2);
 
@@ -498,7 +538,9 @@ it("keeps a newly created worktree out of the project root while regrouping", as
   document.body.append(gitPanelContainer);
 
   await render(false, null, gitPanelContainer);
-  await vi.waitFor(() => expect(button("main")).not.toBeNull());
+  await vi.waitFor(() =>
+    expect(api.listAgentWorktrees).toHaveBeenCalledTimes(1),
+  );
   data.projects.push(created);
   await click("Signaler le worktree créé", gitPanelContainer);
   await vi.waitFor(() =>
@@ -506,7 +548,7 @@ it("keeps a newly created worktree out of the project root while regrouping", as
   );
 
   expect(projectNames()).toEqual(["Soreno"]);
-  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2);
+  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1);
   expect(container.textContent).toContain("created");
 
   await act(async () =>
@@ -531,7 +573,7 @@ it("keeps a newly created worktree out of the project root while regrouping", as
     }),
   );
   await vi.waitFor(() =>
-    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
+    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1),
   );
 });
 
@@ -582,7 +624,7 @@ it("shows a matching cached grouping while refreshing topology", async () => {
   });
   await render();
   await vi.waitFor(() =>
-    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
+    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1),
   );
   await act(async () => root.render(null));
 
@@ -591,7 +633,7 @@ it("shows a matching cached grouping while refreshing topology", async () => {
   );
   await render();
   expect(projectNames()).toEqual(["Soreno"]);
-  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2);
+  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1);
   expect(container.querySelector(".agent-project-list.is-loading")).toBeNull();
   expect(
     container.querySelector(".agent-project-list")?.getAttribute("aria-busy"),
@@ -639,7 +681,7 @@ it("keeps cached groups when only the SSH connection state changed", async () =>
   await render();
   expect(projectNames()).toEqual(["Soreno"]);
   expect(container.querySelector(".agent-project-list.is-loading")).toBeNull();
-  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2);
+  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1);
   expect(
     container.querySelector(".agent-project-list")?.getAttribute("aria-busy"),
   ).toBe("true");
@@ -687,7 +729,7 @@ it("reveals a cold incomplete grouping instead of spinning forever", async () =>
 
   await render();
   await vi.waitFor(() =>
-    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
+    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1),
   );
   expect(projectNames()).toEqual(["Soreno"]);
   expect(
@@ -733,7 +775,7 @@ it("retains matching cached groups after an incomplete refresh", async () => {
 
   await render();
   await vi.waitFor(() =>
-    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
+    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1),
   );
   expect(projectNames()).toEqual(["Soreno"]);
   expect(
@@ -854,7 +896,7 @@ it("keeps a repository collapsed when a former child project was collapsed", asy
   );
 
   await click("Déplier le projet · Soreno");
-  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2);
+  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1);
   expect(
     JSON.parse(localStorage.getItem("soreno.agents.collapsed-projects.v1")!),
   ).toEqual([]);
@@ -908,7 +950,7 @@ it("opens an external worktree once while backend group data stays stale", async
 
   await render();
   await vi.waitFor(() =>
-    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(3),
+    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
   );
   expect(projectNames()).toEqual(["Soreno"]);
   expect(button("Test").closest(".agent-worktree")?.textContent).toContain(
@@ -1030,7 +1072,7 @@ it("removes a worktree immediately without reloading the rail during navigation"
 
   await render();
   await vi.waitFor(() =>
-    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
+    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1),
   );
   let showedLoading = false;
   const observer = new MutationObserver(() => {
@@ -1228,7 +1270,7 @@ it("closes and forgets a removed worktree while surfacing a branch warning", asy
     ).toBeNull(),
   );
   expect(projectNames()).toEqual(["Soreno"]);
-  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1);
+  expect(container.querySelectorAll(".agent-worktree")).toHaveLength(0);
   expect(getNotifications()).toEqual([
     expect.objectContaining({
       message: "La branche warning subsiste.",
@@ -1540,7 +1582,7 @@ it("uses the backend worktree association across WSL distribution casing for a G
 
   await render(false, null, gitPanelContainer);
   await vi.waitFor(() =>
-    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
+    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1),
   );
   await click("Ouvrir le worktree Git", gitPanelContainer);
 

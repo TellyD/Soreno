@@ -966,6 +966,12 @@ it.each([
             branch: "main",
             projectIds: ["p1"],
           },
+          {
+            path: "/worktrees/feature",
+            head: "b".repeat(40),
+            branch: "feature",
+            projectIds: [],
+          },
         ],
       },
     ];
@@ -975,14 +981,14 @@ it.each([
       .mockImplementation(() => new Promise(() => {}));
 
     await render();
-    await vi.waitFor(() => expect(button("main")).not.toBeNull());
+    await vi.waitFor(() => expect(button("feature")).not.toBeNull());
     if (initiallyDisconnected) await click("Connecter · Soreno", host);
     else {
       await click("Déconnecter · Soreno", host);
       await click("Déconnecter", dialog());
     }
 
-    expect(button("main")).not.toBeNull();
+    expect(button("feature")).not.toBeNull();
     expect(api.setAgentProjectConnected).toHaveBeenCalledExactlyOnceWith(
       "p1",
       initiallyDisconnected,

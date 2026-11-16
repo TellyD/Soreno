@@ -23,6 +23,7 @@ import {
   type SetStateAction,
 } from "react";
 import {
+  agentProjectNameFromPath,
   agentEnvironmentLabel,
   agentProviderLabel,
   groupCollapseKey,
@@ -37,10 +38,7 @@ import {
   type AgentWorkspace,
 } from "../../domain/agentSessions";
 import type { AgentSessionAttention } from "../../domain/agentAttention";
-import {
-  agentPrioritySections,
-  worktreeName,
-} from "../../domain/agentWorkspaceView";
+import { agentPrioritySections } from "../../domain/agentWorkspaceView";
 import { NavItem } from "../SidebarNav";
 import { IconButton } from "../ui/IconButton";
 import { MenuItem } from "../ui/Menu";
@@ -557,10 +555,9 @@ export function AgentProjectRail({
     );
     const environment =
       project.environment.kind === "ssh" ? s.ssh : environmentTitle;
-    const showBranch = !group || !expanded;
-    let branchTitle: string | null | undefined = showBranch ? branch : null;
+    let branchTitle: string | null | undefined = branch;
     let branchStatus: ReactNode = null;
-    if (showBranch && branch === null) {
+    if (branch === null) {
       branchTitle = s.branchUnavailable;
       branchStatus = (
         <>
@@ -568,14 +565,14 @@ export function AgentProjectRail({
           <span>{s.branchUnavailable}</span>
         </>
       );
-    } else if (showBranch && branch) {
+    } else if (branch) {
       branchStatus = (
         <>
           <GitBranch size={12} aria-hidden="true" />
           <span>{branch}</span>
         </>
       );
-    } else if (showBranch && branch === undefined && !branchError) {
+    } else if (!branchError) {
       branchStatus = (
         <LoaderCircle
           size={12}
@@ -585,6 +582,150 @@ export function AgentProjectRail({
         />
       );
     }
+    const linkedWorktrees = !expanded && group ? group.worktrees.length - 1 : 0;
+    const separator = (
+      <span className="agent-project-separator" aria-hidden="true">
+        ·
+      </span>
+    );
+    const worktreeLabel = (
+      worktree: AgentProjectWorktree,
+      branch: string | null | undefined,
+      detail?: string,
+    ) => {
+      // Backend hints detached HEAD as "HEAD @ <sha>", fresher than the polled topology head.
+      const liveHead = branch?.startsWith("HEAD @ ") ? branch.slice(7) : null;
+      const name = liveHead !== null ? null : (branch ?? worktree.branch);
+      const details = [
+        name ? null : liveHead || worktree.head.slice(0, 7),
+        name ? null : agentProjectNameFromPath(worktree.path),
+        detail,
+      ].filter(Boolean);
+      return (
+        <>
+          <span className="agent-worktree-name">{name ?? s.detachedHead}</span>
+          {details.length > 0 ? (
+            <span className="agent-worktree-detail">{details.join(" · ")}</span>
+          ) : null}
+        </>
+      );
+    };
+    // The main checkout's sessions sit under the project row; only other checkouts become nodes.
+    const ownsMainCheckout =
+      !group || !!group.worktrees[0]?.projectIds.includes(project.id);
+    const worktreeNodes =
+      group && expanded
+        ? group.worktrees.flatMap((worktree, worktreeIndex) =>
+            worktree.projectIds.length > 0 ? (
+              worktree.projectIds.flatMap((projectId) => {
+                if (worktreeIndex === 0 && projectId === project.id) return [];
+                const worktreeProject = orderedProjects.find(
+                  (item) => item.id === projectId,
+                );
+                if (!worktreeProject) return [];
+                return (
+                  <div className="agent-worktree" key={projectId}>
+                    <RowContextMenu
+                      disabled={disabled}
+                      returnFocusRef={returnFocusRef}
+                      actions={() =>
+                        worktreeIndex === 0
+                          ? projectActions(
+                              worktreeProject,
+                              projectGroups.find((manualGroup) =>
+                                manualGroup.projectIds.includes(projectId),
+                              ),
+                              railProjects.some(
+                                (railProject) =>
+                                  railProject.id === worktreeProject.id,
+                              ),
+                            )
+                          : worktreeActions(group, worktree, true)
+                      }
+                    >
+                      <div className="agent-worktree-row">
+                        <NavItem
+                          className="agent-worktree-select"
+                          title={worktree.path}
+                          icon={
+                            <span
+                              className={`agent-worktree-node${activeSessionProjectId === projectId ? " is-active" : ""}`}
+                            />
+                          }
+                          isSelected={railSelectedProjectId === projectId}
+                          label={worktreeLabel(worktree, branches[projectId])}
+                          onSelect={() => selectProject(worktreeProject)}
+                        />
+                        <NewSessionMenu
+                          projectName={worktreeProject.name}
+                          size="small"
+                          disabled={
+                            disabled ||
+                            sessionLaunchBlocked(workspace, projectId)
+                          }
+                          returnFocusRef={returnFocusRef}
+                          triggerRef={sessionTrigger(projectId)}
+                          onPreset={(preset) =>
+                            void createSession(worktreeProject, preset)
+                          }
+                        />
+                      </div>
+                    </RowContextMenu>
+                    {activityList(worktreeProject)}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="agent-worktree" key={worktree.path}>
+                <RowContextMenu
+                  disabled={disabled}
+                  returnFocusRef={returnFocusRef}
+                  actions={() =>
+                    worktreeIndex === 0 ? (
+                      <ContextMenu.Item
+                        nativeButton
+                        render={<MenuItem leading={<Folder />} />}
+                        onClick={() =>
+                          void openExternalWorktree(
+                            group.repositoryProjectId,
+                            worktree,
+                            true,
+                          )
+                        }
+                      >
+                        {s.openWorktree}
+                      </ContextMenu.Item>
+                    ) : (
+                      worktreeActions(group, worktree)
+                    )
+                  }
+                >
+                  <div className="agent-worktree-row">
+                    <NavItem
+                      className="agent-worktree-select"
+                      title={worktree.path}
+                      icon={<span className="agent-worktree-node" />}
+                      isSelected={false}
+                      label={worktreeLabel(
+                        worktree,
+                        undefined,
+                        s.externalWorktree,
+                      )}
+                      onSelect={() =>
+                        void openExternalWorktree(
+                          group.repositoryProjectId,
+                          worktree,
+                        )
+                      }
+                    />
+                  </div>
+                </RowContextMenu>
+              </div>
+            ),
+          )
+        : [];
+    const mainActivity =
+      expanded && ownsMainCheckout ? activityList(project) : null;
     return (
       <>
         <RowContextMenu
@@ -598,7 +739,7 @@ export function AgentProjectRail({
             <NavItem
               className="agent-project-select"
               title={[
-                group ? null : project.path,
+                project.path,
                 environmentTitle,
                 branchTitle,
                 activity?.label,
@@ -606,16 +747,29 @@ export function AgentProjectRail({
                 .filter(Boolean)
                 .join(" · ")}
               icon={<AgentProjectIcon project={project} size={15} />}
-              isSelected={!group && railSelectedProjectId === project.id}
+              isSelected={
+                ownsMainCheckout && railSelectedProjectId === project.id
+              }
               label={
                 <>
                   <span className="agent-project-heading">
                     <span className="agent-project-name">{project.name}</span>
                     {activity?.badge}
                   </span>
-                  <span className="agent-project-details">
+                  <span
+                    className={`agent-project-details${branch === null ? " is-branch-unavailable" : ""}`}
+                  >
                     <span>{environment}</span>
+                    {branchStatus ? separator : null}
                     {branchStatus}
+                    {linkedWorktrees > 0 ? (
+                      <>
+                        {separator}
+                        <span className="agent-project-worktree-count">
+                          {s.worktreeCount(linkedWorktrees)}
+                        </span>
+                      </>
+                    ) : null}
                   </span>
                 </>
               }
@@ -687,123 +841,16 @@ export function AgentProjectRail({
             </IconButton>
           </div>
         </RowContextMenu>
-        {expanded && group ? (
+        {worktreeNodes.length > 0 ? (
           <div className="agent-worktree-list">
-            {group.worktrees.flatMap((worktree, worktreeIndex) =>
-              worktree.projectIds.length > 0 ? (
-                worktree.projectIds.map((projectId) => {
-                  const worktreeProject = orderedProjects.find(
-                    (item) => item.id === projectId,
-                  );
-                  if (!worktreeProject) return [];
-                  const row = (
-                    <div className="agent-worktree-row">
-                      <NavItem
-                        className="agent-worktree-select"
-                        title={worktree.path}
-                        icon={
-                          <span
-                            className={`agent-worktree-node${activeSessionProjectId === projectId ? " is-active" : ""}`}
-                          />
-                        }
-                        isSelected={railSelectedProjectId === projectId}
-                        label={
-                          <span className="agent-worktree-name">
-                            {worktreeName(worktree, branches[projectId])}
-                          </span>
-                        }
-                        onSelect={() => selectProject(worktreeProject)}
-                      />
-                    </div>
-                  );
-                  return (
-                    <div className="agent-worktree" key={projectId}>
-                      {/* The project row above already carries this project's actions. */}
-                      {worktreeIndex === 0 && projectId === project.id ? (
-                        row
-                      ) : (
-                        <RowContextMenu
-                          disabled={disabled}
-                          returnFocusRef={returnFocusRef}
-                          actions={() =>
-                            worktreeIndex === 0
-                              ? projectActions(
-                                  worktreeProject,
-                                  projectGroups.find((manualGroup) =>
-                                    manualGroup.projectIds.includes(projectId),
-                                  ),
-                                  railProjects.some(
-                                    (railProject) =>
-                                      railProject.id === worktreeProject.id,
-                                  ),
-                                )
-                              : worktreeActions(group, worktree, true)
-                          }
-                        >
-                          {row}
-                        </RowContextMenu>
-                      )}
-                      {activityList(worktreeProject)}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="agent-worktree" key={worktree.path}>
-                  <RowContextMenu
-                    disabled={disabled}
-                    returnFocusRef={returnFocusRef}
-                    actions={() =>
-                      worktreeIndex === 0 ? (
-                        <ContextMenu.Item
-                          nativeButton
-                          render={<MenuItem leading={<Folder />} />}
-                          onClick={() =>
-                            void openExternalWorktree(
-                              group.repositoryProjectId,
-                              worktree,
-                              true,
-                            )
-                          }
-                        >
-                          {s.openWorktree}
-                        </ContextMenu.Item>
-                      ) : (
-                        worktreeActions(group, worktree)
-                      )
-                    }
-                  >
-                    <div className="agent-worktree-row">
-                      <NavItem
-                        className="agent-worktree-select"
-                        title={worktree.path}
-                        icon={<span className="agent-worktree-node" />}
-                        isSelected={false}
-                        label={
-                          <>
-                            <span className="agent-worktree-name">
-                              {worktreeName(worktree)}
-                            </span>
-                            <span className="agent-worktree-detail">
-                              {s.externalWorktree}
-                            </span>
-                          </>
-                        }
-                        onSelect={() =>
-                          void openExternalWorktree(
-                            group.repositoryProjectId,
-                            worktree,
-                          )
-                        }
-                      />
-                    </div>
-                  </RowContextMenu>
-                </div>
-              ),
-            )}
+            {mainActivity ? (
+              <div className="agent-worktree-main">{mainActivity}</div>
+            ) : null}
+            {worktreeNodes}
           </div>
-        ) : expanded ? (
-          activityList(project)
-        ) : null}
+        ) : (
+          mainActivity
+        )}
       </>
     );
   };

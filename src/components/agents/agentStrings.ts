@@ -107,6 +107,9 @@ const en = {
     "This project has sessions. Its folder and environment cannot be changed until they are deleted.",
   nameRequired: "Enter a name.",
   externalWorktree: "External worktree · Open",
+  detachedHead: "Detached HEAD",
+  worktreeCount: (count: number) =>
+    count === 1 ? "+1 worktree" : `+${count} worktrees`,
   openWorktree: "Open worktree",
   worktreeReadError: "Unable to read Git worktrees.",
   branchUnavailable: "Git branch unavailable",
@@ -678,6 +681,9 @@ const fr: typeof en = {
     "Ce projet contient des sessions. Son dossier et son environnement restent fixes tant qu’elles existent.",
   nameRequired: "Saisissez un nom.",
   externalWorktree: "Worktree externe · Ouvrir",
+  detachedHead: "HEAD détachée",
+  worktreeCount: (count: number) =>
+    count === 1 ? "+1 worktree" : `+${count} worktrees`,
   openWorktree: "Ouvrir le worktree",
   worktreeReadError: "Lecture des worktrees Git impossible.",
   branchUnavailable: "Branche Git indisponible",

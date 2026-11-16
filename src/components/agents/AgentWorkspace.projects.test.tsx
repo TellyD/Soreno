@@ -898,10 +898,9 @@ it("keeps project actions on the project row and only Git actions on worktree ro
   data.statuses.push({ sessionId: "s3", state: "running", exitCode: null });
   await render();
   await vi.waitFor(() =>
-    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(2),
+    expect(container.querySelectorAll(".agent-worktree")).toHaveLength(1),
   );
 
-  expect(await context("main", true)).toBeNull();
   const projectMenu = await context("Soreno", true);
   expect(button("Retirer du groupe", projectMenu)).not.toBeNull();
   expect(button("Déplacer vers « Archive »", projectMenu)).not.toBeNull();
@@ -914,6 +913,14 @@ it("keeps project actions on the project row and only Git actions on worktree ro
     ),
   ).toEqual(["Fusionner dans main et supprimer", "Supprimer le worktree"]);
   await escape();
+
+  await click("Nouvelle session · Feature");
+  await click("Claude Code", document.querySelector('[role="menu"]')!);
+  await vi.waitFor(() =>
+    expect(api.saveAgentSession).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "p2", executable: "claude" }),
+    ),
+  );
 
   await click("Replier le groupe · Repository");
   expect(
