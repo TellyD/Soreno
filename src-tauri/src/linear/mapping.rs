@@ -4,7 +4,7 @@ use super::{
 };
 use crate::kanban::{
     self, KanbanComment, KanbanIssue, KanbanIssueDetail, KanbanIssueUpdate, KanbanLabel,
-    KanbanLinearFields, KanbanPullRequest, KanbanSource, KanbanSubIssue,
+    KanbanLinearFields, KanbanPullRequest, KanbanSource,
 };
 
 fn attachment_pull_requests(attachments: &[RawAttachment]) -> Vec<KanbanPullRequest> {
@@ -64,12 +64,9 @@ pub(super) fn map_update(raw: RawUpdatedIssue, links: &ProjectLinks) -> KanbanIs
 
 pub(super) fn map_issue_detail(
     raw: RawIssueDetail,
-    more_children: Vec<KanbanSubIssue>,
     more_comments: Vec<RawComment>,
     links: &ProjectLinks,
 ) -> KanbanIssueDetail {
-    let mut children = raw.children.nodes;
-    children.extend(more_children);
     let mut comments: Vec<KanbanComment> = raw
         .comments
         .nodes
@@ -95,7 +92,6 @@ pub(super) fn map_issue_detail(
         created_at: raw.created_at,
         updated_at: raw.updated_at,
         labels: sorted_labels(raw.labels.nodes),
-        children,
         comments,
         linear: Some(KanbanLinearFields {
             url: raw.url,

@@ -23,7 +23,6 @@ import {
   kanbanSourceFilters,
   noKanbanProjectFilter,
   type KanbanBoardTab,
-  type KanbanIssue,
   type KanbanIssueSelection,
   type KanbanSort,
   type KanbanSortField,
@@ -262,15 +261,6 @@ function KanbanBoardContent({
           ?.project ?? null,
     });
   };
-  const openCreateSubIssue = (parent: KanbanIssue, trigger: HTMLElement) => {
-    createReturnFocusRef.current = trigger;
-    setCreateDefaults({
-      source: parent.source,
-      column: null,
-      project: parent.project,
-      parentId: parent.id,
-    });
-  };
   // A creation resolving after a newer dialog opened must close only its own dialog.
   const closeCreate = () =>
     setCreateDefaults((current) =>
@@ -280,11 +270,9 @@ function KanbanBoardContent({
   // Runs after the closed dialog returned focus to its trigger, under an issue opened meanwhile.
   useEffect(() => {
     if (createDefaults) return;
-    const view =
-      panelRef.current?.querySelector<HTMLElement>(".kanban-issue-view");
-    // The sub-issue button stays focused when the dialog was opened from it.
-    if (view && !view.contains(document.activeElement))
-      view.focus({ preventScroll: true });
+    panelRef.current
+      ?.querySelector<HTMLElement>(".kanban-issue-view")
+      ?.focus({ preventScroll: true });
   }, [createDefaults]);
 
   useEffect(() => {
@@ -664,8 +652,6 @@ function KanbanBoardContent({
               <KanbanIssueView
                 kanban={kanban}
                 onBack={closeIssue}
-                onCreateSubIssue={openCreateSubIssue}
-                onOpenIssue={setSelectedIssue}
                 panel={{
                   expanded: panel.expanded,
                   onExpandedChange: panel.onExpandedChange,

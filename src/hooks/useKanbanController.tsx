@@ -577,10 +577,6 @@ export function useKanbanController({
   }, [selectLinearTeam]);
   const [rememberedCreateSource, setRememberedCreateSource] =
     useState(readCreateSource);
-  // Each new object reloads the parent shown in any issue view, listing the new sub-issue.
-  const [createdSubIssue, setCreatedSubIssue] = useState<{
-    parentId: string;
-  } | null>(null);
   const createBoardIssue = useCallback(
     async (
       source: KanbanSource,
@@ -595,12 +591,8 @@ export function useKanbanController({
       } finally {
         creatingRef.current = false;
       }
-      if (input.parentId) setCreatedSubIssue({ parentId: input.parentId });
-      // A sub-issue follows its parent, so only a chosen destination is remembered.
-      else {
-        setRememberedCreateSource(source);
-        writePreference(createSourceKey, source);
-      }
+      setRememberedCreateSource(source);
+      writePreference(createSourceKey, source);
       if (agent) void startBoardIssueAgent(issue, agent);
       return issue;
     },
@@ -779,7 +771,6 @@ export function useKanbanController({
       connectLinear,
       createBoardLabel,
       createDialog,
-      createdSubIssue,
       deleteBoardIssue,
       disconnectLinear,
       dismissAgentPrompt,
@@ -832,7 +823,6 @@ export function useKanbanController({
       connectLinear,
       createBoardLabel,
       createDialog,
-      createdSubIssue,
       deleteBoardIssue,
       disconnectLinear,
       dismissAgentPrompt,

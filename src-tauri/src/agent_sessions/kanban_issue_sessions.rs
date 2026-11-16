@@ -398,22 +398,18 @@ impl AgentSessions {
         })
     }
 
-    /// Linear would lose the hierarchy, so only an issue without parent or sub-issue moves there.
+    /// Runs before any Linear write, so a missing local issue never leaves an orphan Linear issue.
     pub fn check_kanban_issue_transfer(&self, issue_id: &str) -> Result<()> {
-        let store = lock(&self.store)?;
-        let (has_parent, has_children): (bool, bool) = store
+        let exists: bool = lock(&self.store)?
             .db
             .query_row(
-                "SELECT parent_id IS NOT NULL, EXISTS(SELECT 1 FROM kanban_issues WHERE parent_id=?1)
-                FROM kanban_issues WHERE id=?1",
+                "SELECT EXISTS(SELECT 1 FROM kanban_issues WHERE id=?1)",
                 [issue_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
+                |row| row.get(0),
             )
-            .optional()
-            .map_err(|error| error.to_string())?
-            .ok_or(kanban::ISSUE_NOT_FOUND)?;
-        if has_parent || has_children {
-            return Err(kanban::TRANSFER_SUB_ISSUES_MESSAGE.into());
+            .map_err(|error| error.to_string())?;
+        if !exists {
+            return Err(kanban::ISSUE_NOT_FOUND.into());
         }
         Ok(())
     }

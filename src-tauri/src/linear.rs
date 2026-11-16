@@ -640,47 +640,29 @@ pub async fn load_issue(issue_id: &str, links: &ProjectLinks) -> Result<KanbanIs
         .await?
         .issue;
 
-    let mut children_after = raw.children.page_info.take_next_cursor();
-    let mut more_children = Vec::new();
     let mut comments_after = raw.comments.page_info.take_next_cursor();
     let mut more_comments = Vec::new();
     for _ in 1..MAX_PAGES {
-        if children_after.is_none() && comments_after.is_none() {
+        let Some(after) = comments_after.take() else {
             break;
-        }
-        if let Some(after) = children_after.take() {
-            let variables = json!({ "id": issue_id, "after": after });
-            let mut page = graphql::<IssueConnectionData<RawIssueChildren>>(
-                &client,
-                &api_key,
-                ISSUE_CHILDREN_QUERY,
-                variables,
-            )
-            .await?
-            .issue
-            .children;
-            more_children.extend(page.nodes);
-            children_after = page.page_info.take_next_cursor();
-        }
-        if let Some(after) = comments_after.take() {
-            let variables = json!({ "id": issue_id, "after": after });
-            let mut page = graphql::<IssueConnectionData<RawIssueComments>>(
-                &client,
-                &api_key,
-                ISSUE_COMMENTS_QUERY,
-                variables,
-            )
-            .await?
-            .issue
-            .comments;
-            more_comments.extend(page.nodes);
-            comments_after = page.page_info.take_next_cursor();
-        }
+        };
+        let variables = json!({ "id": issue_id, "after": after });
+        let mut page = graphql::<IssueConnectionData<RawIssueComments>>(
+            &client,
+            &api_key,
+            ISSUE_COMMENTS_QUERY,
+            variables,
+        )
+        .await?
+        .issue
+        .comments;
+        more_comments.extend(page.nodes);
+        comments_after = page.page_info.take_next_cursor();
     }
 
     let labels = vec![(raw.label_ids.as_slice(), &mut raw.labels.nodes)];
     complete_labels(&client, &api_key, labels).await?;
-    Ok(map_issue_detail(raw, more_children, more_comments, links))
+    Ok(map_issue_detail(raw, more_comments, links))
 }
 
 /// The projects of every connected workspace, each named with its workspace.
@@ -1125,18 +1107,18 @@ use mutations::{
 };
 use queries::{
     CREATE_COMMENT_MUTATION, CREATE_ISSUE_MUTATION, CREATE_LABEL_MUTATION, DELETE_COMMENT_MUTATION,
-    DELETE_ISSUE_MUTATION, ISSUE_CHILDREN_QUERY, ISSUE_COMMENTS_QUERY, ISSUE_COMMENT_QUERY,
-    ISSUE_DETAIL_QUERY, ISSUE_PLACEMENT_QUERY, ISSUE_WORKFLOW_QUERY, LABELS_BY_ID_QUERY,
-    ORGANIZATION_QUERY, OWNER_QUERY, PROJECTS_QUERY, PROJECT_IDS_QUERY, PROJECT_TEAMS_QUERY,
-    TEAMS_QUERY, TEAM_BOARD_QUERY, TEAM_LABELS_QUERY, UPDATE_COMMENT_MUTATION,
+    DELETE_ISSUE_MUTATION, ISSUE_COMMENTS_QUERY, ISSUE_COMMENT_QUERY, ISSUE_DETAIL_QUERY,
+    ISSUE_PLACEMENT_QUERY, ISSUE_WORKFLOW_QUERY, LABELS_BY_ID_QUERY, ORGANIZATION_QUERY,
+    OWNER_QUERY, PROJECTS_QUERY, PROJECT_IDS_QUERY, PROJECT_TEAMS_QUERY, TEAMS_QUERY,
+    TEAM_BOARD_QUERY, TEAM_LABELS_QUERY, UPDATE_COMMENT_MUTATION,
     UPDATE_ISSUE_DESCRIPTION_MUTATION, UPDATE_ISSUE_MUTATION,
 };
 use responses::{
     CommentCreateData, CommentDeleteData, CommentUpdateData, GraphqlResponse, IssueConnectionData,
     IssueCreateData, IssueDeleteData, IssueDescriptionUpdateData, IssueDetailData, IssueLabelsData,
     IssuePlacementData, IssueUpdateData, IssueWorkflowData, LabelCreateData, LabelNodesData,
-    OrganizationData, OwnerData, ProjectIdsData, ProjectTeamsData, ProjectsData, RawIssueChildren,
-    RawIssueComment, RawIssueComments, RawLabel, TeamBoardData, TeamsData,
+    OrganizationData, OwnerData, ProjectIdsData, ProjectTeamsData, ProjectsData, RawIssueComment,
+    RawIssueComments, RawLabel, TeamBoardData, TeamsData,
 };
 
 #[cfg(test)]

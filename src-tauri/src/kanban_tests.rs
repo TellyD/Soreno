@@ -84,6 +84,10 @@ fn the_migration_keeps_linear_links_drops_the_legacy_table_and_seeds_the_default
         CREATE TABLE agent_linear_issue_sessions (linear_issue_id TEXT PRIMARY KEY, linear_issue_identifier TEXT NOT NULL, session_id TEXT UNIQUE REFERENCES agent_sessions(id) ON DELETE SET NULL, session_name TEXT NOT NULL, executable TEXT NOT NULL, project_name TEXT NOT NULL, started_at TEXT NOT NULL, closed INTEGER NOT NULL DEFAULT 0, ended_at TEXT, end_reason TEXT CHECK (end_reason IN ('session','project','worktree','merged')), merged_into TEXT);
         CREATE TABLE agent_linear_issue_summaries (summary_id TEXT PRIMARY KEY, linear_issue_id TEXT NOT NULL REFERENCES agent_linear_issue_sessions(linear_issue_id) ON DELETE CASCADE);
         CREATE TABLE agent_session_linear_issues (session_id TEXT PRIMARY KEY);
+        CREATE TABLE kanban_teams (id TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE, name TEXT NOT NULL, next_issue_number INTEGER NOT NULL DEFAULT 1);
+        CREATE TABLE kanban_states (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES kanban_teams(id) ON DELETE CASCADE, name TEXT NOT NULL, type TEXT NOT NULL CHECK (type IN ('backlog','unstarted','started','completed','canceled')), color TEXT NOT NULL, position REAL NOT NULL);
+        CREATE TABLE kanban_issues (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES kanban_teams(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, description TEXT, priority INTEGER NOT NULL DEFAULT 0 CHECK (priority BETWEEN 0 AND 4), state_id TEXT NOT NULL REFERENCES kanban_states(id), project_id TEXT REFERENCES agent_projects(id) ON DELETE SET NULL, parent_id TEXT REFERENCES kanban_issues(id) ON DELETE SET NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(team_id, number));
+        CREATE INDEX kanban_issues_parent ON kanban_issues(parent_id);
         INSERT INTO agent_projects VALUES ('p-web', '{}');
         INSERT INTO agent_sessions VALUES ('s', 'p-web', '{}', 0);
         INSERT INTO agent_project_linear_links VALUES ('p-web', 'lin-project');
@@ -124,6 +128,8 @@ fn the_migration_keeps_linear_links_drops_the_legacy_table_and_seeds_the_default
         assert!(
             table_column_exists(&db, "agent_linear_issue_sessions", "linear_issue_title").unwrap()
         );
+        // Sub-issues were removed with their parent column.
+        assert!(!table_column_exists(&db, "kanban_issues", "parent_id").unwrap());
         assert_eq!(
             count(
                 &db,
@@ -239,15 +245,6 @@ fn creation_applies_defaults_and_rejects_references_outside_the_team() {
 
     let ops = other_team(&db);
     let ops_label = create_label(&db, &ops, "Infra").unwrap();
-    let ops_issue = create_issue(
-        &db,
-        KanbanIssueCreateInput {
-            team_id: ops.clone(),
-            title: "Ops".into(),
-            ..KanbanIssueCreateInput::default()
-        },
-    )
-    .unwrap();
     let invalid = |input: KanbanIssueCreateInput| {
         create_issue(
             &db,
@@ -272,13 +269,6 @@ fn creation_applies_defaults_and_rejects_references_outside_the_team() {
             ..KanbanIssueCreateInput::default()
         }),
         LABEL_NOT_FOUND
-    );
-    assert_eq!(
-        invalid(KanbanIssueCreateInput {
-            parent_id: Some(ops_issue.id),
-            ..KanbanIssueCreateInput::default()
-        }),
-        PARENT_NOT_FOUND
     );
     assert_eq!(
         invalid(KanbanIssueCreateInput {
@@ -625,36 +615,18 @@ fn completion_moves_to_the_first_review_state_unless_the_issue_is_settled() {
 }
 
 #[test]
-fn deleting_an_issue_removes_what_it_owns_and_unparents_its_children() {
+fn deleting_an_issue_removes_what_it_owns() {
     let db = database();
-    let parent = create(&db, "Parent");
-    let child = create_issue(
-        &db,
-        KanbanIssueCreateInput {
-            team_id: team_id(&db),
-            title: "Child".into(),
-            parent_id: Some(parent.id.clone()),
-            ..KanbanIssueCreateInput::default()
-        },
-    )
-    .unwrap();
-    assert_eq!(
-        load_issue(&db, &parent.id)
-            .unwrap()
-            .children
-            .into_iter()
-            .map(|child| child.identifier)
-            .collect::<Vec<_>>(),
-        ["SOR-2"]
-    );
+    let issue = create(&db, "Issue");
+    let other = create(&db, "Other");
     let label = create_label(&db, &team_id(&db), "Bug").unwrap();
     update_issue(
         &db,
-        &parent.id,
+        &issue.id,
         patch(serde_json::json!({ "addedLabelIds": [label.id] })),
     )
     .unwrap();
-    let comment = create_comment(&db, &parent.id, "Note").unwrap();
+    let comment = create_comment(&db, &issue.id, "Note").unwrap();
     db.execute_batch(
         "INSERT INTO kanban_images VALUES ('i-1', NULL, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png', 'image/png', 1, '2026-01-01T00:00:00Z');
         INSERT INTO kanban_images VALUES ('i-2', NULL, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.gif', 'image/gif', 1, '2026-01-01T00:00:00Z');",
@@ -662,31 +634,31 @@ fn deleting_an_issue_removes_what_it_owns_and_unparents_its_children() {
     .unwrap();
     update_description(
         &db,
-        &parent.id,
+        &issue.id,
         "![a](asset://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png)",
     )
     .unwrap();
-    create_comment(&db, &child.id, "![b](bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.gif)").unwrap();
+    create_comment(&db, &other.id, "![b](bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.gif)").unwrap();
     db.execute(
         "INSERT INTO agent_kanban_issue_sessions(issue_id, session_name, executable, project_name, started_at, summary_comment_id)
         VALUES (?1, 'Agent', 'codex', 'Projet', '2026-01-01T00:00:00Z', ?2)",
-        [&parent.id, &comment.id],
+        [&issue.id, &comment.id],
     )
     .unwrap();
     db.execute(
         "INSERT INTO agent_kanban_issue_summaries VALUES ('turn-1', ?1)",
-        [&parent.id],
+        [&issue.id],
     )
     .unwrap();
 
     assert_eq!(
-        delete_issue(&db, &parent.id).unwrap(),
+        delete_issue(&db, &issue.id).unwrap(),
         ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png"]
     );
     assert_eq!(
         count(&db, "SELECT COUNT(*) FROM kanban_comments"),
         1,
-        "the child keeps its comment"
+        "the other issue keeps its comment"
     );
     for table in [
         "kanban_issue_labels",
@@ -707,15 +679,7 @@ fn deleting_an_issue_removes_what_it_owns_and_unparents_its_children() {
         ),
         1
     );
-    let parent_id: Option<String> = db
-        .query_row(
-            "SELECT parent_id FROM kanban_issues WHERE id=?1",
-            [&child.id],
-            |row| row.get(0),
-        )
-        .unwrap();
-    assert_eq!(parent_id, None);
-    assert_eq!(delete_issue(&db, &parent.id).unwrap_err(), ISSUE_NOT_FOUND);
+    assert_eq!(delete_issue(&db, &issue.id).unwrap_err(), ISSUE_NOT_FOUND);
 }
 
 #[test]

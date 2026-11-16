@@ -14,7 +14,6 @@ import {
   type KanbanIssue,
   type KanbanIssueDetail,
   type KanbanIssuePatch,
-  type KanbanIssueSelection,
   type KanbanLabel,
   type KanbanUserRef,
   type KanbanWorkflowState,
@@ -30,7 +29,6 @@ import { notifyError } from "../../notifications";
 import { MarkdownContent, type MarkdownLocalLinks } from "../MarkdownContent";
 import { AgentProjectIcon } from "../agents/AgentProjectIcon";
 import { AgentProviderIcon } from "../agents/AgentProviderIcon";
-import { CountBadge } from "../ui/CountBadge";
 import { IconButton } from "../ui/IconButton";
 import {
   KanbanPriorityIcon,
@@ -83,7 +81,6 @@ type KanbanIssueDetailProps = {
   // Linear team members the issue can be assigned to.
   members: readonly KanbanUserRef[];
   onCreateLabel: (name: string) => Promise<KanbanLabel | null>;
-  onOpenIssue: (issue: KanbanIssueSelection) => void;
   onOpenProject: (projectId: string) => void;
   onOpenSession: (sessionId: string) => void;
   onOpenUrl: (url: string) => void;
@@ -120,7 +117,6 @@ export function KanbanIssueContent({
   onAddComment,
   onDeleteComment,
   onCreateLabel,
-  onOpenIssue,
   onOpenProject,
   overviewProjectIds,
   onOpenSession,
@@ -180,40 +176,6 @@ export function KanbanIssueContent({
           issueId={detail.id}
           onSave={onSaveDescription}
         />
-
-        {detail.children.length > 0 ? (
-          <section className="kanban-issue-section">
-            <h2 className="kanban-issue-heading">
-              {t("kanban.issue.children")}
-              <CountBadge count={detail.children.length} />
-            </h2>
-            <ul className="kanban-issue-children">
-              {detail.children.map((child) => (
-                <li key={child.id}>
-                  <button
-                    className="kanban-issue-child"
-                    onClick={() =>
-                      onOpenIssue({
-                        id: child.id,
-                        identifier: child.identifier,
-                        source: detail.source,
-                      })
-                    }
-                    type="button"
-                  >
-                    <KanbanStateIcon size={14} state={child.state} />
-                    <span className="kanban-card-identifier">
-                      {child.identifier}
-                    </span>
-                    <span className="kanban-issue-child-title">
-                      {child.title}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
 
         {detail.pullRequests.length > 0 ? (
           <section className="kanban-issue-section">

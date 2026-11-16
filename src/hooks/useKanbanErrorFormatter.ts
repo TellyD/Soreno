@@ -29,7 +29,6 @@ const errorKeys = {
   linearUnavailable: "kanban.error.linearUnavailable",
   linearWorkspaceAmbiguous: "kanban.error.linearWorkspaceAmbiguous",
   linearWorkspaceAuth: "kanban.error.linearWorkspaceAuth",
-  parentNotFound: "kanban.error.parentNotFound",
   projectNotFound: "kanban.error.projectNotFound",
   requestClaimFailed: "kanban.error.requestClaimFailed",
   requestImagePlaceholder: "kanban.error.requestImagePlaceholder",
@@ -43,7 +42,6 @@ const errorKeys = {
   stateNotFound: "kanban.error.stateNotFound",
   teamNotFound: "kanban.error.teamNotFound",
   transferIncomplete: "kanban.error.transferIncomplete",
-  transferSubIssues: "kanban.error.transferSubIssues",
 } as const satisfies Record<string, TranslationKey>;
 
 /** Translates coded Kanban errors; any other error (already localized or technical) is shown as is. */

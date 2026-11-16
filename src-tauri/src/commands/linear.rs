@@ -1,7 +1,7 @@
 use super::agents::blocking;
 use crate::agent_sessions::{transfer_incomplete, AgentSessions, TransferredComment};
 use crate::kanban::{
-    self, images, KanbanComment, KanbanIssue, KanbanIssueCreateInput, KanbanIssueDescriptionUpdate,
+    images, KanbanComment, KanbanIssue, KanbanIssueCreateInput, KanbanIssueDescriptionUpdate,
     KanbanIssueDetail, KanbanIssueInput, KanbanIssueUpdate, KanbanLabel,
 };
 use crate::linear::{self, LinearKanbanBoard, LinearProjectSummary, LinearWorkspace, ProjectLinks};
@@ -86,9 +86,6 @@ pub(crate) async fn transfer_kanban_issue_to_linear(
     mut comments: Vec<TransferredComment>,
     source_description: Option<String>,
 ) -> Result<KanbanIssue, String> {
-    if input.parent_id.is_some() {
-        return Err(kanban::TRANSFER_SUB_ISSUES_MESSAGE.into());
-    }
     let local_id = issue_id.clone();
     blocking(app.clone(), move |state| {
         state.check_kanban_issue_transfer(&local_id)

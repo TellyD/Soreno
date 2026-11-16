@@ -60,7 +60,6 @@ export function KanbanIssuePanel({
     useState<KanbanIssueCreateDefaults | null>(null);
   // The panel outlives session switches, so the dialog links the session it was opened for.
   const [createSessionId, setCreateSessionId] = useState(sessionId);
-  const createReturnFocusRef = useRef<HTMLElement | null>(null);
   // The create button moves between the empty state and the list: the ref follows the mounted one.
   const createButtonRef = useRef<HTMLButtonElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -104,17 +103,7 @@ export function KanbanIssuePanel({
           key={`${sessionId}:${shown.source}:${shown.id}`}
           kanban={kanban}
           onBack={onClose}
-          onCreateSubIssue={(parent, trigger) => {
-            createReturnFocusRef.current = trigger;
-            setCreateDefaults({
-              source: parent.source,
-              column: null,
-              project: parent.project,
-              parentId: parent.id,
-            });
-          }}
           onDeleted={onDeleted}
-          onOpenIssue={onOpenInKanban}
           panel={{
             expanded,
             onExpandedChange,
@@ -156,31 +145,21 @@ export function KanbanIssuePanel({
         <KanbanIssueCreateDialog
           {...kanban.createDialog}
           defaults={createDefaults}
-          forSession={!createDefaults.parentId}
+          forSession
           // A creation resolving after a newer dialog opened must close only its own dialog.
           onClose={() =>
             setCreateDefaults((current) =>
               current === createDefaults ? null : current,
             )
           }
-          onCreate={
-            createDefaults.parentId
-              ? kanban.createDialog.onCreate
-              : async (source, input) => {
-                  const issue = await kanban.createBoardIssue(
-                    source,
-                    input,
-                    null,
-                  );
-                  // The issue exists: a failed link is reported without reopening its draft.
-                  void attach(issue, createSessionId).catch((error: unknown) =>
-                    notifyError(kanban.formatError(error)),
-                  );
-                }
-          }
-          returnFocusRef={
-            createDefaults.parentId ? createReturnFocusRef : createButtonRef
-          }
+          onCreate={async (source, input) => {
+            const issue = await kanban.createBoardIssue(source, input, null);
+            // The issue exists: a failed link is reported without reopening its draft.
+            void attach(issue, createSessionId).catch((error: unknown) =>
+              notifyError(kanban.formatError(error)),
+            );
+          }}
+          returnFocusRef={createButtonRef}
         />
       ) : null}
     </div>

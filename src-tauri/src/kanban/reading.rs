@@ -1,8 +1,7 @@
 use super::{
     branch_name, compare_names, sort_states, sql, team_labels, text_pull_requests, KanbanBoard,
     KanbanComment, KanbanIssue, KanbanIssueDetail, KanbanLabel, KanbanProjectRef, KanbanSource,
-    KanbanSubIssue, KanbanSubIssueState, KanbanTeam, KanbanWorkflowState, Result, ISSUE_NOT_FOUND,
-    TEAM_NOT_FOUND,
+    KanbanTeam, KanbanWorkflowState, Result, ISSUE_NOT_FOUND, TEAM_NOT_FOUND,
 };
 use rusqlite::{Connection, OptionalExtension, Row};
 use std::collections::HashMap;
@@ -190,29 +189,6 @@ pub(crate) fn load_issue(db: &Connection, issue_id: &str) -> Result<KanbanIssueD
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .map_err(sql)?;
-    let children = db
-        .prepare(
-            "SELECT c.id, t.key || '-' || c.number, c.title, s.id, s.name, s.type, s.color
-            FROM kanban_issues c JOIN kanban_teams t ON t.id=c.team_id JOIN kanban_states s ON s.id=c.state_id
-            WHERE c.parent_id=?1 ORDER BY c.number",
-        )
-        .map_err(sql)?
-        .query_map([issue_id], |row| {
-            Ok(KanbanSubIssue {
-                id: row.get(0)?,
-                identifier: row.get(1)?,
-                title: row.get(2)?,
-                state: KanbanSubIssueState {
-                    id: row.get(3)?,
-                    name: row.get(4)?,
-                    r#type: row.get(5)?,
-                    color: row.get(6)?,
-                },
-            })
-        })
-        .map_err(sql)?
-        .collect::<rusqlite::Result<_>>()
-        .map_err(sql)?;
     Ok(KanbanIssueDetail {
         source: KanbanSource::Local,
         branch_name: branch_name(&key, number, &issue.title),
@@ -226,7 +202,6 @@ pub(crate) fn load_issue(db: &Connection, issue_id: &str) -> Result<KanbanIssueD
         updated_at: issue.updated_at,
         project: issue.project,
         labels: issue.labels,
-        children,
         comments: issue_comments(db, issue_id)?,
         pull_requests: issue.pull_requests,
         team_id: None,

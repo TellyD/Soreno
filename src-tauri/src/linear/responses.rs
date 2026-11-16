@@ -1,7 +1,7 @@
 use super::LinearProjectSummary;
 use crate::kanban::{
-    KanbanComment, KanbanIssueDescriptionUpdate, KanbanLabel, KanbanLinearProjectRef,
-    KanbanSubIssue, KanbanTeam, KanbanUserRef, KanbanWorkflowState,
+    KanbanComment, KanbanIssueDescriptionUpdate, KanbanLabel, KanbanLinearProjectRef, KanbanTeam,
+    KanbanUserRef, KanbanWorkflowState,
 };
 use serde::{de::IgnoredAny, Deserialize};
 
@@ -181,7 +181,6 @@ pub(super) struct RawIssueDetail {
     pub(super) project: Option<KanbanLinearProjectRef>,
     pub(super) label_ids: Vec<String>,
     pub(super) labels: Connection<KanbanLabel>,
-    pub(super) children: Page<KanbanSubIssue>,
     pub(super) comments: Page<RawComment>,
     pub(super) attachments: Connection<RawAttachment>,
 }
@@ -209,11 +208,6 @@ impl From<RawComment> for KanbanComment {
 #[derive(Debug, Deserialize)]
 pub(super) struct IssueConnectionData<T> {
     pub(super) issue: T,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct RawIssueChildren {
-    pub(super) children: Page<KanbanSubIssue>,
 }
 
 #[derive(Debug, Deserialize)]

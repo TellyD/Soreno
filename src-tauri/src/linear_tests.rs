@@ -1,7 +1,7 @@
 use super::mutations::{upload_target, validate_image};
 use super::responses::{FileUploadData, RawComment, RawIssue, RawIssueCreate};
 use super::*;
-use crate::kanban::{KanbanSubIssue, KanbanSubIssueState, KanbanUserRef, KanbanWorkflowState};
+use crate::kanban::{KanbanUserRef, KanbanWorkflowState};
 
 fn team(id: &str, name: &str) -> KanbanTeam {
     KanbanTeam {
@@ -236,7 +236,6 @@ fn issue_create_input_sends_only_the_given_fields() {
             "priority": 0,
             "projectId": "soreno-web",
             "labelIds": ["l-bug", "l-ux"],
-            "parentId": "i-1",
         })),
         Ok(json!({
             "teamId": "t-eng",
@@ -246,7 +245,6 @@ fn issue_create_input_sends_only_the_given_fields() {
             "priority": 0,
             "projectId": "p-auth",
             "labelIds": ["l-bug", "l-ux"],
-            "parentId": "i-1",
         }))
     );
     for (input, expected) in [
@@ -725,12 +723,6 @@ const ISSUE_DETAIL_FIXTURE: &str = r##"{
       "project": null,
       "labelIds": ["l-bug"],
       "labels": { "nodes": [{ "id": "l-bug", "name": "Bug", "color": "#eb5757" }] },
-      "children": {
-        "nodes": [
-          { "id": "i-7", "identifier": "ENG-50", "title": "Add regression test", "state": { "id": "s-done", "name": "Done", "type": "completed", "color": "#5e6ad2" } }
-        ],
-        "pageInfo": { "hasNextPage": true, "endCursor": "children-1" }
-      },
       "comments": {
         "nodes": [
           { "id": "c-3", "body": "Shipped", "createdAt": "2026-08-16T08:00:00.000Z", "user": null },
@@ -746,46 +738,23 @@ const ISSUE_DETAIL_FIXTURE: &str = r##"{
 }"##;
 
 #[test]
-fn issue_detail_merges_follow_up_pages_with_comments_oldest_first() {
+fn issue_detail_merges_follow_up_comment_pages_oldest_first() {
     let mut raw = parse_graphql_response::<IssueDetailData>(200, ISSUE_DETAIL_FIXTURE)
         .expect("fixture parses")
         .issue;
-    assert_eq!(
-        raw.children.page_info.take_next_cursor().as_deref(),
-        Some("children-1")
-    );
     assert_eq!(raw.comments.page_info.take_next_cursor(), None);
-    let more_children = vec![KanbanSubIssue {
-        id: "i-8".into(),
-        identifier: "ENG-51".into(),
-        title: "Document redirect".into(),
-        state: KanbanSubIssueState {
-            id: "s-todo".into(),
-            name: "Todo".into(),
-            r#type: "unstarted".into(),
-            color: "#e2e2e2".into(),
-        },
-    }];
     let more_comments = vec![RawComment {
         id: "c-0".into(),
         body: "Opened".into(),
         created_at: "2026-08-14T09:30:00.000Z".into(),
         user: None,
     }];
-    let detail = map_issue_detail(raw, more_children, more_comments, &links());
+    let detail = map_issue_detail(raw, more_comments, &links());
 
     assert_eq!(detail.source, KanbanSource::Linear);
     assert_eq!(detail.branch_name, "ada/eng-42-fix-login-redirect");
     assert_eq!(detail.priority, 1);
     assert_eq!(detail.project, None);
-    assert_eq!(
-        detail
-            .children
-            .iter()
-            .map(|child| child.identifier.as_str())
-            .collect::<Vec<_>>(),
-        ["ENG-50", "ENG-51"]
-    );
     assert_eq!(
         detail
             .comments

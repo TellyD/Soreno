@@ -190,25 +190,11 @@ query LinearIssueDetail($id: String!) {
     project { id name color }
     labelIds
     labels(first: 50) { nodes { id name color } }
-    children(first: 100) {
-      nodes { id identifier title state { id name type color } }
-      pageInfo { hasNextPage endCursor }
-    }
     comments(first: 100) {
       nodes { id body createdAt user { id name avatarUrl } }
       pageInfo { hasNextPage endCursor }
     }
     attachments(first: 10) { nodes { url sourceType } }
-  }
-}
-"#;
-pub(super) const ISSUE_CHILDREN_QUERY: &str = r#"
-query LinearIssueChildren($id: String!, $after: String!) {
-  issue(id: $id) {
-    children(first: 100, after: $after) {
-      nodes { id identifier title state { id name type color } }
-      pageInfo { hasNextPage endCursor }
-    }
   }
 }
 "#;

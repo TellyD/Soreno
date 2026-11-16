@@ -46,8 +46,6 @@ export type KanbanIssueCreateDefaults = {
   // Column of the '+' that opened the dialog; null takes the destination's default state.
   column: KanbanColumn | null;
   project: KanbanProjectRef | null;
-  // Set when creating a sub-issue, which stays in its parent's source.
-  parentId?: string;
 };
 
 type KanbanCreateDestination = {
@@ -242,7 +240,6 @@ export function KanbanIssueCreateDialog({
     if (fields.labels.length > 0) {
       input.labelIds = fields.labels.map(({ id }) => id);
     }
-    if (defaults.parentId) input.parentId = defaults.parentId;
     setCreating(true);
     try {
       await onCreate(
@@ -299,7 +296,7 @@ export function KanbanIssueCreateDialog({
           }}
         >
           <header className="kanban-create-header">
-            {linear && !defaults.parentId ? (
+            {linear ? (
               <Select
                 aria-label={t("kanban.create.destination")}
                 className="kanban-field-chip"

@@ -34,7 +34,6 @@ function detail(id: string): KanbanIssueDetail {
     updatedAt: "2026-08-01T10:00:00.000Z",
     project: null,
     labels: [],
-    children: [],
     comments: [],
     pullRequests: [],
   };

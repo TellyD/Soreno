@@ -226,8 +226,6 @@ export const en = {
   "kanban.error.linearWorkspaceAuth":
     "Linear rejected the API key of the {detail} workspace.",
   "kanban.error.openLink": "Could not open the link.",
-  "kanban.error.parentNotFound":
-    "The parent issue does not exist in this team.",
   "kanban.error.projectNotFound": "This project no longer exists.",
   "kanban.error.requestClaimFailed":
     "The agent’s request could not be picked up.",
@@ -252,8 +250,6 @@ export const en = {
   "kanban.error.title": "Could not load the issues",
   "kanban.error.transferIncomplete":
     "Created in Linear, but the local issue could not be removed: {detail}",
-  "kanban.error.transferSubIssues":
-    "An issue with sub-issues or a parent issue cannot be sent to Linear.",
   "kanban.issueRequest.created":
     "“{session}” created issue {identifier}: {title}",
   "kanban.issueRequest.failed":
@@ -264,7 +260,6 @@ export const en = {
     "“{session}” could not update its issue: {error}",
   "kanban.issue.activity": "Activity",
   "kanban.issue.assignee": "Assignee",
-  "kanban.issue.children": "Sub-issues",
   "kanban.issue.comment.label": "Add a comment",
   "kanban.issue.comment.placeholder": "Leave a comment…",
   "kanban.issue.comment.submit": "Comment",
@@ -284,7 +279,6 @@ export const en = {
   "kanban.issue.comment.agentFailedReason":
     "Not delivered to “{name}”: {reason}",
   "kanban.issue.created": "Created",
-  "kanban.issue.createSubIssue": "New sub-issue",
   "kanban.issue.delete": "Delete issue",
   "kanban.issue.deleteDialog.cancel": "Cancel",
   "kanban.issue.deleteDialog.confirm": "Delete",
@@ -311,8 +305,6 @@ export const en = {
   "kanban.issue.state": "Status",
   "kanban.issue.title": "Title",
   "kanban.issue.transfer": "Send to Linear",
-  "kanban.issue.transferBlocked":
-    "An issue with sub-issues cannot be sent to Linear.",
   "kanban.issue.transferComments": "Comments carried over from {identifier}",
   "kanban.issue.transferDialog.confirm": "Send",
   "kanban.issue.transferDialog.description":

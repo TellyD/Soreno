@@ -304,7 +304,6 @@ beforeEach(async () => {
     description: "Rendered **markdown**",
     branchName: "acm-1-ship-the-detail-view",
     labels: [],
-    children: [],
     comments: [
       {
         id: "c1",
@@ -3443,58 +3442,6 @@ it("restores the chosen project filter after a remount", async () => {
   );
   await remountBoard({});
   expect(projectSelect().textContent).toBe("Soreno app");
-});
-
-it("creates a sub-issue in the issue's project and lists it once created", async () => {
-  vi.mocked(api.loadKanbanBoard).mockResolvedValue({
-    ...structuredClone(board),
-    issues: [{ ...structuredClone(board.issues[0]), project: kanbanProject }],
-  });
-  vi.mocked(api.createKanbanIssue).mockResolvedValue({
-    ...createdIssue,
-    stateId: "todo",
-    project: kanbanProject,
-  });
-  await remountBoard({ kanbanProjects: sorenoProjects });
-  await tapCard();
-  expect(detailView()!.textContent).not.toContain("Sub-issues");
-
-  const trigger = detailView()!.querySelector<HTMLButtonElement>(
-    '.agent-git-panel-header button[aria-label="New sub-issue"]',
-  )!;
-  await act(async () => trigger.click());
-  expect(dialogField("Status").textContent).toBe("Todo");
-  expect(dialogField("Project").textContent).toBe("Soreno app");
-  const detail = await api.loadKanbanIssue("local", "i1");
-  vi.mocked(api.loadKanbanIssue)
-    .mockClear()
-    .mockResolvedValue({
-      ...detail,
-      children: [
-        {
-          id: "i2",
-          identifier: "ACM-2",
-          title: "Write the docs",
-          state: board.states[0],
-        },
-      ],
-    });
-  await act(async () => setInputValue(dialogTitle(), "Write the docs"));
-  await pressKey(dialogTitle(), "Enter", { ctrlKey: true });
-
-  expect(api.createKanbanIssue).toHaveBeenCalledExactlyOnceWith("local", {
-    teamId: "t1",
-    title: "Write the docs",
-    stateId: "todo",
-    projectId: "sp1",
-    parentId: "i1",
-  });
-  expect(createDialog()).toBeNull();
-  expect(api.loadKanbanIssue).toHaveBeenCalledExactlyOnceWith("local", "i1");
-  expect(
-    detailView()!.querySelector(".kanban-issue-children")?.textContent,
-  ).toBe("ACM-2Write the docs");
-  expect(document.activeElement).toBe(trigger);
 });
 
 it("shows Linear issues next to local ones and moves them through Linear", async () => {

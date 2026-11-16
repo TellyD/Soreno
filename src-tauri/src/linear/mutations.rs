@@ -82,9 +82,6 @@ pub(super) fn issue_create_input(
     if !input.label_ids.is_empty() {
         fields.insert("labelIds".into(), json!(input.label_ids));
     }
-    if let Some(parent_id) = input.parent_id {
-        fields.insert("parentId".into(), json!(parent_id));
-    }
     Ok(Value::Object(fields))
 }
 

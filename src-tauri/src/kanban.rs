@@ -48,10 +48,7 @@ pub(crate) const ISSUE_NOT_FOUND: &str = "[Kanban/issueNotFound] Issue introuvab
 const TEAM_NOT_FOUND: &str = "[Kanban/teamNotFound] Équipe introuvable.";
 const STATE_NOT_FOUND: &str = "[Kanban/stateNotFound] État introuvable dans l’équipe de l’issue.";
 const LABEL_NOT_FOUND: &str = "[Kanban/labelNotFound] Label introuvable dans l’équipe de l’issue.";
-const PARENT_NOT_FOUND: &str =
-    "[Kanban/parentNotFound] Issue parente introuvable dans l’équipe de l’issue.";
 const PROJECT_NOT_FOUND: &str = "[Kanban/projectNotFound] Projet introuvable.";
-pub(crate) const TRANSFER_SUB_ISSUES_MESSAGE: &str = "[Kanban/transferSubIssues] Une issue avec des sous-issues ou une issue parente ne peut pas être envoyée vers Linear.";
 pub(crate) const TITLE_MESSAGE: &str =
     "[Kanban/invalidTitle] Titre de l’issue vide ou trop long (255 caractères maximum).";
 pub(crate) const PRIORITY_MESSAGE: &str =
@@ -238,7 +235,6 @@ pub struct KanbanIssueCreateInput {
     pub project_id: Option<String>,
     #[serde(default)]
     pub label_ids: Vec<String>,
-    pub parent_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -250,24 +246,6 @@ pub struct KanbanComment {
     /// Linear only; `Some(None)` is a comment whose author Linear does not show.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<Option<KanbanUserRef>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct KanbanSubIssueState {
-    pub id: String,
-    pub name: String,
-    pub r#type: String,
-    pub color: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct KanbanSubIssue {
-    pub id: String,
-    pub identifier: String,
-    pub title: String,
-    pub state: KanbanSubIssueState,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -285,7 +263,6 @@ pub struct KanbanIssueDetail {
     pub updated_at: String,
     pub project: Option<KanbanProjectRef>,
     pub labels: Vec<KanbanLabel>,
-    pub children: Vec<KanbanSubIssue>,
     pub comments: Vec<KanbanComment>,
     pub pull_requests: Vec<KanbanPullRequest>,
     /// Linear only: a local issue's team is the single default one.
@@ -319,7 +296,7 @@ pub(crate) fn initialize(db: &mut Connection) -> Result<()> {
     db.execute_batch(
         "CREATE TABLE IF NOT EXISTS kanban_teams (id TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE, name TEXT NOT NULL, next_issue_number INTEGER NOT NULL DEFAULT 1);
         CREATE TABLE IF NOT EXISTS kanban_states (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES kanban_teams(id) ON DELETE CASCADE, name TEXT NOT NULL, type TEXT NOT NULL CHECK (type IN ('backlog','unstarted','started','completed','canceled')), color TEXT NOT NULL, position REAL NOT NULL);
-        CREATE TABLE IF NOT EXISTS kanban_issues (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES kanban_teams(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, description TEXT, priority INTEGER NOT NULL DEFAULT 0 CHECK (priority BETWEEN 0 AND 4), state_id TEXT NOT NULL REFERENCES kanban_states(id), project_id TEXT REFERENCES agent_projects(id) ON DELETE SET NULL, parent_id TEXT REFERENCES kanban_issues(id) ON DELETE SET NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(team_id, number));
+        CREATE TABLE IF NOT EXISTS kanban_issues (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES kanban_teams(id) ON DELETE CASCADE, number INTEGER NOT NULL, title TEXT NOT NULL, description TEXT, priority INTEGER NOT NULL DEFAULT 0 CHECK (priority BETWEEN 0 AND 4), state_id TEXT NOT NULL REFERENCES kanban_states(id), project_id TEXT REFERENCES agent_projects(id) ON DELETE SET NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(team_id, number));
         CREATE TABLE IF NOT EXISTS kanban_labels (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES kanban_teams(id) ON DELETE CASCADE, name TEXT NOT NULL, color TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS kanban_issue_labels (issue_id TEXT NOT NULL REFERENCES kanban_issues(id) ON DELETE CASCADE, label_id TEXT NOT NULL REFERENCES kanban_labels(id) ON DELETE CASCADE, PRIMARY KEY(issue_id, label_id));
         CREATE TABLE IF NOT EXISTS kanban_comments (id TEXT PRIMARY KEY, issue_id TEXT NOT NULL REFERENCES kanban_issues(id) ON DELETE CASCADE, body TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -329,7 +306,6 @@ pub(crate) fn initialize(db: &mut Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS agent_linear_issue_sessions (linear_issue_id TEXT PRIMARY KEY, linear_issue_identifier TEXT NOT NULL, linear_issue_title TEXT NOT NULL DEFAULT '', session_id TEXT UNIQUE REFERENCES agent_sessions(id) ON DELETE SET NULL, session_name TEXT NOT NULL, executable TEXT NOT NULL, project_name TEXT NOT NULL, started_at TEXT NOT NULL, ended_at TEXT, end_reason TEXT CHECK (end_reason IN ('session','project','worktree','merged')), merged_into TEXT, summary_comment_id TEXT);
         CREATE TABLE IF NOT EXISTS agent_linear_issue_summaries (summary_id TEXT PRIMARY KEY, linear_issue_id TEXT NOT NULL REFERENCES agent_linear_issue_sessions(linear_issue_id) ON DELETE CASCADE);
         CREATE TABLE IF NOT EXISTS agent_project_linear_links (project_id TEXT PRIMARY KEY REFERENCES agent_projects(id) ON DELETE CASCADE, linear_project_id TEXT NOT NULL UNIQUE);
-        CREATE INDEX IF NOT EXISTS kanban_issues_parent ON kanban_issues(parent_id);
         CREATE INDEX IF NOT EXISTS kanban_comments_issue ON kanban_comments(issue_id);
         CREATE INDEX IF NOT EXISTS kanban_images_issue ON kanban_images(issue_id);",
     )
@@ -365,6 +341,14 @@ pub(crate) fn initialize(db: &mut Connection) -> Result<()> {
     {
         tx.execute_batch(
             "ALTER TABLE agent_linear_issue_sessions ADD COLUMN linear_issue_title TEXT NOT NULL DEFAULT '';",
+        )
+        .map_err(sql)?;
+    }
+    // Sub-issues were removed; their hierarchy goes with the column.
+    if table_column_exists(&tx, "kanban_issues", "parent_id").map_err(sql)? {
+        tx.execute_batch(
+            "DROP INDEX IF EXISTS kanban_issues_parent;
+            ALTER TABLE kanban_issues DROP COLUMN parent_id;",
         )
         .map_err(sql)?;
     }
@@ -559,19 +543,6 @@ pub(crate) fn create_issue(db: &Connection, input: KanbanIssueCreateInput) -> Re
     if let Some(project_id) = &input.project_id {
         require_project(db, project_id)?;
     }
-    if let Some(parent_id) = &input.parent_id {
-        let parent_team: Option<String> = db
-            .query_row(
-                "SELECT team_id FROM kanban_issues WHERE id=?1",
-                [parent_id],
-                |row| row.get(0),
-            )
-            .optional()
-            .map_err(sql)?;
-        if parent_team.as_ref() != Some(&input.team_id) {
-            return Err(PARENT_NOT_FOUND.into());
-        }
-    }
     require_labels(db, &input.team_id, &input.label_ids)?;
     let description = trimmed(input.description.as_deref());
     let number: i64 = db
@@ -583,8 +554,8 @@ pub(crate) fn create_issue(db: &Connection, input: KanbanIssueCreateInput) -> Re
         .map_err(sql)?;
     let issue_id = new_id(db)?;
     db.execute(
-        "INSERT INTO kanban_issues(id, team_id, number, title, description, priority, state_id, project_id, parent_id, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+        "INSERT INTO kanban_issues(id, team_id, number, title, description, priority, state_id, project_id, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
         params![
             issue_id,
             input.team_id,
@@ -593,8 +564,7 @@ pub(crate) fn create_issue(db: &Connection, input: KanbanIssueCreateInput) -> Re
             description,
             priority.unwrap_or(0),
             state_id,
-            input.project_id,
-            input.parent_id
+            input.project_id
         ],
     )
     .map_err(sql)?;

@@ -1,7 +1,7 @@
 use super::kanban_issue_sessions_tests::{issues, save_session, state};
 use super::*;
 use crate::agent_sessions::kanban_issue_sessions::{ClaimedIssueSummary, TransferredComment};
-use crate::kanban::{self, KanbanIssueCreateInput, KanbanSource};
+use crate::kanban::{self, KanbanSource};
 
 fn linear_links(state: &AgentSessions) -> Vec<(String, String, Option<String>)> {
     state
@@ -370,30 +370,11 @@ fn a_transfer_keeps_the_local_issue_whose_description_changed_since_it_was_copie
 }
 
 #[test]
-fn only_an_issue_without_parent_or_sub_issue_can_be_transferred() {
+fn a_transfer_of_a_missing_local_issue_is_rejected_before_linear() {
     let state = state();
-    let local = issues(&state, 2);
-    let child = state
-        .kanban(|db, _| {
-            kanban::create_issue(
-                db,
-                KanbanIssueCreateInput {
-                    team_id: kanban::default_team_id(db)?,
-                    title: "Child".into(),
-                    parent_id: Some(local[0].clone()),
-                    ..KanbanIssueCreateInput::default()
-                },
-            )
-        })
-        .unwrap();
+    let local = issues(&state, 1);
 
-    for issue_id in [&local[0], &child.id] {
-        assert_eq!(
-            state.check_kanban_issue_transfer(issue_id).unwrap_err(),
-            kanban::TRANSFER_SUB_ISSUES_MESSAGE
-        );
-    }
-    assert_eq!(state.check_kanban_issue_transfer(&local[1]), Ok(()));
+    assert_eq!(state.check_kanban_issue_transfer(&local[0]), Ok(()));
     assert_eq!(
         state.check_kanban_issue_transfer("missing").unwrap_err(),
         kanban::ISSUE_NOT_FOUND

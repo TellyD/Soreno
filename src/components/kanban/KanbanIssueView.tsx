@@ -1,6 +1,5 @@
 import {
   ExternalLink,
-  ListPlus,
   Maximize2,
   Minimize2,
   Send,
@@ -39,8 +38,6 @@ type KanbanIssueViewProps = {
   onBack: () => void;
   // Runs instead of `onBack` once the issue is deleted.
   onDeleted?: () => void;
-  onCreateSubIssue: (parent: KanbanIssue, trigger: HTMLElement) => void;
-  onOpenIssue: (issue: KanbanIssueSelection) => void;
   // The side panel's controls; `onOpenKanban` and `onUnlink` are set beside an agent session only.
   panel: {
     expanded: boolean;
@@ -56,8 +53,6 @@ export function KanbanIssueView({
   selection,
   onBack,
   onDeleted = onBack,
-  onCreateSubIssue,
-  onOpenIssue,
   panel,
 }: KanbanIssueViewProps) {
   const { locale, t } = useI18n();
@@ -71,7 +66,6 @@ export function KanbanIssueView({
   const boardIssue = kanban.issues.find(
     ({ id, source }) => id === selection.id && source === selection.source,
   );
-  const { createdSubIssue } = kanban;
   const onTransferIssue =
     kanban.linearAvailable && selection.source === "local"
       ? kanban.transferBoardIssue
@@ -137,11 +131,6 @@ export function KanbanIssueView({
   useEffect(() => {
     if (!onUnlink) viewRef.current?.focus({ preventScroll: true });
   }, [selection.id]);
-
-  useEffect(() => {
-    if (createdSubIssue?.parentId === selection.id) reload();
-    // Only a new creation reloads; opening another issue already loads it.
-  }, [createdSubIssue]);
 
   // The board polls Linear; a newer board copy means the shown body and comments are stale.
   const linearBoardUpdatedAt =
@@ -269,28 +258,12 @@ export function KanbanIssueView({
         ) : null}
         {boardIssue ? (
           <>
-            <IconButton
-              aria-label={t("kanban.issue.createSubIssue")}
-              onClick={(event) =>
-                onCreateSubIssue(boardIssue, event.currentTarget)
-              }
-              size="small"
-              title={t("kanban.issue.createSubIssue")}
-            >
-              <ListPlus size={14} />
-            </IconButton>
             {onTransferIssue && detail ? (
               <IconButton
                 aria-label={t("kanban.issue.transfer")}
-                // The backend also refuses an issue with a parent, which the detail does not expose.
-                disabled={detail.children.length > 0}
                 onClick={() => setConfirmingTransfer(true)}
                 size="small"
-                title={
-                  detail.children.length > 0
-                    ? t("kanban.issue.transferBlocked")
-                    : t("kanban.issue.transfer")
-                }
+                title={t("kanban.issue.transfer")}
               >
                 <Send size={14} />
               </IconButton>
@@ -411,7 +384,6 @@ export function KanbanIssueView({
             kanban.issueDescriptionSaved(boardIssue ?? detail, stored);
             return stored;
           }}
-          onOpenIssue={onOpenIssue}
           onOpenProject={kanban.onOpenProject}
           overviewProjectIds={kanban.overviewProjectIds}
           besideSession={!!onUnlink}

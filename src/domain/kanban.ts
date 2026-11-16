@@ -124,7 +124,6 @@ export type KanbanIssueCreateInput = {
   priority?: number;
   projectId?: string;
   labelIds?: string[];
-  parentId?: string;
 };
 
 export type KanbanComment = {
@@ -157,13 +156,6 @@ export type KanbanIssueRequestEvent = {
   error: string | null;
 };
 
-export type KanbanSubIssue = {
-  id: string;
-  identifier: string;
-  title: string;
-  state: { id: string; name: string; type: string; color: string };
-};
-
 export type KanbanIssueDetail = {
   source: KanbanSource;
   id: string;
@@ -177,7 +169,6 @@ export type KanbanIssueDetail = {
   updatedAt: string;
   project: KanbanProjectRef | null;
   labels: KanbanLabel[];
-  children: KanbanSubIssue[];
   // Oldest first.
   comments: KanbanComment[];
   pullRequests: KanbanPullRequest[];

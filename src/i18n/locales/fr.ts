@@ -230,8 +230,6 @@ export const fr = {
   "kanban.error.linearWorkspaceAuth":
     "Linear a refusé la clé d’API du workspace {detail}.",
   "kanban.error.openLink": "Impossible d’ouvrir le lien.",
-  "kanban.error.parentNotFound":
-    "L’issue parente n’existe pas dans cette équipe.",
   "kanban.error.projectNotFound": "Ce projet n’existe plus.",
   "kanban.error.requestClaimFailed":
     "La demande de l’agent n’a pas pu être prise en charge.",
@@ -257,8 +255,6 @@ export const fr = {
   "kanban.error.title": "Impossible de charger les issues",
   "kanban.error.transferIncomplete":
     "Créée dans Linear, mais l’issue locale n’a pas pu être supprimée : {detail}",
-  "kanban.error.transferSubIssues":
-    "Une issue avec des sous-issues ou une issue parente ne peut pas être envoyée vers Linear.",
   "kanban.issueRequest.created":
     "« {session} » a créé l’issue {identifier} : {title}",
   "kanban.issueRequest.failed":
@@ -269,7 +265,6 @@ export const fr = {
     "« {session} » n’a pas pu modifier son issue : {error}",
   "kanban.issue.activity": "Activité",
   "kanban.issue.assignee": "Responsable",
-  "kanban.issue.children": "Sous-issues",
   "kanban.issue.comment.label": "Ajouter un commentaire",
   "kanban.issue.comment.placeholder": "Laisser un commentaire…",
   "kanban.issue.comment.submit": "Commenter",
@@ -289,7 +284,6 @@ export const fr = {
   "kanban.issue.comment.agentFailed": "Non livré à « {name} »",
   "kanban.issue.comment.agentFailedReason": "Non livré à « {name} » : {reason}",
   "kanban.issue.created": "Créée",
-  "kanban.issue.createSubIssue": "Nouvelle sous-issue",
   "kanban.issue.delete": "Supprimer l’issue",
   "kanban.issue.deleteDialog.cancel": "Annuler",
   "kanban.issue.deleteDialog.confirm": "Supprimer",
@@ -316,8 +310,6 @@ export const fr = {
   "kanban.issue.state": "Statut",
   "kanban.issue.title": "Titre",
   "kanban.issue.transfer": "Envoyer vers Linear",
-  "kanban.issue.transferBlocked":
-    "Une issue avec des sous-issues ne peut pas être envoyée vers Linear.",
   "kanban.issue.transferComments": "Commentaires repris de {identifier}",
   "kanban.issue.transferDialog.confirm": "Envoyer",
   "kanban.issue.transferDialog.description":
