@@ -4,6 +4,16 @@ import type { AgentConversationAttachmentRefusal } from "../../domain/agentConve
 export const label = (table: Record<string, string>, key: string) =>
   Object.prototype.hasOwnProperty.call(table, key) ? table[key] : key;
 
+const formatElapsedSeconds = (seconds: number) =>
+  seconds < 60
+    ? `${seconds} s`
+    : `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
+
+const formatRoundedDuration = (ms: number) =>
+  ms < 60_000
+    ? `${Math.round(ms / 1000)} s`
+    : `${Math.floor(ms / 60_000)} min ${Math.round((ms % 60_000) / 1000)} s`;
+
 export const agentConversationStringsEn = {
   label: (name: string) => `Conversation · ${name}`,
   emptyTitle: "What should OMP do?",
@@ -25,10 +35,7 @@ export const agentConversationStringsEn = {
   starting: "Starting OMP…",
   working: "Working…",
   compacting: "Summarizing earlier messages…",
-  elapsed: (seconds: number) =>
-    seconds < 60
-      ? `${seconds} s`
-      : `${Math.floor(seconds / 60)} min ${seconds % 60} s`,
+  elapsed: formatElapsedSeconds,
   idle: "This conversation is not running.",
   stopped: "This conversation is stopped.",
   start: "Start OMP",
@@ -124,11 +131,7 @@ export const agentConversationStringsEn = {
       )[status],
       tools ? `${tools} tool${tools === 1 ? "" : "s"}` : null,
       tokens ? `${(tokens / 1000).toFixed(1)}k tokens` : null,
-      ms !== null
-        ? ms < 60_000
-          ? `${Math.round(ms / 1000)} s`
-          : `${Math.floor(ms / 60_000)} min ${Math.round((ms % 60_000) / 1000)} s`
-        : null,
+      ms !== null ? formatRoundedDuration(ms) : null,
     ]
       .filter(Boolean)
       .join(" · "),
@@ -151,11 +154,7 @@ export const agentConversationStringsEn = {
     error: "Failed",
   },
   duration: (ms: number) =>
-    ms < 10_000
-      ? `${(ms / 1000).toFixed(1)} s`
-      : ms < 60_000
-        ? `${Math.round(ms / 1000)} s`
-        : `${Math.floor(ms / 60_000)} min ${Math.round((ms % 60_000) / 1000)} s`,
+    ms < 10_000 ? `${(ms / 1000).toFixed(1)} s` : formatRoundedDuration(ms),
   moreLines: (count: number) => `… ${count} more line${count === 1 ? "" : "s"}`,
   approvalTitle: (tool: string) =>
     tool === "bash"
@@ -256,10 +255,7 @@ export const agentConversationStringsFr: typeof agentConversationStringsEn = {
   starting: "Démarrage d’OMP…",
   working: "Au travail…",
   compacting: "Résumé des messages précédents…",
-  elapsed: (seconds: number) =>
-    seconds < 60
-      ? `${seconds} s`
-      : `${Math.floor(seconds / 60)} min ${seconds % 60} s`,
+  elapsed: formatElapsedSeconds,
   idle: "Cette conversation n’est pas démarrée.",
   stopped: "Cette conversation est arrêtée.",
   start: "Démarrer OMP",
@@ -361,11 +357,7 @@ export const agentConversationStringsFr: typeof agentConversationStringsEn = {
       tokens
         ? `${(tokens / 1000).toFixed(1).replace(".", ",")} k jetons`
         : null,
-      ms !== null
-        ? ms < 60_000
-          ? `${Math.round(ms / 1000)} s`
-          : `${Math.floor(ms / 60_000)} min ${Math.round((ms % 60_000) / 1000)} s`
-        : null,
+      ms !== null ? formatRoundedDuration(ms) : null,
     ]
       .filter(Boolean)
       .join(" · "),
@@ -390,9 +382,7 @@ export const agentConversationStringsFr: typeof agentConversationStringsEn = {
   duration: (ms: number) =>
     ms < 10_000
       ? `${(ms / 1000).toFixed(1).replace(".", ",")} s`
-      : ms < 60_000
-        ? `${Math.round(ms / 1000)} s`
-        : `${Math.floor(ms / 60_000)} min ${Math.round((ms % 60_000) / 1000)} s`,
+      : formatRoundedDuration(ms),
   moreLines: (count: number) =>
     `… ${count} ligne${count === 1 ? "" : "s"} de plus`,
   approvalTitle: (tool: string) =>
