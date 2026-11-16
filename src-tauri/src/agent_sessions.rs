@@ -174,11 +174,11 @@ pub struct AgentProject {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AgentProjectAppearanceChange {
-    #[serde(default, deserialize_with = "deserialize_some")]
+    #[serde(default, deserialize_with = "crate::serde_patch::present")]
     pub icon: Option<Option<String>>,
-    #[serde(default, deserialize_with = "deserialize_some")]
+    #[serde(default, deserialize_with = "crate::serde_patch::present")]
     pub color: Option<Option<String>>,
-    #[serde(default, deserialize_with = "deserialize_some")]
+    #[serde(default, deserialize_with = "crate::serde_patch::present")]
     pub icon_data_url: Option<Option<String>>,
 }
 impl AgentProjectAppearanceChange {
@@ -198,13 +198,6 @@ impl AgentProjectAppearanceChange {
             *icon_data_url = value;
         }
     }
-}
-fn deserialize_some<'de, D, T>(deserializer: D) -> std::result::Result<Option<T>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    T::deserialize(deserializer).map(Some)
 }
 #[derive(Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
