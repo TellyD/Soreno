@@ -1,22 +1,15 @@
 use super::*;
-use crate::{agent_sessions::AgentEnvironment, project_git::test_fixtures::local_project};
-use std::{
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
+use crate::{
+    agent_sessions::{tests::unique_temp_path, AgentEnvironment},
+    project_git::test_fixtures::local_project,
 };
+use std::sync::Arc;
 
 struct TempProject(PathBuf);
 
 impl TempProject {
     fn new() -> Self {
-        let path = std::env::temp_dir().join(format!(
-            "soreno-project-files-{}-{}",
-            std::process::id(),
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
+        let path = unique_temp_path("soreno-project-files");
         fs::create_dir_all(&path).unwrap();
         Self(path)
     }

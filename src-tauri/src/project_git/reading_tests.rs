@@ -1,25 +1,19 @@
 use super::*;
 use crate::{
+    agent_sessions::tests::unique_temp_path,
     project_git::test_fixtures::{local_project, successful_stdout},
     ssh::SshConnection,
 };
 use std::{
     process::Command,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant},
 };
 
 struct TempRepository(PathBuf);
 
 impl TempRepository {
     fn new(label: &str) -> Self {
-        let path = std::env::temp_dir().join(format!(
-            "soreno-git-reading-{label}-{}-{}",
-            std::process::id(),
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
+        let path = unique_temp_path(&format!("soreno-git-reading-{label}"));
         fs::create_dir_all(&path).unwrap();
         Self(path)
     }
@@ -1518,7 +1512,7 @@ fn settled_stamps_reuse_fingerprints_until_the_file_changes() {
         .write(true)
         .open(root.0.join("file"))
         .unwrap()
-        .set_modified(SystemTime::now() - Duration::from_secs(60))
+        .set_modified(std::time::SystemTime::now() - Duration::from_secs(60))
         .unwrap();
     let fresh = scan(&previous);
     assert_eq!(

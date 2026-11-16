@@ -1,26 +1,14 @@
 use super::*;
-use crate::project_git::test_fixtures::local_project;
+use crate::{agent_sessions::tests::unique_temp_path, project_git::test_fixtures::local_project};
 #[cfg(unix)]
 use std::process::Stdio;
-use std::{
-    fs,
-    path::PathBuf,
-    process::Command,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{fs, path::PathBuf, process::Command};
 
 struct TempProject(PathBuf);
 
 impl TempProject {
     fn new() -> Self {
-        let path = std::env::temp_dir().join(format!(
-            "soreno-text-search-{}-{}",
-            std::process::id(),
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
+        let path = unique_temp_path("soreno-text-search");
         fs::create_dir_all(&path).unwrap();
         Self(path)
     }
