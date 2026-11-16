@@ -16,6 +16,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import * as forgeApi from "../../data/forgeApi";
+import {
+  readCachedForgeKind,
+  writeCachedForgeKind,
+} from "../../data/forgeKindCache";
 import * as api from "../../data/projectGitApi";
 import {
   createGitReadCache,
@@ -491,7 +495,9 @@ export function GitPanel({
     let current = true;
     forgeApi.readForgeRemote(project.id).then(
       (remote) => {
-        if (current) setForgeRemote({ scope: readScope, kind: remote.kind });
+        if (!current) return;
+        writeCachedForgeKind(project.id, remote.kind);
+        setForgeRemote({ scope: readScope, kind: remote.kind });
       },
       () => {
         /* The tab keeps its default label; the view reports the failure. */
@@ -502,7 +508,11 @@ export function GitPanel({
     };
   }, [disconnected, gitRepositoryReady, project?.id, readScope]);
   const forgeKind =
-    forgeRemote && forgeRemote.scope === readScope ? forgeRemote.kind : null;
+    forgeRemote && forgeRemote.scope === readScope
+      ? forgeRemote.kind
+      : project
+        ? readCachedForgeKind(project.id)
+        : null;
   const gitPrefix =
     pathPrefix &&
     gitRepositoryReady &&
@@ -860,8 +870,9 @@ export function GitPanel({
               readScope={readScope}
               loginRevision={forgeLoginRevision}
               onKind={(kind) => {
-                if (readScope !== undefined)
-                  setForgeRemote({ scope: readScope, kind });
+                if (readScope === undefined) return;
+                writeCachedForgeKind(project.id, kind);
+                setForgeRemote({ scope: readScope, kind });
               }}
               onLogin={onForgeLogin}
               onWorktreeCreated={onWorktreeCreated}

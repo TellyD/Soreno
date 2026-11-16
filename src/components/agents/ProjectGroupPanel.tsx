@@ -22,6 +22,10 @@ import {
   writePersistedGitRepository,
 } from "../../data/gitReadCache";
 import * as forgeApi from "../../data/forgeApi";
+import {
+  readCachedForgeKind,
+  writeCachedForgeKind,
+} from "../../data/forgeKindCache";
 import * as api from "../../data/projectGitApi";
 import type { AgentProject } from "../../domain/agentSessions";
 import type { ForgeKind } from "../../domain/forge";
@@ -166,7 +170,13 @@ export function ProjectGroupPanel({
   const [openedViews, setOpenedViews] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const [forgeKind, setForgeKind] = useState<ForgeKind | null>(null);
+  // shortcut: computed once, so swapping members of an all-offline group keeps the old label until a read answers; recompute on membership change if that shows up.
+  const [forgeKind, setForgeKind] = useState<ForgeKind | null>(() => {
+    const kinds = new Set(
+      members.flatMap((member) => readCachedForgeKind(member.id) ?? []),
+    );
+    return kinds.size === 1 ? [...kinds][0] : null;
+  });
   const [storedReads, setReads] = useState<Record<string, MemberRead>>(() =>
     Object.fromEntries(
       members.flatMap((member) => {
@@ -331,18 +341,23 @@ export function ProjectGroupPanel({
     activeScopesRef.current = scopes;
   }, [connectedKey]);
   // The requests tab is named after the members' forge before it is opened.
-  // shortcut: this read failing after the opened view's read succeeded resets the label to the generic one; drop it once the view publishes if that shows up.
+  // shortcut: a member whose read fails is left out, so the others' kind names the tab; count its cached kind if mixed groups show up.
   useEffect(() => {
     let current = true;
     void Promise.allSettled(
       connected.map((member) => forgeApi.readForgeRemote(member.id)),
     ).then((results) => {
       const kinds = new Set(
-        results.flatMap((result) =>
-          result.status === "fulfilled" ? [result.value.kind] : [],
-        ),
+        results.flatMap((result, index) => {
+          if (result.status !== "fulfilled") return [];
+          // shortcut: a superseded batch finishing last can cache a moved member's old kind; the next read corrects it, guard with `current` if it shows up.
+          writeCachedForgeKind(connected[index].id, result.value.kind);
+          return [result.value.kind];
+        }),
       );
-      if (current) setForgeKind(kinds.size === 1 ? [...kinds][0] : null);
+      // No answer (all disconnected or failed) keeps the cached label.
+      if (current && kinds.size > 0)
+        setForgeKind(kinds.size === 1 ? [...kinds][0] : null);
     });
     return () => {
       current = false;

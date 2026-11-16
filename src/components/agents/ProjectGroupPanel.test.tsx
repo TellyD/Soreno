@@ -155,6 +155,8 @@ beforeEach(() => {
   localStorage.removeItem("soreno:git-file-tree");
   localStorage.removeItem("soreno:git-files-ratio");
   localStorage.removeItem("soreno:git-files-visible");
+  for (const key of Object.keys(localStorage))
+    if (key.startsWith("soreno:forge-kind:")) localStorage.removeItem(key);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -363,6 +365,21 @@ it("lists the members' merge requests together and acts on each one's project", 
     "merge",
     "head-api",
   );
+});
+
+it("keeps the cached forge label when every member is disconnected", async () => {
+  for (const id of ["api", "docs", "www"])
+    localStorage.setItem(`soreno:forge-kind:${id}`, "gitlab");
+  await render(undefined, [], ["api", "docs", "www"]);
+  // Lets the empty remote read batch settle.
+  await act(async () => {});
+
+  expect(forgeApi.readForgeRemote).not.toHaveBeenCalled();
+  expect(
+    [...host.querySelectorAll(".git-panel-view-tab")].map(
+      (tab) => tab.textContent,
+    ),
+  ).toContain("Merge requests");
 });
 
 it("creates and switches branches across members, skipping those without them", async () => {
