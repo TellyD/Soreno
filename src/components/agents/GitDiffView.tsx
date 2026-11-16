@@ -41,7 +41,11 @@ import {
   type GitContent,
   type GitSide,
 } from "../../domain/projectGit";
-import { useStoredPreference } from "../../hooks/useStoredPreference";
+import {
+  parseFlagDefaultFalse,
+  parseFlagDefaultTrue,
+  useStoredPreference,
+} from "../../hooks/useStoredPreference";
 import { useTheme } from "../../theme/ThemeProvider";
 import {
   appendLoadedLanguage,
@@ -62,8 +66,6 @@ import "./GitDiffView.css";
 
 const parseLayout = (stored: string | null): "unified" | "split" =>
   stored === "split" ? "split" : "unified";
-const parseWrap = (stored: string | null) => stored !== "false";
-const parseExpand = (stored: string | null) => stored === "true";
 
 type GitDiffViewProps = {
   comparison: GitComparison;
@@ -333,12 +335,12 @@ export default function GitDiffView({
   const [wrap, setWrap] = useStoredPreference(
     "soreno:git-diff-wrap",
     "soreno:git-diff-wrap-change",
-    parseWrap,
+    parseFlagDefaultTrue,
   );
   const [expand, setExpand] = useStoredPreference(
     "soreno:git-diff-expand",
     "soreno:git-diff-expand-change",
-    parseExpand,
+    parseFlagDefaultFalse,
   );
   const collapseUnchanged = expand ? undefined : collapseConfig;
   const editorId = useId();

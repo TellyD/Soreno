@@ -3,7 +3,10 @@ import {
   isMarkdownProjectFile,
   projectFileName,
 } from "../../domain/projectFiles";
-import { useStoredPreference } from "../../hooks/useStoredPreference";
+import {
+  parseFlagDefaultTrue,
+  useStoredPreference,
+} from "../../hooks/useStoredPreference";
 import { MarkdownContent } from "../MarkdownContent";
 import { EmptyState } from "../ui/EmptyState";
 import { IconButton } from "../ui/IconButton";
@@ -14,8 +17,6 @@ import {
   type FileReveal,
   type OpenDocument,
 } from "./ProjectCodeEditor";
-
-const parseWrap = (stored: string | null) => stored !== "false";
 
 export function ProjectFileEditorPane({
   closeLocked,
@@ -57,7 +58,7 @@ export function ProjectFileEditorPane({
   const [wrap, setWrap] = useStoredPreference(
     "soreno:file-wrap",
     "soreno:file-wrap-change",
-    parseWrap,
+    parseFlagDefaultTrue,
   );
 
   return (

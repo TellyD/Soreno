@@ -43,7 +43,10 @@ import {
 import { errorMessage } from "../../domain/errors";
 import { useAgentConversation } from "../../hooks/useAgentConversation";
 import { useFileDropTarget } from "../../hooks/useFileDropTarget";
-import { useStoredPreference } from "../../hooks/useStoredPreference";
+import {
+  parseFlagDefaultFalse,
+  useStoredPreference,
+} from "../../hooks/useStoredPreference";
 import { useOmpUpdate } from "../../hooks/useOmpUpdate";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
@@ -103,8 +106,6 @@ const imageAttachment = (
 // Within this distance of the end, new content keeps the view at the bottom.
 const STICK_PX = 80;
 
-const parseToolsHidden = (stored: string | null) => stored === "true";
-
 export function AgentConversation({
   sessionId,
   projectId,
@@ -151,7 +152,7 @@ export function AgentConversation({
   const [toolsHidden, setToolsHidden] = useStoredPreference(
     "soreno.agents.hide-tools.v1",
     "soreno:agents-hide-tools-change",
-    parseToolsHidden,
+    parseFlagDefaultFalse,
   );
   const composer = useRef<HTMLTextAreaElement>(null);
   const history = useRef<HTMLDivElement>(null);

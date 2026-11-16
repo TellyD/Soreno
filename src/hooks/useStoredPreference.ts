@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
+export const parseFlagDefaultFalse = (stored: string | null) =>
+  stored === "true";
+export const parseFlagDefaultTrue = (stored: string | null) =>
+  stored !== "false";
+
 /** Shares one localStorage preference across every mounted panel and window. */
 export function useStoredPreference<T>(
   storageKey: string,
