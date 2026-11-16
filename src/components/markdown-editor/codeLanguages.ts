@@ -91,6 +91,11 @@ export function codeLanguage(info: string): LanguageDescription | null {
   );
 }
 
+export function fileCodeLanguage(fileName: string): LanguageDescription | null {
+  const dot = fileName.lastIndexOf(".");
+  return codeLanguage(dot < 0 ? "" : fileName.slice(dot + 1));
+}
+
 /** Raw text stays in place when the lazy language chunk cannot load. */
 export function appendLoadedLanguage(
   language: LanguageDescription,

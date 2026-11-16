@@ -49,7 +49,7 @@ import {
 import { useTheme } from "../../theme/ThemeProvider";
 import {
   appendLoadedLanguage,
-  codeLanguage,
+  fileCodeLanguage,
 } from "../markdown-editor/codeLanguages";
 import { markdownHighlightStyle } from "../markdown-editor/highlighting";
 import { IconButton } from "../ui/IconButton";
@@ -281,11 +281,6 @@ const markWholeLineChanges = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-function languageName(path: string): string {
-  const file = gitPathParts(path).name;
-  return file.includes(".") ? file.slice(file.lastIndexOf(".") + 1) : "";
-}
-
 const absentMode = "000000";
 
 function contentReason(content: GitContent, s: GitStrings): string | null {
@@ -396,7 +391,7 @@ export default function GitDiffView({
     if (!host.current || beforeReason || afterReason) return;
     let disposed = false;
     let destroy: () => void;
-    const language = codeLanguage(languageName(comparison.path));
+    const language = fileCodeLanguage(gitPathParts(comparison.path).name);
     const common: Extension[] = [
       lineNumbers(),
       EditorState.readOnly.of(true),
