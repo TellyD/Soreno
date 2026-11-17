@@ -158,7 +158,10 @@ export function agentNotification(
     const details =
       kind === "awaiting"
         ? subject.awaitingKind
-          ? [strings.awaitingKinds[subject.awaitingKind], subject.awaitingMessage]
+          ? [
+              strings.awaitingKinds[subject.awaitingKind],
+              subject.awaitingMessage,
+            ]
           : [subject.awaitingMessage ?? strings.awaiting]
         : kind === "failed"
           ? [strings.turnFailed, subject.failureMessage]

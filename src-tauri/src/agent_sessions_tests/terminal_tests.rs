@@ -66,7 +66,9 @@ fn full_redraw_beyond_the_keyframe_limit_is_evicted() {
 
 #[test]
 fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
-    use crate::agent_sessions::program_status::ProgramState::{Blocked, Done, Error, Idle, Working};
+    use crate::agent_sessions::program_status::ProgramState::{
+        Blocked, Done, Error, Idle, Working,
+    };
     let (claude, pi) = (
         Some(conversations::Provider::Claude),
         Some(conversations::Provider::Pi),
@@ -183,10 +185,20 @@ fn program_status_names_the_wait_and_how_the_turn_ended() {
             Some(Claude),
             Blocked(Some("permission")),
             Some("approve Bash: touch x"),
-            (Some("permission"), Some("approve Bash: touch x"), None, None),
+            (
+                Some("permission"),
+                Some("approve Bash: touch x"),
+                None,
+                None,
+            ),
         ),
         // Escape: these agents end a finished turn with `done`.
-        (Some(Claude), Idle, None, (None, None, Some("interrupted"), None)),
+        (
+            Some(Claude),
+            Idle,
+            None,
+            (None, None, Some("interrupted"), None),
+        ),
         (Some(Pi), Done, None, (None, None, None, None)),
         // Codex and unknown programs end every turn with `idle`.
         (Some(Codex), Idle, None, (None, None, None, None)),

@@ -180,7 +180,10 @@ mod tests {
         let expected = vec![
             Event::Root(Some(ProgramState::Working), None),
             Event::Query,
-            Event::Root(Some(ProgramState::Blocked(Some("permission"))), Some("A".into())),
+            Event::Root(
+                Some(ProgramState::Blocked(Some("permission"))),
+                Some("A".into()),
+            ),
             Event::Prompt,
             Event::Root(Some(ProgramState::Done), None),
             Event::Root(Some(ProgramState::Idle), None),
