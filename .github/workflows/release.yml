@@ -92,6 +92,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev patchelf
 
+      # tauri-bundler caches AppRun as 0770 and packs it as is; firejail then can't run the AppImage.
+      - name: Seed world-executable AppRun
+        if: runner.os == 'Linux'
+        run: |
+          cache="${XDG_CACHE_HOME:-$HOME/.cache}/tauri"
+          mkdir -p "$cache"
+          curl -fsSLo "$cache/AppRun-x86_64" https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-x86_64
+          chmod 755 "$cache/AppRun-x86_64"
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ startsWith(matrix.platform, 'macos-') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
