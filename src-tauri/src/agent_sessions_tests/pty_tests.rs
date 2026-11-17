@@ -233,6 +233,99 @@ fn real_windows_native_pty() {
     state.stop("session").unwrap();
     state.delete_project("project").unwrap();
 }
+/// Claude Code reports its activity only if the OSC 7501 reply precedes the DA1 reply.
+#[cfg(windows)]
+#[test]
+fn real_conpty_answers_the_program_status_probe_before_device_attributes() {
+    let state = memory_state();
+    state.save_project(project()).unwrap();
+    let mut session = session();
+    session.executable = std::env::current_exe().unwrap().to_string_lossy().into();
+    session.args = [
+        "--ignored",
+        "--exact",
+        "agent_sessions::tests::pty_tests::program_status_probe_fixture",
+        "--nocapture",
+        "--test-threads=1",
+    ]
+    .map(Into::into)
+    .into();
+    state.save_session(session).unwrap();
+    state.start("session", 80, 24, None).unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    let (mut answered, mut attributes) = (0, 0);
+    let output = loop {
+        let current = terminal(&state, "session").unwrap();
+        let output = current.text();
+        if current.status.state == "exited" && output.contains("PROBE:") {
+            break output;
+        }
+        // Stands in for the grid engine, which this test does not subscribe; its DA1 replies use
+        // the reply queue, as the grid engine's do, so they follow the queued OSC 7501 reply.
+        let queries = output.matches("\u{1b}[6n").count();
+        for _ in answered..queries {
+            let _ = state.write("session", "\u{1b}[1;1R");
+        }
+        answered = queries;
+        let queries = output.matches("\u{1b}[c").count();
+        if queries > attributes {
+            let runtime = state.runtime("session").unwrap().unwrap();
+            let mut output = lock(&runtime.output).unwrap();
+            let replies = runtime.grid_replies(&mut output).unwrap();
+            for _ in attributes..queries {
+                let _ = replies.send((output.grid_generation, b"\x1b[?6c".to_vec()));
+            }
+        }
+        attributes = queries;
+        assert!(std::time::Instant::now() < deadline, "{output:?}");
+        thread::sleep(std::time::Duration::from_millis(20));
+    };
+    let probe = output[output.find("PROBE:").unwrap()..]
+        .lines()
+        .next()
+        .unwrap();
+    assert!(
+        probe.starts_with("PROBE:<ESC>]7501;?<ESC>\\<ESC>[?6c"),
+        "{probe}"
+    );
+}
+/// Queries its terminal as Claude Code does, then prints the replies up to the DA1 one.
+#[cfg(windows)]
+#[test]
+#[ignore = "subprocess fixture for the ConPTY program status probe"]
+fn program_status_probe_fixture() {
+    use std::io::{Read, Write};
+    use windows_sys::Win32::System::Console::{
+        GetStdHandle, SetConsoleMode, ENABLE_VIRTUAL_TERMINAL_INPUT, STD_INPUT_HANDLE,
+    };
+    assert_ne!(
+        unsafe {
+            SetConsoleMode(
+                GetStdHandle(STD_INPUT_HANDLE),
+                ENABLE_VIRTUAL_TERMINAL_INPUT,
+            )
+        },
+        0
+    );
+    let (sender, receiver) = std::sync::mpsc::channel();
+    thread::spawn(move || {
+        let mut byte = [0];
+        while std::io::stdin().read_exact(&mut byte).is_ok() && sender.send(byte[0]).is_ok() {}
+    });
+    print!("\x1b]7501;?\x1b\\\x1b[c");
+    std::io::stdout().flush().unwrap();
+    let mut replies = Vec::new();
+    while let Ok(byte) = receiver.recv_timeout(std::time::Duration::from_secs(5)) {
+        replies.push(byte);
+        if byte == b'c' {
+            break;
+        }
+    }
+    println!(
+        "PROBE:{}",
+        String::from_utf8_lossy(&replies).replace('\x1b', "<ESC>")
+    );
+}
 #[cfg(windows)]
 #[test]
 pub(super) fn real_wsl_agent_versions_opt_in() {

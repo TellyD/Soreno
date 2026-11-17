@@ -67,7 +67,10 @@ fn full_redraw_beyond_the_keyframe_limit_is_evicted() {
 #[test]
 fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
     use crate::agent_sessions::program_status::ProgramState::{Blocked, Finished, Idle, Working};
-    use conversations::Provider::{Claude, Pi};
+    let (claude, pi) = (
+        Some(conversations::Provider::Claude),
+        Some(conversations::Provider::Pi),
+    );
     let reported = |working, awaiting| conversations::Activity {
         working,
         awaiting,
@@ -75,14 +78,14 @@ fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
     };
     for (provider, state, seen, reported, expected) in [
         (
-            Claude,
+            claude,
             None,
             false,
             reported(None, false),
             (None, false, false),
         ),
         (
-            Claude,
+            claude,
             None,
             false,
             reported(Some(true), true),
@@ -90,7 +93,7 @@ fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
         ),
         // Escape interrupts the turn without a Stop hook.
         (
-            Claude,
+            claude,
             Some(Idle),
             true,
             reported(Some(true), false),
@@ -98,14 +101,14 @@ fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
         ),
         // The prompt was answered without a hook.
         (
-            Claude,
+            claude,
             Some(Working),
             true,
             reported(Some(true), true),
             (Some(true), false, false),
         ),
         (
-            Claude,
+            claude,
             Some(Blocked),
             true,
             reported(Some(true), false),
@@ -113,32 +116,47 @@ fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
         ),
         // Background agents still run after `done`.
         (
-            Claude,
+            claude,
             Some(Finished),
             true,
             reported(Some(true), false),
             (Some(true), false, false),
         ),
         (
-            Claude,
+            claude,
             None,
             true,
             reported(Some(true), false),
             (None, false, false),
         ),
         (
-            Pi,
+            pi,
             None,
             false,
             reported(Some(true), true),
             (Some(true), true, false),
         ),
         (
-            Pi,
+            pi,
             Some(Idle),
             true,
             reported(Some(true), true),
             (Some(false), true, false),
+        ),
+        // Any other program has only its program status.
+        (
+            None,
+            Some(Blocked),
+            true,
+            reported(None, false),
+            (Some(true), true, false),
+        ),
+        (
+            None,
+            Some(Finished),
+            true,
+            reported(None, false),
+            (Some(false), false, false),
         ),
     ] {
         let output = Output {

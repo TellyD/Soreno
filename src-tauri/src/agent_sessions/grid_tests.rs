@@ -237,7 +237,7 @@ fn a_hidden_engine_answers_queries_and_paints_in_full_once_visible() {
 }
 
 #[test]
-fn only_a_live_program_status_query_is_answered_ahead_of_the_queries_that_follow_it() {
+fn the_pipeline_answers_live_queries_first_and_ends_waits_at_a_shell_prompt() {
     use crate::agent_sessions::{dtach_history::HistoryFraming, program_status, OutputPipeline};
     let replies = Arc::new(Mutex::new(Vec::new()));
     let runtime = runtime(20, 5, replies.clone());
@@ -246,6 +246,7 @@ fn only_a_live_program_status_query_is_answered_ahead_of_the_queries_that_follow
         history: Some(HistoryFraming::new(true)),
         metadata: None,
         program_status: Default::default(),
+        shell: true,
     };
     pipeline.push(
         b"\x1b]5379;dtach-history-begin\x07\x1b]7501;?\x07\x1b]7501;state=blocked\x07\
@@ -259,6 +260,8 @@ fn only_a_live_program_status_query_is_answered_ahead_of_the_queries_that_follow
     );
     pipeline.push(b"\x1b]7501;?\x07\x1b[6n", &runtime);
     assert_eq!(replies_until(&replies, 16), "\x1b]7501;?\x1b\\\x1b[1;1R");
+    pipeline.push(b"\x1b]133;A\x07", &runtime);
+    assert_eq!(lock(&runtime.output).unwrap().program_state, None);
 }
 
 /// Whole buffer through the selection, which the engine serves in command order.

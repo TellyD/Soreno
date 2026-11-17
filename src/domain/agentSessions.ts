@@ -221,6 +221,8 @@ export type AgentSessionStatus = {
   working?: boolean | null;
   /** The agent waits for a reply: permission prompt or question. */
   awaiting?: boolean;
+  /** What the waiting program asks for, from its program status. */
+  awaitingMessage?: string;
   /** Start of the final message of the last finished turn. */
   lastMessage?: string;
   conversation?: {

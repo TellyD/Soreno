@@ -24,6 +24,8 @@ pub(super) struct Output {
     pub(super) restored_end: u64,
     /// Root record of the Program Status Protocol, once the program reports one.
     pub(super) program_state: Option<ProgramState>,
+    /// The `msg` of a `blocked` root state.
+    pub(super) program_message: Option<String>,
     /// The program has reported a root state: a CLI too old for the protocol never does.
     pub(super) reports_program_status: bool,
     /// Start of the latest retained full redraw; bytes before it may be evicted.
@@ -104,23 +106,31 @@ impl Output {
     }
     /// The program status comes first. Without it, the Pi/OMP extension still reports the
     /// activity, but Claude Code and Codex hooks miss interrupted turns and answered prompts.
+    /// Any other program has only its program status.
     pub(super) fn report_activity(
         &self,
-        provider: conversations::Provider,
+        provider: Option<conversations::Provider>,
         reported: &conversations::Activity,
         status: &mut AgentSessionStatus,
     ) {
-        let hooks = provider.uses_hooks();
+        let hooks = provider.is_some_and(conversations::Provider::uses_hooks);
         // The Pi/OMP extension also reports its question tools.
         let extension_awaiting = !hooks && reported.awaiting;
         (status.working, status.awaiting) = match self.program_state {
             Some(ProgramState::Idle) => (Some(false), extension_awaiting),
             Some(ProgramState::Working) => (Some(true), extension_awaiting),
             Some(ProgramState::Blocked) => (Some(true), true),
-            Some(ProgramState::Finished) => (reported.working, extension_awaiting),
+            Some(ProgramState::Finished) if provider.is_some() => {
+                (reported.working, extension_awaiting)
+            }
+            Some(ProgramState::Finished) => (Some(false), false),
             None if hooks => (None, false),
             None => (reported.working, reported.awaiting),
         };
+        status.awaiting_message = self
+            .program_message
+            .as_deref()
+            .and_then(super::message_preview);
         // shortcut: an SSH reattach only sees the root state still in dtach's 1 MiB replay, so a
         // state followed by more output reads as unknown and outdated until the next report;
         // keep the state beside dtach's restored modes if long silent turns hit this.
@@ -140,6 +150,7 @@ impl Output {
             last_message: None,
             missing_executable: false,
             outdated_cli: false,
+            awaiting_message: None,
         }
     }
     pub(super) fn publish(&self) {
@@ -154,6 +165,8 @@ pub(super) struct OutputPipeline {
     pub(super) history: Option<dtach_history::HistoryFraming>,
     pub(super) metadata: Option<conversations::RemoteMetadataParser>,
     pub(super) program_status: program_status::ProgramStatusScan,
+    /// An interactive shell, which outlives the programs it runs.
+    pub(super) shell: bool,
 }
 impl OutputPipeline {
     pub(super) fn push(&mut self, bytes: &[u8], runtime: &Arc<Runtime>) {
@@ -199,10 +212,23 @@ impl OutputPipeline {
             let (Segment::Live(bytes) | Segment::History(bytes)) = &segment;
             for event in self.program_status.scan(bytes) {
                 match event {
-                    program_status::Event::Root(state) => {
+                    program_status::Event::Root(state, message) => {
                         output.reports_program_status |= state.is_some();
                         output.program_state = state;
+                        output.program_message = message;
                     }
+                    // The spec ends `working` and `blocked` at a new shell prompt.
+                    program_status::Event::Prompt
+                        if self.shell
+                            && matches!(
+                                output.program_state,
+                                Some(ProgramState::Working | ProgramState::Blocked)
+                            ) =>
+                    {
+                        output.program_state = None;
+                        output.program_message = None;
+                    }
+                    program_status::Event::Prompt => {}
                     // A replayed query was answered when it was live. Replying before the output
                     // reaches a grid engine puts this reply ahead of a following `CSI c`.
                     program_status::Event::Query if matches!(segment, Segment::Live(_)) => {

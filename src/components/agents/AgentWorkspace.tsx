@@ -920,6 +920,7 @@ export function AgentWorkspace({
                 (project) => project.id === session.projectId,
               )?.name ?? null,
             lastMessage: statusOf(sessionId)?.lastMessage ?? null,
+            awaitingMessage: statusOf(sessionId)?.awaitingMessage ?? null,
           }
         : undefined;
     },

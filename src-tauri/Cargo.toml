@@ -65,7 +65,7 @@ gdkx11-sys = "0.18.2"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = ["Data_Xml_Dom", "Foundation", "UI_Notifications"] }
-windows-sys = { version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_Debug", "Win32_System_Diagnostics_ProcessSnapshotting", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_Threading"] }
+windows-sys = { version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Diagnostics_ProcessSnapshotting", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_Threading"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6"

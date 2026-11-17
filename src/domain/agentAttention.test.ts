@@ -6,6 +6,7 @@ import {
   notifiableAgentEvents,
   observeAgentAttention,
   type AgentAttentionEvent,
+  type AgentNotificationSubject,
   type AgentAttentionState,
 } from "./agentAttention";
 import type { AgentSessionStatus } from "./agentSessions";
@@ -136,24 +137,44 @@ describe("agentNotification", () => {
     finished: "Tour terminé",
     several: (count: number) => `${count} sessions`,
   };
-  const subjects: Record<
-    string,
-    { name: string; projectName: string | null; lastMessage: string | null }
-  > = {
-    a: { name: "Tests", projectName: "Web", lastMessage: "Tout passe." },
-    b: { name: "Docs", projectName: "Web", lastMessage: null },
-    c: { name: "Infra", projectName: null, lastMessage: null },
-    d: { name: "Web", projectName: "Web", lastMessage: "Prêt." },
+  const subjects: Record<string, AgentNotificationSubject> = {
+    a: {
+      name: "Tests",
+      projectName: "Web",
+      lastMessage: "Tout passe.",
+      awaitingMessage: "approve Bash: touch x",
+    },
+    b: {
+      name: "Docs",
+      projectName: "Web",
+      lastMessage: null,
+      awaitingMessage: null,
+    },
+    c: {
+      name: "Infra",
+      projectName: null,
+      lastMessage: null,
+      awaitingMessage: null,
+    },
+    d: {
+      name: "Web",
+      projectName: "Web",
+      lastMessage: "Prêt.",
+      awaitingMessage: null,
+    },
   };
   const notification = (events: AgentAttentionEvent[]) =>
     agentNotification(events, (id) => subjects[id], strings);
 
-  it("names the session, its project and the start of its last message", () => {
+  it("names the session, its project and what it finished or waits for", () => {
     expect(notification([{ sessionId: "a", kind: "finished" }])).toEqual({
       title: "Tests",
       body: "Web · Tout passe.",
       sessionId: "a",
     });
+    expect(notification([{ sessionId: "a", kind: "awaiting" }])?.body).toBe(
+      "Web · approve Bash: touch x",
+    );
     expect(notification([{ sessionId: "b", kind: "finished" }])?.body).toBe(
       "Web · Tour terminé",
     );

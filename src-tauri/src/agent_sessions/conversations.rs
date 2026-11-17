@@ -1051,7 +1051,11 @@ pub(super) fn prepare_launch(
         ]
     } else {
         integration_args.extend(["-e".into(), execution_bridge_path]);
-        Vec::new()
+        // Soreno reads every report: Pi then needs no reply to its probe, which ConPTY may drop.
+        match provider {
+            Provider::Pi => vec![("PI_PROGRAM_STATUS".into(), "1".into())],
+            _ => Vec::new(),
+        }
     };
     if windows_local && provider.uses_hooks() {
         environment.push((WINDOWS_HOOK_SCRIPT_VARIABLE.into(), windows_hook_script()));

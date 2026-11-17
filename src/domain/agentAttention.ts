@@ -102,6 +102,7 @@ export type AgentNotificationSubject = {
   name: string;
   projectName: string | null;
   lastMessage: string | null;
+  awaitingMessage: string | null;
 };
 
 export type AgentNotificationStrings = {
@@ -141,7 +142,7 @@ export function agentNotification(
     const { kind, subject } = first;
     const detail =
       kind === "awaiting"
-        ? strings.awaiting
+        ? (subject.awaitingMessage ?? strings.awaiting)
         : (subject.lastMessage ?? strings.finished);
     // An unnamed session falls back to its project's name: the title already says it.
     const projectName =

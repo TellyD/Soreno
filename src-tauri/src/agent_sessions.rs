@@ -297,6 +297,9 @@ pub struct AgentSessionStatus {
     /// Claude Code or Codex too old to report its activity through OSC 7501.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub outdated_cli: bool,
+    /// What a waiting program asks for, from its program status.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub awaiting_message: Option<String>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1908,6 +1911,7 @@ impl AgentSessions {
                 .map(|host| dtach_history::HistoryFraming::new(host == RemoteHost::Live)),
             metadata: metadata_parser,
             program_status: Default::default(),
+            shell: prepared_session.executable.is_empty(),
         };
         thread::spawn(move || {
             let mut chunk = [0; 8192];
@@ -2435,11 +2439,9 @@ fn session_status(
     }
     if status.state == "running" {
         status.last_message = last_message;
-        if let (Some(provider), Some(runtime)) = (
-            conversations::provider(&session.executable),
-            store.runtimes.get(&session.id),
-        ) {
+        if let Some(runtime) = store.runtimes.get(&session.id) {
             if let Ok(output) = lock(&runtime.output) {
+                let provider = conversations::provider(&session.executable);
                 output.report_activity(provider, &activity, &mut status);
             }
         }
@@ -2477,6 +2479,7 @@ fn idle(session_id: &str) -> AgentSessionStatus {
         last_message: None,
         missing_executable: false,
         outdated_cli: false,
+        awaiting_message: None,
     }
 }
 fn process_may_be_active(
