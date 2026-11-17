@@ -32,7 +32,11 @@ import {
   type GitFile,
   type GitSide,
 } from "../../domain/projectGit";
-import { useStoredPreference } from "../../hooks/useStoredPreference";
+import {
+  parseFlagDefaultFalse,
+  parseFlagDefaultTrue,
+  useStoredPreference,
+} from "../../hooks/useStoredPreference";
 import { IconButton } from "../ui/IconButton";
 import { MenuItem, MenuSurface } from "../ui/Menu";
 import {
@@ -61,10 +65,8 @@ const gitFilesRatioChangeEvent = "soreno:git-files-ratio-change";
 const gitFilesVisibleStorageKey = "soreno:git-files-visible";
 const gitFilesVisibleChangeEvent = "soreno:git-files-visible-change";
 
-const parseGitFileTree = (stored: string | null) => stored === "true";
 const parseGitChangeOrder = (stored: string | null): GitChangeOrder =>
   isGitChangeOrder(stored) ? stored : "path";
-const parseGitFilesVisible = (stored: string | null) => stored !== "false";
 
 function readGitFilesRatioPreference(
   defaultRatio: number,
@@ -138,7 +140,7 @@ export function useGitFileTreePreference() {
   const [tree, setTree] = useStoredPreference(
     gitFileTreeStorageKey,
     gitFileTreeChangeEvent,
-    parseGitFileTree,
+    parseFlagDefaultFalse,
   );
   const toggleTree = useCallback(() => setTree(!tree), [tree, setTree]);
   return [tree, toggleTree] as const;
@@ -156,7 +158,7 @@ export function useGitFilesVisiblePreference() {
   return useStoredPreference(
     gitFilesVisibleStorageKey,
     gitFilesVisibleChangeEvent,
-    parseGitFilesVisible,
+    parseFlagDefaultTrue,
   );
 }
 

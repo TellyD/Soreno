@@ -246,6 +246,7 @@ beforeEach(() => {
   localStorage.removeItem("soreno:git-files-ratio");
   localStorage.removeItem("soreno:git-files-visible");
   localStorage.removeItem("soreno:project-panel-view");
+  localStorage.removeItem(`soreno:forge-kind:${project.id}`);
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -1729,6 +1730,13 @@ it("falls back to Changes when the persisted view was the removed Review tab", a
   expect(hook.updateDraft).not.toHaveBeenCalledWith(
     expect.objectContaining({ view: expect.anything() }),
   );
+});
+
+it("names the requests tab after the last known forge before the remote is read", async () => {
+  localStorage.setItem(`soreno:forge-kind:${project.id}`, "gitlab");
+  await render();
+  const tabs = [...container.querySelectorAll(".git-panel-view-tab")];
+  expect(tabs.map((tab) => tab.textContent)).toContain("Merge requests");
 });
 
 it("lists forge requests, explains a blocked merge and merges with the chosen method on the shown head", async () => {

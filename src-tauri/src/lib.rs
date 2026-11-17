@@ -16,6 +16,7 @@ mod process_owner;
 mod project_files;
 mod project_git;
 mod release_notes;
+mod serde_patch;
 mod settings;
 mod skills;
 mod sqlite;

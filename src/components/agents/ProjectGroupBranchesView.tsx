@@ -1,6 +1,7 @@
 import {
   ChevronRight,
   FolderGit2,
+  FolderOpen,
   GitBranch,
   LoaderCircle,
   RefreshCw,
@@ -29,6 +30,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { IconButton } from "../ui/IconButton";
 import { Input } from "../ui/Input";
 import { LoadingState } from "../ui/LoadingState";
+import { useAgentStrings } from "./agentStrings";
 import { useGitStrings } from "./gitStrings";
 import "./GitArchiveViews.css";
 
@@ -52,6 +54,7 @@ export function ProjectGroupBranchesView({
   busy,
   blocked,
   onMutate,
+  onSelectProject,
 }: {
   active: boolean;
   /** Connected members whose repository is ready. */
@@ -64,8 +67,10 @@ export function ProjectGroupBranchesView({
     operation: "branch" | "switch",
     refs: GroupBranchRef[],
   ) => Promise<PromiseSettledResult<GitMutationResult>[] | null>;
+  onSelectProject: (projectId: string) => void;
 }) {
   const s = useGitStrings();
+  const a = useAgentStrings();
   const membersKey = JSON.stringify(
     members.map((member) => [member.id, gitReadScope(member)]),
   );
@@ -423,8 +428,18 @@ export function ProjectGroupBranchesView({
                           <span>{member.name}</span>
                         </button>
                       </h3>
-                      <span className="git-branch-count">
-                        {memberRows.length}
+                      <span className="git-branch-section-actions">
+                        <span className="git-branch-count">
+                          {memberRows.length}
+                        </span>
+                        <IconButton
+                          size="small"
+                          aria-label={a.openGroupMember(member.name)}
+                          title={a.openGroupMember(member.name)}
+                          onClick={() => onSelectProject(member.id)}
+                        >
+                          <FolderOpen />
+                        </IconButton>
                       </span>
                     </header>
                     {open ? (

@@ -85,6 +85,12 @@
   min-width: 0;
   color: var(--text-soft);
 }
+.git-branch-section-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
 .git-branch-section-heading h3,
 .git-branch-family-heading strong {
   min-width: 0;

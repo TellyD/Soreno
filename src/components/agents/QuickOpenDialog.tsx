@@ -21,6 +21,7 @@ import {
   type ProjectSearchRoot,
 } from "../../domain/projectFiles";
 import { readRecentProjectFiles } from "../../domain/recentProjectFiles";
+import { useContentStableValue } from "../../hooks/useContentStableValue";
 import { useNotification } from "../../notifications";
 import { FileIcon } from "../FileIcon";
 import { DialogOverlay, DialogSurface } from "../ui/Dialog";
@@ -52,11 +53,7 @@ export function QuickOpenDialog({
   const agentStrings = useAgentStrings();
   const listId = useId();
   // Callers rebuild the list on each render: key the searches on its content.
-  const rootsKey = JSON.stringify(roots);
-  const searchRoots = useMemo(
-    () => JSON.parse(rootsKey) as ProjectSearchRoot[],
-    [rootsKey],
-  );
+  const [rootsKey, searchRoots] = useContentStableValue(roots);
   const [query, setQuery] = useState("");
   const [resultState, setResultState] = useState<{
     roots: readonly ProjectSearchRoot[];

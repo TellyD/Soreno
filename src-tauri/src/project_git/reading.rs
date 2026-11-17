@@ -888,69 +888,11 @@ use fingerprints::{
     FingerprintScan, WorktreeFingerprint,
 };
 
-fn remote_read_timeout() -> Result<(std::time::Duration, bool), GitError> {
-    super::check_read_deadline()?;
-    let started = std::time::Instant::now();
-    let ssh_deadline = started + crate::ssh::TIMEOUT;
-    let (deadline, read_budget_expires_first) =
-        super::bounded_by_read_deadline(super::read_deadline(), ssh_deadline);
-    let timeout = deadline.saturating_duration_since(started);
-    Ok((timeout, read_budget_expires_first))
-}
-
-fn remote_read_error(message: String, read_budget_expires_first: bool) -> GitError {
-    if message.contains("Délai SSH") && read_budget_expires_first {
-        super::read_timeout_error()
-    } else if message.contains("Délai SSH") {
-        GitError::new("timeout", message)
-    } else {
-        GitError::new("inaccessible", message)
-    }
-}
-
-fn remote_read(
-    project: &AgentProject,
-    script: &str,
-    input: Option<&[u8]>,
-) -> Result<Vec<u8>, GitError> {
-    let (timeout, read_budget_expires_first) = remote_read_timeout()?;
-    let connection = super::ssh_connection(project)?;
-    match crate::ssh::run_read_output_with_timeout(
-        connection,
-        script,
-        input,
-        8 * 1024 * 1024,
-        timeout,
-    ) {
-        Ok(output) if output.status == 0 => {
-            super::check_read_deadline()?;
-            Ok(output.stdout)
-        }
-        Ok(output) => Err(GitError::new(
-            "inaccessible",
-            format!(
-                "Connexion ou commande SSH échouée : {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ),
-        )),
-        Err(message) => Err(remote_read_error(message, read_budget_expires_first)),
-    }
-}
-
-fn posix_read(
-    project: &AgentProject,
-    script: &str,
-    input: Option<&[u8]>,
-) -> Result<Vec<u8>, GitError> {
-    if project.environment.kind == "wsl" {
-        super::check_read_deadline()?;
-        let output = super::run_wsl_readonly(project, script, input.unwrap_or_default())?;
-        super::check_read_deadline()?;
-        Ok(output)
-    } else {
-        remote_read(project, script, input)
-    }
-}
+#[path = "reading/transport.rs"]
+mod transport;
+use transport::{posix_read, remote_read};
+#[cfg(test)]
+use transport::{remote_read_error, remote_read_timeout};
 
 fn posix_worktree_fingerprints(
     project: &AgentProject,

@@ -1,23 +1,15 @@
 use super::*;
-use crate::project_git::test_fixtures::{local_project, successful_stdout};
-use std::{
-    fs,
-    process::Command,
-    time::{SystemTime, UNIX_EPOCH},
+use crate::{
+    agent_sessions::tests::unique_temp_path,
+    project_git::test_fixtures::{local_project, successful_stdout},
 };
+use std::{fs, process::Command};
 
 struct TempRepository(std::path::PathBuf);
 
 impl TempRepository {
     fn new() -> Self {
-        let path = std::env::temp_dir().join(format!(
-            "soreno-git-archive-{}-{}",
-            std::process::id(),
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
+        let path = unique_temp_path("soreno-git-archive");
         fs::create_dir_all(&path).unwrap();
         Self(path)
     }

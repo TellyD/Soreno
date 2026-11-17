@@ -17,7 +17,6 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type ClipboardEvent,
@@ -53,6 +52,7 @@ import {
 import { isImeComposing, listNavigation } from "../../domain/keyboard";
 import { projectFileName, projectFileParent } from "../../domain/projectFiles";
 import { readRecentProjectFiles } from "../../domain/recentProjectFiles";
+import { useContentStableValue } from "../../hooks/useContentStableValue";
 import { useAppSettings } from "../../settings";
 import { FileIcon } from "../FileIcon";
 import { IconButton } from "../ui/IconButton";
@@ -156,11 +156,7 @@ export function AgentConversationComposer({
   const working = conversation.busy || conversation.compacting;
   const mentionListId = useId();
   // Callers rebuild the list on each render: key the searches on its content.
-  const rootsKey = JSON.stringify(mentionRoots);
-  const roots = useMemo(
-    () => JSON.parse(rootsKey) as AgentConversationMentionRoot[],
-    [rootsKey],
-  );
+  const [, roots] = useContentStableValue(mentionRoots);
   const [mention, setMention] = useState<AgentConversationMention | null>(null);
   const [mentionResults, setMentionResults] = useState<{
     query: string;

@@ -49,14 +49,7 @@ fn codex_home_ignores_only_unix_overrides_on_windows() {
 
 #[test]
 fn discovery_preserves_order_and_falls_back_after_lookup_failures() {
-    let root = std::env::temp_dir().join(format!(
-        "soreno-codex-discovery-{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let root = crate::agent_sessions::tests::unique_temp_path("soreno-codex-discovery");
     std::fs::create_dir_all(&root).unwrap();
     let binary = root.join("codex.exe");
     std::fs::write(&binary, "fixture").unwrap();

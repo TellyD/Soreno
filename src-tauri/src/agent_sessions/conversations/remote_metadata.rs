@@ -133,11 +133,7 @@ impl RemoteSidecarSync {
     ) -> Result<Self> {
         crate::ssh::validate_path(&remote_path)?;
         Ok(Self {
-            connection: project
-                .environment
-                .ssh
-                .clone()
-                .ok_or("Connexion SSH manquante.")?,
+            connection: project.environment.ssh_connection()?.clone(),
             provider,
             run_id,
             local_path,

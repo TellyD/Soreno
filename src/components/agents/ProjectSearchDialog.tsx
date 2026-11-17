@@ -9,7 +9,6 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -28,6 +27,7 @@ import {
   type ProjectTextSearchOptions,
   type ProjectTextSearchHits,
 } from "../../domain/projectFiles";
+import { useContentStableValue } from "../../hooks/useContentStableValue";
 import { useNotification } from "../../notifications";
 import { FileIcon } from "../FileIcon";
 import { DialogOverlay, DialogSurface } from "../ui/Dialog";
@@ -104,11 +104,7 @@ export function ProjectSearchDialog({
   const agentStrings = useAgentStrings();
   const listId = useId();
   // Callers rebuild the list on each render: key the searches on its content.
-  const rootsKey = JSON.stringify(roots);
-  const searchRoots = useMemo(
-    () => JSON.parse(rootsKey) as ProjectSearchRoot[],
-    [rootsKey],
-  );
+  const [rootsKey, searchRoots] = useContentStableValue(roots);
   const [query, setQuery] = useState(initialQuery);
   const [options, setOptions] = useState(initialOptions);
   const [resultState, setResultState] = useState<{

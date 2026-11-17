@@ -756,9 +756,7 @@ export function AgentProjectRail({
                     <span className="agent-project-name">{project.name}</span>
                     {activity?.badge}
                   </span>
-                  <span
-                    className={`agent-project-details${branch === null ? " is-branch-unavailable" : ""}`}
-                  >
+                  <span className="agent-project-details">
                     <span>{environment}</span>
                     {branchStatus ? separator : null}
                     {branchStatus}

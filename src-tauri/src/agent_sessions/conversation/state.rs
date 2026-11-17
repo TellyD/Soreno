@@ -1,7 +1,8 @@
 use super::{
-    clean_name, has_role, message_preview, message_text, reply, turn_id, AgentTurn, Conversation,
-    Gate, Handling, State, Titling, ANSWERED_PREFIX, DIALOGS, HIDDEN_UI, HOST_PREFIX, STATE_PREFIX,
-    STDERR_LIMIT, TITLE_PREFIX,
+    clean_name,
+    message::{has_role, message_text, reply, turn_id},
+    message_preview, AgentTurn, Conversation, Gate, Handling, State, Titling, ANSWERED_PREFIX,
+    DIALOGS, HIDDEN_UI, HOST_PREFIX, STATE_PREFIX, STDERR_LIMIT, TITLE_PREFIX,
 };
 use serde_json::Value;
 

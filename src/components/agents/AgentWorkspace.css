@@ -653,8 +653,7 @@
   flex-shrink: 0;
 }
 .agent-project-separator,
-.agent-project-worktree-count,
-.agent-project-details.is-branch-unavailable > :not(:first-child) {
+.agent-project-worktree-count {
   color: var(--text-faint);
 }
 .agent-worktree-list {

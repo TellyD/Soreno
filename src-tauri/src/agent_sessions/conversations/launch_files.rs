@@ -54,11 +54,7 @@ pub(super) fn execution_path(project: &AgentProject, path: &Path) -> Result<Stri
 
 pub(super) fn remote_run_directory(db: &Connection, project: &AgentProject) -> Result<String> {
     let output = crate::ssh::run(
-        project
-            .environment
-            .ssh
-            .as_ref()
-            .ok_or("Connexion SSH manquante.")?,
+        project.environment.ssh_connection()?,
         &retention::remote_run_directory_script(db),
         None,
         4096,
@@ -77,11 +73,7 @@ pub(super) fn remote_run_directory(db: &Connection, project: &AgentProject) -> R
 pub(super) fn upload_remote(project: &AgentProject, path: &str, data: &[u8]) -> Result<()> {
     crate::ssh::validate_path(path)?;
     crate::ssh::run(
-        project
-            .environment
-            .ssh
-            .as_ref()
-            .ok_or("Connexion SSH manquante.")?,
+        project.environment.ssh_connection()?,
         &format!("umask 077; cat > {}", crate::ssh::quote(path)),
         Some(data),
         4096,

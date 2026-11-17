@@ -41,11 +41,15 @@ import {
   type GitContent,
   type GitSide,
 } from "../../domain/projectGit";
-import { useStoredPreference } from "../../hooks/useStoredPreference";
+import {
+  parseFlagDefaultFalse,
+  parseFlagDefaultTrue,
+  useStoredPreference,
+} from "../../hooks/useStoredPreference";
 import { useTheme } from "../../theme/ThemeProvider";
 import {
   appendLoadedLanguage,
-  codeLanguage,
+  fileCodeLanguage,
 } from "../markdown-editor/codeLanguages";
 import { markdownHighlightStyle } from "../markdown-editor/highlighting";
 import { IconButton } from "../ui/IconButton";
@@ -62,8 +66,6 @@ import "./GitDiffView.css";
 
 const parseLayout = (stored: string | null): "unified" | "split" =>
   stored === "split" ? "split" : "unified";
-const parseWrap = (stored: string | null) => stored !== "false";
-const parseExpand = (stored: string | null) => stored === "true";
 
 type GitDiffViewProps = {
   comparison: GitComparison;
@@ -279,11 +281,6 @@ const markWholeLineChanges = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-function languageName(path: string): string {
-  const file = gitPathParts(path).name;
-  return file.includes(".") ? file.slice(file.lastIndexOf(".") + 1) : "";
-}
-
 const absentMode = "000000";
 
 function contentReason(content: GitContent, s: GitStrings): string | null {
@@ -333,12 +330,12 @@ export default function GitDiffView({
   const [wrap, setWrap] = useStoredPreference(
     "soreno:git-diff-wrap",
     "soreno:git-diff-wrap-change",
-    parseWrap,
+    parseFlagDefaultTrue,
   );
   const [expand, setExpand] = useStoredPreference(
     "soreno:git-diff-expand",
     "soreno:git-diff-expand-change",
-    parseExpand,
+    parseFlagDefaultFalse,
   );
   const collapseUnchanged = expand ? undefined : collapseConfig;
   const editorId = useId();
@@ -394,7 +391,7 @@ export default function GitDiffView({
     if (!host.current || beforeReason || afterReason) return;
     let disposed = false;
     let destroy: () => void;
-    const language = codeLanguage(languageName(comparison.path));
+    const language = fileCodeLanguage(gitPathParts(comparison.path).name);
     const common: Extension[] = [
       lineNumbers(),
       EditorState.readOnly.of(true),

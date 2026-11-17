@@ -137,7 +137,7 @@ fn validate_reconnected_project_directory(
     wait_ready: impl FnOnce(&SshConnection) -> Result<()>,
     validate_directory: impl FnOnce(&AgentEnvironment, &str) -> Result<Option<String>>,
 ) -> Result<Option<String>> {
-    wait_ready(environment.ssh.as_ref().ok_or("Connexion SSH manquante.")?)?;
+    wait_ready(environment.ssh_connection()?)?;
     validate_directory(environment, path)
 }
 
@@ -174,11 +174,11 @@ pub struct AgentProject {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AgentProjectAppearanceChange {
-    #[serde(default, deserialize_with = "deserialize_some")]
+    #[serde(default, deserialize_with = "crate::serde_patch::present")]
     pub icon: Option<Option<String>>,
-    #[serde(default, deserialize_with = "deserialize_some")]
+    #[serde(default, deserialize_with = "crate::serde_patch::present")]
     pub color: Option<Option<String>>,
-    #[serde(default, deserialize_with = "deserialize_some")]
+    #[serde(default, deserialize_with = "crate::serde_patch::present")]
     pub icon_data_url: Option<Option<String>>,
 }
 impl AgentProjectAppearanceChange {
@@ -198,13 +198,6 @@ impl AgentProjectAppearanceChange {
             *icon_data_url = value;
         }
     }
-}
-fn deserialize_some<'de, D, T>(deserializer: D) -> std::result::Result<Option<T>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    T::deserialize(deserializer).map(Some)
 }
 #[derive(Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -985,13 +978,7 @@ impl AgentSessions {
         if project.environment.kind != "ssh" {
             return Err("Cette action est réservée aux projets SSH.".into());
         }
-        operation(
-            project
-                .environment
-                .ssh
-                .as_ref()
-                .ok_or("Connexion SSH manquante.")?,
-        )
+        operation(project.environment.ssh_connection()?)
     }
     pub(crate) fn ssh_forward_list(
         &self,
@@ -1261,12 +1248,7 @@ impl AgentSessions {
         if store.git_busy {
             return Err("Une opération Git est en cours.".into());
         }
-        let connection = project
-            .environment
-            .ssh
-            .as_ref()
-            .ok_or("Connexion SSH manquante.")?
-            .clone();
+        let connection = project.environment.ssh_connection()?.clone();
         let project_ids = list::<AgentProject>(&store.db, "agent_projects")?
             .into_iter()
             .filter(|candidate| {
@@ -2228,84 +2210,6 @@ impl AgentSessions {
         let local_result = runtime.map_or(Ok(()), |runtime| runtime.stop());
         remote_result.and(local_result).and(omp_result)
     }
-    pub fn grid_subscribe(
-        &self,
-        session_id: &str,
-        config: AgentGridConfig,
-        visible: bool,
-        on_frame: tauri::ipc::Channel<AgentGridFrame>,
-        log: Option<PathBuf>,
-    ) -> Result<()> {
-        let theme = grid::GridTheme::parse(&config)?;
-        match self.runtime(session_id)? {
-            Some(runtime) => runtime.grid_subscribe(session_id, theme, visible, on_frame, log),
-            None => on_frame
-                .send(AgentGridFrame::idle())
-                .map_err(|error| error.to_string()),
-        }
-    }
-    pub fn grid_ack(&self, session_id: &str, channel_id: u32, apply_micros: u64) -> Result<()> {
-        self.grid_command(
-            session_id,
-            channel_id,
-            grid::GridCommand::Ack { apply_micros },
-        )
-    }
-    pub fn grid_unsubscribe(&self, session_id: &str, channel_id: u32) -> Result<()> {
-        match self.runtime(session_id)? {
-            Some(runtime) => runtime.grid_unsubscribe(channel_id),
-            None => Ok(()),
-        }
-    }
-    pub fn grid_configure(
-        &self,
-        session_id: &str,
-        channel_id: u32,
-        config: AgentGridConfig,
-    ) -> Result<()> {
-        let theme = grid::GridTheme::parse(&config)?;
-        self.grid_command(session_id, channel_id, grid::GridCommand::Configure(theme))
-    }
-    pub fn grid_scroll(
-        &self,
-        session_id: &str,
-        channel_id: u32,
-        scroll: AgentGridScroll,
-    ) -> Result<()> {
-        self.grid_command(session_id, channel_id, grid::GridCommand::Scroll(scroll))
-    }
-    pub fn grid_select(
-        &self,
-        session_id: &str,
-        channel_id: u32,
-        select: AgentGridSelect,
-    ) -> Result<()> {
-        self.grid_command(session_id, channel_id, grid::GridCommand::Select(select))
-    }
-    pub fn grid_visibility(&self, session_id: &str, channel_id: u32, visible: bool) -> Result<()> {
-        self.grid_command(
-            session_id,
-            channel_id,
-            grid::GridCommand::Visibility(visible),
-        )
-    }
-    pub fn grid_text(&self, session_id: &str, channel_id: u32) -> Result<String> {
-        match self.runtime(session_id)? {
-            Some(runtime) => runtime.grid_text(channel_id),
-            None => Err("Terminal Rust indisponible.".into()),
-        }
-    }
-    fn grid_command(
-        &self,
-        session_id: &str,
-        channel_id: u32,
-        command: grid::GridCommand,
-    ) -> Result<()> {
-        match self.runtime(session_id)? {
-            Some(runtime) => runtime.grid_command(channel_id, command),
-            None => Ok(()),
-        }
-    }
     pub fn write(&self, session_id: &str, data: &str) -> Result<()> {
         if data.len() > 64 * 1024 {
             return Err("Entrée terminal limitée à 64 Kio par envoi.".into());
@@ -2969,11 +2873,7 @@ fn local_command_with_environment(
         .unwrap_or(&project.path);
     if project.environment.kind == "ssh" {
         crate::ssh::validate_path(directory)?;
-        let connection = project
-            .environment
-            .ssh
-            .as_ref()
-            .ok_or("Connexion SSH manquante.")?;
+        let connection = project.environment.ssh_connection()?;
         let script = remote_host::session_script(
             remote_dtach,
             remote_host,

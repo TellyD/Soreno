@@ -62,7 +62,10 @@ import { useKanbanIssueRequestNotifications } from "./hooks/useKanbanIssueReques
 import { useNotesController } from "./hooks/useNotesController";
 import { useTasksController } from "./hooks/useTasksController";
 import { useSynchronizedSpinners } from "./hooks/useSynchronizedSpinners";
-import { useStoredPreference } from "./hooks/useStoredPreference";
+import {
+  parseFlagDefaultFalse,
+  useStoredPreference,
+} from "./hooks/useStoredPreference";
 import { useAppSettings } from "./settings";
 
 const loadAgentWorkspace = () =>
@@ -71,7 +74,6 @@ const loadAgentWorkspace = () =>
   }));
 const AgentWorkspace = lazy(loadAgentWorkspace);
 const isMacOS = import.meta.env.TAURI_ENV_PLATFORM === "darwin";
-const parseSidebarHidden = (stored: string | null) => stored === "true";
 const activityTabs = [
   "kanban",
   "automations",
@@ -130,7 +132,7 @@ function App() {
   const [isSidebarHidden, setIsSidebarHidden] = useStoredPreference(
     "soreno:sidebar-hidden",
     "soreno:sidebar-hidden-change",
-    parseSidebarHidden,
+    parseFlagDefaultFalse,
   );
   const [activityTabOrder, setActivityTabOrder] = useStoredPreference(
     "soreno:activity-tab-order",

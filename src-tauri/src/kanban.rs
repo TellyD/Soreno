@@ -213,14 +213,14 @@ pub struct KanbanIssueInput {
     pub state_id: Option<String>,
     pub priority: Option<u8>,
     pub title: Option<String>,
-    #[serde(default, deserialize_with = "present")]
+    #[serde(default, deserialize_with = "crate::serde_patch::present")]
     pub project_id: Option<Option<String>>,
     #[serde(default)]
     pub added_label_ids: Vec<String>,
     #[serde(default)]
     pub removed_label_ids: Vec<String>,
     /// Linear only.
-    #[serde(default, deserialize_with = "present")]
+    #[serde(default, deserialize_with = "crate::serde_patch::present")]
     pub assignee_id: Option<Option<String>>,
 }
 
@@ -277,14 +277,6 @@ pub struct KanbanIssueDetail {
 pub struct KanbanIssueCompletion {
     pub comment: KanbanComment,
     pub update: Option<KanbanIssueUpdate>,
-}
-
-fn present<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    Option::<T>::deserialize(deserializer).map(Some)
 }
 
 fn sql(error: rusqlite::Error) -> String {

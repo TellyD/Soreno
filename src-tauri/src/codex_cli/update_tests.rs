@@ -1,5 +1,5 @@
 use super::*;
-use std::time::{SystemTime, UNIX_EPOCH};
+use crate::agent_sessions::tests::unique_temp_path;
 
 #[test]
 fn version_checks_use_semver_precedence_and_reject_unknown_versions() {
@@ -55,14 +55,7 @@ fn version_checks_use_semver_precedence_and_reject_unknown_versions() {
 struct Fixture(PathBuf);
 impl Fixture {
     fn new() -> Self {
-        Self(std::env::temp_dir().join(format!(
-                    "soreno-codex-update-{}-{}",
-                    std::process::id(),
-                    SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
-                        .as_nanos()
-                )))
+        Self(unique_temp_path("soreno-codex-update"))
     }
     fn file(&self, path: &str, content: &str) -> PathBuf {
         let path = self.0.join(path);

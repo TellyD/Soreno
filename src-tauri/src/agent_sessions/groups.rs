@@ -241,12 +241,6 @@ pub(super) fn add_launch_args(
     }
 }
 
-fn ssh_connection(environment: &AgentEnvironment) -> Result<&crate::ssh::SshConnection> {
-    environment
-        .ssh
-        .as_ref()
-        .ok_or_else(|| "Connexion SSH manquante.".into())
-}
 #[cfg(windows)]
 fn wsl_output(environment: &AgentEnvironment, command: &[&str]) -> Result<Vec<u8>> {
     let distribution = environment
@@ -299,7 +293,7 @@ pub(super) fn resolve_group_directory(
                 "dir=\"$HOME/.soreno/groups/\"{}; {GROUP_DIRECTORY_SCRIPT}",
                 crate::ssh::quote(group_id)
             );
-            let output = crate::ssh::run(ssh_connection(environment)?, &script, None, 4096)?;
+            let output = crate::ssh::run(environment.ssh_connection()?, &script, None, 4096)?;
             let path = String::from_utf8(output)
                 .map_err(|_| "Chemin du dossier de groupe invalide.".to_string())?
                 .trim()
@@ -316,7 +310,7 @@ pub(super) fn create_group_directory(environment: &AgentEnvironment, path: &str)
             .map_err(|error| format!("Impossible de créer le dossier du groupe : {error}")),
         "wsl" => wsl_output(environment, &["mkdir", "-p", "--", path]).map(|_| ()),
         "ssh" => crate::ssh::run(
-            ssh_connection(environment)?,
+            environment.ssh_connection()?,
             &format!("mkdir -p -- {}", crate::ssh::quote(path)),
             None,
             1024,
@@ -340,7 +334,7 @@ pub(super) fn link_members(
             command.extend(links.iter().flat_map(|&(name, target)| [name, target]));
             wsl_output(environment, &command).map(|_| ())
         }
-        "ssh" => ssh_connection(environment).and_then(|connection| {
+        "ssh" => environment.ssh_connection().and_then(|connection| {
             let arguments = std::iter::once(path)
                 .chain(links.iter().flat_map(|&(name, target)| [name, target]))
                 .map(crate::ssh::quote)
@@ -483,7 +477,7 @@ pub(super) fn remove_empty_group_directory(environment: &AgentEnvironment, path:
             Err(error) => error.kind() == std::io::ErrorKind::NotFound,
         },
         "wsl" => wsl_output(environment, &["rmdir", "--", path]).is_ok(),
-        "ssh" => ssh_connection(environment).is_ok_and(|connection| {
+        "ssh" => environment.ssh_connection().is_ok_and(|connection| {
             crate::ssh::run(
                 connection,
                 &format!("rmdir -- {}", crate::ssh::quote(path)),

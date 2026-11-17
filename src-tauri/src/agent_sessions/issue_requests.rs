@@ -146,7 +146,7 @@ impl Requests {
         bytes.len() > self.limit()
             || match self {
                 Self::Kanban => parse_request(bytes).is_ok(),
-                Self::DesignFrames => design::parse_frame(bytes).is_ok(),
+                Self::DesignFrames => design::frame_file::parse_frame(bytes).is_ok(),
             }
     }
 }
@@ -1019,7 +1019,7 @@ impl AgentSessions {
             return Ok(None);
         };
         let result = bytes
-            .and_then(|bytes| design::parse_frame(&bytes))
+            .and_then(|bytes| design::frame_file::parse_frame(&bytes))
             .and_then(|frame| {
                 let board_id = request.board_id.clone().ok_or(design::BOARD_CHANGED)?;
                 self.kanban(|db, _| {

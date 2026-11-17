@@ -25,7 +25,7 @@ import {
 import { useTheme } from "../../theme/ThemeProvider";
 import {
   appendLoadedLanguage,
-  codeLanguage,
+  fileCodeLanguage,
 } from "../markdown-editor/codeLanguages";
 import { markdownSupport } from "../markdown-editor/document";
 import { markdownHighlightStyle } from "../markdown-editor/highlighting";
@@ -49,13 +49,6 @@ export type OpenDocument = ProjectFileContent & {
 const lineWrapping = new Compartment();
 
 type SearchPanel = { dom: HTMLElement; view: EditorView; state: EditorState };
-
-function languageName(path: string): string {
-  const file = projectFileName(path);
-  return file.includes(".")
-    ? file.slice(file.lastIndexOf(".") + 1).toLowerCase()
-    : "";
-}
 
 export function ProjectCodeEditor({
   document,
@@ -93,7 +86,7 @@ export function ProjectCodeEditor({
     const markdown = isMarkdownProjectFile(document.path);
     const language = markdown
       ? null
-      : codeLanguage(languageName(document.path));
+      : fileCodeLanguage(projectFileName(document.path));
     const common: Extension[] = [
       lineNumbers(),
       history(),

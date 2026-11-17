@@ -23,7 +23,7 @@ fn ingest(state: &AgentSessions, board: &DesignBoard, frame_id: &str, html: &str
             &board.session_id,
             &board.id,
             frame_id,
-            design::parse_frame(format!("{html}</html>").as_bytes())?,
+            design::frame_file::parse_frame(format!("{html}</html>").as_bytes())?,
         )
     })
 }
@@ -200,10 +200,13 @@ fn invalid_frame_files_are_refused() {
         b"<meta content='0' HTTP-EQUIV='refresh'></html>",
         b"<meta title='>' http-equiv=\"refr&#101;sh\" content=0;url=https://example.com></html>",
     ] {
-        assert!(design::parse_frame(refused).is_err(), "{refused:?}");
+        assert!(
+            design::frame_file::parse_frame(refused).is_err(),
+            "{refused:?}"
+        );
     }
-    assert!(design::parse_frame(&vec![b'a'; design::FRAME_LIMIT + 1]).is_err());
-    assert!(design::parse_frame(b"<meta charset=utf-8></HTML>\n").is_ok());
+    assert!(design::frame_file::parse_frame(&vec![b'a'; design::FRAME_LIMIT + 1]).is_err());
+    assert!(design::frame_file::parse_frame(b"<meta charset=utf-8></HTML>\n").is_ok());
     let (state, directory) = board_state();
     let board = create_board(&state, Some("project"), &directory);
     let other = memory_state();
@@ -215,7 +218,7 @@ fn invalid_frame_files_are_refused() {
             "session",
             &board.id,
             "home",
-            design::parse_frame(b"<p></html>").unwrap()
+            design::frame_file::parse_frame(b"<p></html>").unwrap()
         ))
         .is_err());
     assert!(state.design_frames(&board.id).unwrap().is_empty());

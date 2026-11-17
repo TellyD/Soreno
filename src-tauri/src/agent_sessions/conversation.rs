@@ -2,6 +2,7 @@
 //! pipes instead of a terminal; the view renders the conversation natively.
 mod chunks;
 mod history;
+mod message;
 mod remote_group;
 mod state;
 
@@ -21,7 +22,6 @@ use remote_group::{stop_group_script, GroupScan, GROUP_MARKER};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Read, Write},
@@ -380,11 +380,7 @@ pub(super) fn start(
     let (process, initial_prompt) = match project.environment.kind.as_str() {
         "ssh" => {
             crate::ssh::validate_path(directory)?;
-            let connection = project
-                .environment
-                .ssh
-                .as_ref()
-                .ok_or("Connexion SSH manquante.")?;
+            let connection = project.environment.ssh_connection()?;
             // An unsupported server keeps a run that ends with the connection.
             if let Some(dtach) = remote_dtach::ensure(connection)
                 .ok()
@@ -543,11 +539,7 @@ fn start_detachable(
     launch_args: &[String],
     run_token: String,
 ) -> Result<Arc<ConversationProcess>> {
-    let connection = project
-        .environment
-        .ssh
-        .as_ref()
-        .ok_or("Connexion SSH manquante.")?;
+    let connection = project.environment.ssh_connection()?;
     let access = crate::ssh::begin_access(connection)?;
     let host = remote_host::probe(connection, remote_host::CONVERSATIONS, session_id)?;
     let live = host == RemoteHost::Live;
@@ -633,41 +625,6 @@ fn start_detachable(
         return Err("La conversation OMP du serveur SSH ne répond pas.".into());
     }
     Ok(process)
-}
-
-/// Text parts of a message, joined; `None` without any text.
-fn message_text(message: &Value) -> Option<String> {
-    let text = match message.get("content")? {
-        Value::String(text) => text.clone(),
-        Value::Array(parts) => parts
-            .iter()
-            .filter(|part| part.get("type").and_then(Value::as_str) == Some("text"))
-            .filter_map(|part| part.get("text").and_then(Value::as_str))
-            .collect::<Vec<_>>()
-            .join("\n"),
-        _ => return None,
-    };
-    (!text.trim().is_empty()).then_some(text)
-}
-
-/// An assistant message's text, with its timestamp to tell identical replies apart.
-fn reply(message: &Value) -> Option<(String, Value)> {
-    let timestamp = message.get("timestamp").cloned().unwrap_or_default();
-    message_text(message).map(|text| (text, timestamp))
-}
-
-/// Stable across a dtach replay, which handles the same `agent_end` again: a summary posts once.
-// shortcut: two sessions ending on the same text at the same millisecond share an id, so the second summary is skipped; hash the Soreno session id too if that shows up.
-fn turn_id(timestamp: &Value, text: &str) -> String {
-    let mut hash = Sha256::new();
-    hash.update(timestamp.to_string());
-    hash.update([0]);
-    hash.update(text);
-    format!("{:x}", hash.finalize())
-}
-
-fn has_role(message: &Value, role: &str) -> bool {
-    message.get("role").and_then(Value::as_str) == Some(role)
 }
 
 /// A past OMP conversation of the project, for the view's resume picker.
