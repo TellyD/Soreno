@@ -910,6 +910,8 @@ export function AgentWorkspace({
     sessions: attentionSessions,
     statuses: statusById,
     displayed: displayedSessionIds,
+    // shortcut: read at delivery, so a message replaced within the 1 s batch is lost; queue it with
+    // its event if notifications show a stale or generic text.
     describe: (sessionId) => {
       const session = attentionSession(sessionId);
       return session
@@ -921,12 +923,20 @@ export function AgentWorkspace({
               )?.name ?? null,
             lastMessage: statusOf(sessionId)?.lastMessage ?? null,
             awaitingMessage: statusOf(sessionId)?.awaitingMessage ?? null,
+            awaitingKind: statusOf(sessionId)?.awaitingKind ?? null,
+            failureMessage: statusOf(sessionId)?.failureMessage ?? null,
           }
         : undefined;
     },
     strings: {
       awaiting: s.notificationAwaiting,
+      awaitingKinds: {
+        permission: s.notificationPermission,
+        question: s.notificationQuestion,
+        auth: s.notificationAuth,
+      },
       finished: s.notificationFinished,
+      turnFailed: s.notificationTurnFailed,
       several: s.notificationSeveral,
       failed: s.notificationFailed,
     },

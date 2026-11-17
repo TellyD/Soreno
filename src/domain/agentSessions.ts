@@ -209,6 +209,8 @@ export type AgentSession = {
   design?: boolean;
 };
 
+export type AgentAwaitingKind = "permission" | "question" | "auth";
+
 export type AgentSessionStatus = {
   sessionId: string;
   state: "idle" | "running" | "exited";
@@ -223,6 +225,12 @@ export type AgentSessionStatus = {
   awaiting?: boolean;
   /** What the waiting program asks for, from its program status. */
   awaitingMessage?: string;
+  /** Kind of wait, when the waiting program says. */
+  awaitingKind?: AgentAwaitingKind;
+  /** `interrupted` while an agent that ends its turns with `done` is idle, `failed` after `error`. */
+  turnEnd?: "interrupted" | "failed";
+  /** What made the last turn fail, from its program status. */
+  failureMessage?: string;
   /** Start of the final message of the last finished turn. */
   lastMessage?: string;
   conversation?: {

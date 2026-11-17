@@ -255,7 +255,7 @@ fn the_pipeline_answers_live_queries_first_and_ends_waits_at_a_shell_prompt() {
     );
     assert_eq!(
         lock(&runtime.output).unwrap().program_state,
-        Some(program_status::ProgramState::Blocked),
+        Some(program_status::ProgramState::Blocked(None)),
         "a replayed report still applies"
     );
     pipeline.push(b"\x1b]7501;?\x07\x1b[6n", &runtime);

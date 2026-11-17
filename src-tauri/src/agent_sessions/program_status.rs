@@ -25,15 +25,17 @@ pub(super) const QUERY_REPLY: &[u8] = b"\x1b]7501;?\x1b\\";
 pub(super) enum ProgramState {
     Idle,
     Working,
-    Blocked,
-    /// `done` or `error`: Claude Code reports `done` while its background agents still run.
-    Finished,
+    /// With its `kind` when known: `permission`, `question` or `auth`.
+    Blocked(Option<&'static str>),
+    /// Claude Code reports `done` while its background agents still run.
+    Done,
+    Error,
 }
 
 #[derive(Debug, PartialEq)]
 pub(super) enum Event {
     Query,
-    /// New root state, with the `msg` of a `blocked` one; `None` when the records are cleared.
+    /// New root state, with the `msg` of a `blocked` or `error` one; `None` when the records are cleared.
     Root(Option<ProgramState>, Option<String>),
     Prompt,
 }
@@ -101,7 +103,7 @@ impl ProgramStatusScan {
         if pairs == b"?" {
             return Some(Event::Query);
         }
-        let (mut state, mut message) = (None, None);
+        let (mut state, mut kind, mut message) = (None, None, None);
         for pair in pairs.split(|&byte| byte == b':') {
             let Some(split) = pair.iter().position(|&byte| byte == b'=') else {
                 continue;
@@ -111,19 +113,26 @@ impl ProgramStatusScan {
                 // Child records, and malformed ids, never address the root.
                 b"id" => return None,
                 b"state" => state = Some(value),
+                b"kind" => kind = Some(value),
                 b"msg" => message = Some(value),
                 _ => {}
             }
         }
         let state = match state? {
             b"idle" => ProgramState::Idle,
-            b"done" | b"error" => ProgramState::Finished,
+            b"done" => ProgramState::Done,
+            b"error" => ProgramState::Error,
             b"working" => ProgramState::Working,
-            b"blocked" => ProgramState::Blocked,
+            b"blocked" => ProgramState::Blocked(kind.and_then(|kind| {
+                ["permission", "question", "auth"]
+                    .into_iter()
+                    .find(|known| known.as_bytes() == kind)
+            })),
             b"clear" => return Some(Event::Root(None, None)),
             _ => return None,
         };
-        let message = message.filter(|_| state == ProgramState::Blocked);
+        let message =
+            message.filter(|_| matches!(state, ProgramState::Blocked(_) | ProgramState::Error));
         Some(Event::Root(Some(state), message.and_then(text)))
     }
 }
@@ -166,14 +175,17 @@ mod tests {
         let stream = b"\x1b]0;title\x07\x1b]7501;state=working:app=claude-code\x1b\\text\
             \x1b]7501;?\x07\x1b[c\x1b]7501; state = blocked :kind=permission:msg=QQ==\x07\
             \x1b]133;A;cl=m\x07\x1b]7501;state=done\x1b\\\x1b]7501;state=idle\x07\
+            \x1b]7501;state=blocked:kind=other\x07\x1b]7501;state=error:msg=QQ\x07\
             \x1b]7501;state=clear\x07";
         let expected = vec![
             Event::Root(Some(ProgramState::Working), None),
             Event::Query,
-            Event::Root(Some(ProgramState::Blocked), Some("A".into())),
+            Event::Root(Some(ProgramState::Blocked(Some("permission"))), Some("A".into())),
             Event::Prompt,
-            Event::Root(Some(ProgramState::Finished), None),
+            Event::Root(Some(ProgramState::Done), None),
             Event::Root(Some(ProgramState::Idle), None),
+            Event::Root(Some(ProgramState::Blocked(None)), None),
+            Event::Root(Some(ProgramState::Error), Some("A".into())),
             Event::Root(None, None),
         ];
         for piece in [1, 3, stream.len()] {
@@ -202,7 +214,7 @@ mod tests {
             (format!("working:msg={}", encoded("Listing files")), None),
         ] {
             let state = if report.starts_with("blocked") {
-                ProgramState::Blocked
+                ProgramState::Blocked(None)
             } else {
                 ProgramState::Working
             };

@@ -24,7 +24,7 @@ pub(super) struct Output {
     pub(super) restored_end: u64,
     /// Root record of the Program Status Protocol, once the program reports one.
     pub(super) program_state: Option<ProgramState>,
-    /// The `msg` of a `blocked` root state.
+    /// The `msg` of a `blocked` or `error` root state.
     pub(super) program_message: Option<String>,
     /// The program has reported a root state: a CLI too old for the protocol never does.
     pub(super) reports_program_status: bool,
@@ -119,18 +119,35 @@ impl Output {
         (status.working, status.awaiting) = match self.program_state {
             Some(ProgramState::Idle) => (Some(false), extension_awaiting),
             Some(ProgramState::Working) => (Some(true), extension_awaiting),
-            Some(ProgramState::Blocked) => (Some(true), true),
-            Some(ProgramState::Finished) if provider.is_some() => {
+            Some(ProgramState::Blocked(_)) => (Some(true), true),
+            Some(ProgramState::Done | ProgramState::Error) if provider.is_some() => {
                 (reported.working, extension_awaiting)
             }
-            Some(ProgramState::Finished) => (Some(false), false),
+            Some(ProgramState::Done | ProgramState::Error) => (Some(false), false),
             None if hooks => (None, false),
             None => (reported.working, reported.awaiting),
         };
-        status.awaiting_message = self
+        let message = self
             .program_message
             .as_deref()
             .and_then(super::message_preview);
+        match self.program_state {
+            Some(ProgramState::Blocked(kind)) => {
+                status.awaiting_kind = kind.map(Into::into);
+                status.awaiting_message = message;
+            }
+            Some(ProgramState::Error) => {
+                status.turn_end = Some("failed".into());
+                status.failure_message = message;
+            }
+            // Codex ends its turns with `idle`; the other agents go `idle` without `done` when interrupted.
+            Some(ProgramState::Idle)
+                if provider.is_some_and(|provider| provider != conversations::Provider::Codex) =>
+            {
+                status.turn_end = Some("interrupted".into());
+            }
+            _ => {}
+        }
         // shortcut: an SSH reattach only sees the root state still in dtach's 1 MiB replay, so a
         // state followed by more output reads as unknown and outdated until the next report;
         // keep the state beside dtach's restored modes if long silent turns hit this.
@@ -151,6 +168,9 @@ impl Output {
             missing_executable: false,
             outdated_cli: false,
             awaiting_message: None,
+            awaiting_kind: None,
+            turn_end: None,
+            failure_message: None,
         }
     }
     pub(super) fn publish(&self) {
@@ -222,7 +242,7 @@ impl OutputPipeline {
                         if self.shell
                             && matches!(
                                 output.program_state,
-                                Some(ProgramState::Working | ProgramState::Blocked)
+                                Some(ProgramState::Working | ProgramState::Blocked(_))
                             ) =>
                     {
                         output.program_state = None;

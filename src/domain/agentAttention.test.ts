@@ -11,7 +11,14 @@ import {
 } from "./agentAttention";
 import type { AgentSessionStatus } from "./agentSessions";
 
-type Activity = "working" | "idle" | "awaiting" | "unknown" | "exited";
+type Activity =
+  | "working"
+  | "idle"
+  | "interrupted"
+  | "failed"
+  | "awaiting"
+  | "unknown"
+  | "exited";
 
 function statuses(activities: Record<string, Activity>) {
   return new Map<string, AgentSessionStatus>(
@@ -24,8 +31,12 @@ function statuses(activities: Record<string, Activity>) {
         working:
           activity === "unknown"
             ? null
-            : activity !== "idle" && activity !== "exited",
+            : activity === "working" || activity === "awaiting",
         awaiting: activity === "awaiting",
+        turnEnd:
+          activity === "interrupted" || activity === "failed"
+            ? activity
+            : undefined,
       },
     ]),
   );
@@ -91,6 +102,15 @@ describe("observeAgentAttention", () => {
     ]);
   });
 
+  it("reports a failed turn and leaves an interrupted one unmarked", () => {
+    const sessions = observer();
+    sessions.observe({ a: "working", b: "working" });
+    expect(sessions.observe({ a: "interrupted", b: "failed" })).toEqual([
+      { sessionId: "b", kind: "failed" },
+    ]);
+    expect(sessions.state.unread).toEqual(["b"]);
+  });
+
   it("lets a new run or a wait supersede an unread mark", () => {
     const sessions = observer();
     sessions.observe({ a: "working", b: "working" });
@@ -134,33 +154,38 @@ describe("notifiableAgentEvents", () => {
 describe("agentNotification", () => {
   const strings = {
     awaiting: "Attend votre réponse",
+    awaitingKinds: {
+      permission: "Autorisation demandée",
+      question: "Question",
+      auth: "Connexion requise",
+    },
     finished: "Tour terminé",
+    turnFailed: "Échec du tour",
     several: (count: number) => `${count} sessions`,
+  };
+  const subject = {
+    awaitingMessage: null,
+    awaitingKind: null,
+    failureMessage: null,
   };
   const subjects: Record<string, AgentNotificationSubject> = {
     a: {
+      ...subject,
       name: "Tests",
       projectName: "Web",
       lastMessage: "Tout passe.",
       awaitingMessage: "approve Bash: touch x",
+      awaitingKind: "permission",
     },
-    b: {
-      name: "Docs",
-      projectName: "Web",
-      lastMessage: null,
-      awaitingMessage: null,
-    },
-    c: {
-      name: "Infra",
-      projectName: null,
-      lastMessage: null,
-      awaitingMessage: null,
-    },
+    b: { ...subject, name: "Docs", projectName: "Web", lastMessage: null },
+    c: { ...subject, name: "Infra", projectName: null, lastMessage: null },
     d: {
+      ...subject,
       name: "Web",
       projectName: "Web",
       lastMessage: "Prêt.",
-      awaitingMessage: null,
+      awaitingMessage: "Choisir une option",
+      failureMessage: "401 invalid key",
     },
   };
   const notification = (events: AgentAttentionEvent[]) =>
@@ -173,7 +198,16 @@ describe("agentNotification", () => {
       sessionId: "a",
     });
     expect(notification([{ sessionId: "a", kind: "awaiting" }])?.body).toBe(
-      "Web · approve Bash: touch x",
+      "Web · Autorisation demandée · approve Bash: touch x",
+    );
+    expect(notification([{ sessionId: "d", kind: "awaiting" }])?.body).toBe(
+      "Choisir une option",
+    );
+    expect(notification([{ sessionId: "d", kind: "failed" }])?.body).toBe(
+      "Échec du tour · 401 invalid key",
+    );
+    expect(notification([{ sessionId: "c", kind: "failed" }])?.body).toBe(
+      "Échec du tour",
     );
     expect(notification([{ sessionId: "b", kind: "finished" }])?.body).toBe(
       "Web · Tour terminé",

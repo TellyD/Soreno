@@ -66,7 +66,7 @@ fn full_redraw_beyond_the_keyframe_limit_is_evicted() {
 
 #[test]
 fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
-    use crate::agent_sessions::program_status::ProgramState::{Blocked, Finished, Idle, Working};
+    use crate::agent_sessions::program_status::ProgramState::{Blocked, Done, Error, Idle, Working};
     let (claude, pi) = (
         Some(conversations::Provider::Claude),
         Some(conversations::Provider::Pi),
@@ -109,7 +109,7 @@ fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
         ),
         (
             claude,
-            Some(Blocked),
+            Some(Blocked(None)),
             true,
             reported(Some(true), false),
             (Some(true), true, false),
@@ -117,7 +117,7 @@ fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
         // Background agents still run after `done`.
         (
             claude,
-            Some(Finished),
+            Some(Done),
             true,
             reported(Some(true), false),
             (Some(true), false, false),
@@ -146,14 +146,14 @@ fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
         // Any other program has only its program status.
         (
             None,
-            Some(Blocked),
+            Some(Blocked(None)),
             true,
             reported(None, false),
             (Some(true), true, false),
         ),
         (
             None,
-            Some(Finished),
+            Some(Error),
             true,
             reported(None, false),
             (Some(false), false, false),
@@ -170,6 +170,57 @@ fn program_status_comes_before_hooks_and_flags_clis_too_old_to_report_it() {
             (status.working, status.awaiting, status.outdated_cli),
             expected,
             "{provider:?} {state:?} {reported:?}"
+        );
+    }
+}
+
+#[test]
+fn program_status_names_the_wait_and_how_the_turn_ended() {
+    use crate::agent_sessions::program_status::ProgramState::{Blocked, Done, Error, Idle};
+    use conversations::Provider::{Claude, Codex, Pi};
+    for (provider, state, message, expected) in [
+        (
+            Some(Claude),
+            Blocked(Some("permission")),
+            Some("approve Bash: touch x"),
+            (Some("permission"), Some("approve Bash: touch x"), None, None),
+        ),
+        // Escape: these agents end a finished turn with `done`.
+        (Some(Claude), Idle, None, (None, None, Some("interrupted"), None)),
+        (Some(Pi), Done, None, (None, None, None, None)),
+        // Codex and unknown programs end every turn with `idle`.
+        (Some(Codex), Idle, None, (None, None, None, None)),
+        (None, Idle, None, (None, None, None, None)),
+        (
+            Some(Pi),
+            Error,
+            Some("401 invalid key"),
+            (None, None, Some("failed"), Some("401 invalid key")),
+        ),
+        (None, Error, None, (None, None, Some("failed"), None)),
+    ] {
+        let output = Output {
+            program_state: Some(state),
+            program_message: message.map(Into::into),
+            reports_program_status: true,
+            ..Output::default()
+        };
+        let mut status = output.status("session");
+        let reported = conversations::Activity {
+            working: None,
+            awaiting: false,
+            turn: None,
+        };
+        output.report_activity(provider, &reported, &mut status);
+        assert_eq!(
+            (
+                status.awaiting_kind.as_deref(),
+                status.awaiting_message.as_deref(),
+                status.turn_end.as_deref(),
+                status.failure_message.as_deref(),
+            ),
+            expected,
+            "{provider:?} {state:?}"
         );
     }
 }

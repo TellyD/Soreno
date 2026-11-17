@@ -300,6 +300,15 @@ pub struct AgentSessionStatus {
     /// What a waiting program asks for, from its program status.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub awaiting_message: Option<String>,
+    /// `permission`, `question` or `auth`, when the waiting program says.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub awaiting_kind: Option<String>,
+    /// `interrupted` while an agent that ends its turns with `done` is idle, `failed` after `error`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_end: Option<String>,
+    /// What made the last turn fail, from its program status.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure_message: Option<String>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -2437,6 +2446,8 @@ fn session_status(
         status.issue_summary =
             kanban_issue_sessions::pending_summary(&store.db, &session.id, turn)?;
     }
+    // shortcut: an `error` then an exit, without `clear`, before the next poll reads as a finished
+    // turn; keep the turn end of exited sessions if programs that exit on error show up.
     if status.state == "running" {
         status.last_message = last_message;
         if let Some(runtime) = store.runtimes.get(&session.id) {
@@ -2480,6 +2491,9 @@ fn idle(session_id: &str) -> AgentSessionStatus {
         missing_executable: false,
         outdated_cli: false,
         awaiting_message: None,
+        awaiting_kind: None,
+        turn_end: None,
+        failure_message: None,
     }
 }
 fn process_may_be_active(

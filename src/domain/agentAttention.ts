@@ -1,7 +1,11 @@
-import { agentSessionActivity, type AgentSessionStatus } from "./agentSessions";
+import {
+  agentSessionActivity,
+  type AgentAwaitingKind,
+  type AgentSessionStatus,
+} from "./agentSessions";
 import { sameItems } from "./sameItems";
 
-type AgentAttentionKind = "finished" | "awaiting";
+type AgentAttentionKind = "finished" | "failed" | "awaiting";
 
 /** What a session's mark asks of the user, the wait first. */
 export type AgentSessionAttention = "awaiting" | "unread";
@@ -36,7 +40,7 @@ export function observeAgentAttention(
   const working = new Set<string>();
   const observedWorking = new Set<string>();
   const awaitingNow = new Set<string>();
-  const finished: string[] = [];
+  const ended: AgentAttentionEvent[] = [];
   for (const status of statuses.values()) {
     if (!sessionIds.has(status.sessionId)) continue;
     const activity = agentSessionActivity(status);
@@ -50,7 +54,12 @@ export function observeAgentAttention(
     // Missing status or unknown activity is not finished: wait for a real one.
     if (!activity || activity === "running" || activity === "awaiting")
       working.add(id);
-    else if (activity !== "working") finished.push(id);
+    // The user stopped an interrupted turn: nothing to notify or mark unread.
+    else if (activity !== "working" && status?.turnEnd !== "interrupted")
+      ended.push({
+        sessionId: id,
+        kind: status?.turnEnd === "failed" ? "failed" : "finished",
+      });
   }
   // A wait belongs to the turn: answering it resumes work that ends later.
   for (const id of [...observedWorking, ...awaitingNow]) working.add(id);
@@ -58,7 +67,9 @@ export function observeAgentAttention(
     ...state.awaiting.filter((id) => awaitingNow.has(id)),
     ...[...awaitingNow].filter((id) => !state.awaiting.includes(id)),
   ];
-  const unread = [...new Set([...state.unread, ...finished])].filter(
+  const unread = [
+    ...new Set([...state.unread, ...ended.map(({ sessionId }) => sessionId)]),
+  ].filter(
     (id) =>
       sessionIds.has(id) &&
       !displayed.has(id) &&
@@ -67,7 +78,7 @@ export function observeAgentAttention(
       !awaitingNow.has(id),
   );
   const events: AgentAttentionEvent[] = [
-    ...finished.map((sessionId) => ({ sessionId, kind: "finished" as const })),
+    ...ended,
     ...awaiting
       .filter((id) => !state.awaiting.includes(id))
       .map((sessionId) => ({ sessionId, kind: "awaiting" as const })),
@@ -103,11 +114,15 @@ export type AgentNotificationSubject = {
   projectName: string | null;
   lastMessage: string | null;
   awaitingMessage: string | null;
+  awaitingKind: AgentAwaitingKind | null;
+  failureMessage: string | null;
 };
 
 export type AgentNotificationStrings = {
   awaiting: string;
+  awaitingKinds: Record<AgentAwaitingKind, string>;
   finished: string;
+  turnFailed: string;
   several: (count: number) => string;
 };
 
@@ -118,7 +133,7 @@ export type AgentNotification = {
   sessionId: string;
 };
 
-/** One notification for a batch: waits first, then finished turns, once per session. */
+/** One notification for a batch: waits first, then ended turns, once per session. */
 export function agentNotification(
   events: readonly AgentAttentionEvent[],
   describe: (sessionId: string) => AgentNotificationSubject | undefined,
@@ -140,16 +155,20 @@ export function agentNotification(
   if (!first) return null;
   if (entries.length === 1) {
     const { kind, subject } = first;
-    const detail =
+    const details =
       kind === "awaiting"
-        ? (subject.awaitingMessage ?? strings.awaiting)
-        : (subject.lastMessage ?? strings.finished);
+        ? subject.awaitingKind
+          ? [strings.awaitingKinds[subject.awaitingKind], subject.awaitingMessage]
+          : [subject.awaitingMessage ?? strings.awaiting]
+        : kind === "failed"
+          ? [strings.turnFailed, subject.failureMessage]
+          : [subject.lastMessage ?? strings.finished];
     // An unnamed session falls back to its project's name: the title already says it.
     const projectName =
       subject.projectName === subject.name ? null : subject.projectName;
     return {
       title: subject.name,
-      body: [projectName, detail].filter(Boolean).join(" · "),
+      body: [projectName, ...details].filter(Boolean).join(" · "),
       sessionId: first.sessionId,
     };
   }
