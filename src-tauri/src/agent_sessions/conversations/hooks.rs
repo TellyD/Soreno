@@ -162,8 +162,8 @@ pub(super) fn hook_settings(commands: &[String; 5]) -> serde_json::Value {
     })
 }
 
-pub(super) fn write_claude_settings(path: &Path, commands: &[String; 5]) -> Result<()> {
-    std::fs::write(path, hook_settings(commands).to_string())
+pub(super) fn write_claude_settings(path: &Path, settings: &serde_json::Value) -> Result<()> {
+    std::fs::write(path, settings.to_string())
         .map_err(|error| format!("Impossible d’écrire les réglages Claude : {error}"))
 }
 

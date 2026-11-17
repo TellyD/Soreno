@@ -20,7 +20,7 @@ pub(super) use retention::{
 
 #[cfg(windows)]
 use super::probe_output;
-use super::{AgentProject, AgentSession, Result};
+use super::{issue_requests, AgentProject, AgentSession, Result};
 use arguments::validate_args;
 #[cfg(test)]
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -840,13 +840,13 @@ pub(super) fn prepare_attach(
     })
 }
 
-/// `system_append` is text the Pi/OMP bridge appends to the agent's system prompt.
+/// `private_directory` receives Kanban requests and message files; the agent is told about it.
 pub(super) fn prepare_launch(
     db: &Connection,
     links_dir: &Path,
     session: &AgentSession,
     project: &AgentProject,
-    system_append: Option<&str>,
+    private_directory: Option<&str>,
 ) -> Result<PreparedLaunch> {
     if session.kind == "service" {
         return Ok(PreparedLaunch::unchanged(session));
@@ -930,13 +930,17 @@ pub(super) fn prepare_launch(
         }
     }
     let claude_settings = if provider == Provider::Claude {
-        let commands = hook_commands.as_ref().unwrap();
+        let mut settings = hook_settings(hook_commands.as_ref().unwrap());
+        if let Some(directory) = private_directory {
+            // Since Claude Code 2.1.326, `--add-dir` asks to trust each new folder; this setting does not.
+            settings["permissions"] = serde_json::json!({"additionalDirectories": [directory]});
+        }
         if windows_local {
             let path = run_dir.join("claude-settings.json");
-            write_claude_settings(&path, commands)?;
+            write_claude_settings(&path, &settings)?;
             Some(execution_path(project, &path)?)
         } else {
-            Some(hook_settings(commands).to_string())
+            Some(settings.to_string())
         }
     } else {
         None
@@ -965,7 +969,8 @@ pub(super) fn prepare_launch(
             "provider": provider.as_str(),
             "expectedSessionId": fields.conversation.as_ref().map(|conversation| &conversation.session_id),
             "remote": remote,
-            "systemAppend": system_append,
+            // Pi/OMP ignore APPEND_SYSTEM.md once the flag is given: their bridge appends the text.
+            "systemAppend": private_directory.map(|directory| issue_requests::agent_instruction(session.design, directory)),
         });
         let bridge = format!("const soreno = {};\n{BRIDGE}", descriptor);
         if remote {

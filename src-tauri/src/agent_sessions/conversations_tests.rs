@@ -877,7 +877,7 @@ fn windows_hooks_use_in_memory_scripts_and_short_quote_safe_arguments() {
     let root = root("windows-hook");
     let settings_path = root.join("claude-settings.json");
     let commands = hook_commands(true);
-    write_claude_settings(&settings_path, &commands).unwrap();
+    write_claude_settings(&settings_path, &hook_settings(&commands)).unwrap();
 
     for (command, event) in commands
         .iter()

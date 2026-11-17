@@ -366,11 +366,15 @@ fn claude_may_read_the_directory_that_receives_its_messages() {
 
     let argv = std::fs::read_to_string(directory.join("claude.argv")).unwrap();
     let argv = argv.split_terminator('\0').collect::<Vec<_>>();
-    let granted = argv
+    let settings = argv
         .windows(2)
-        .find(|pair| pair[0] == "--add-dir")
-        .map(|pair| pair[1].to_owned())
-        .expect("--add-dir argument");
+        .find(|pair| pair[0] == "--settings")
+        .map(|pair| serde_json::from_str::<serde_json::Value>(pair[1]).unwrap())
+        .expect("--settings argument");
+    let granted = settings["permissions"]["additionalDirectories"][0]
+        .as_str()
+        .expect("granted directory")
+        .to_owned();
     let message = state
         .attach_file("session", "soreno-message.md", b"x")
         .unwrap();

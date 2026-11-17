@@ -453,7 +453,11 @@ fn an_agent_is_told_to_write_requests_into_its_own_private_directory() {
             .map(|pair| pair[1].clone())
             .unwrap_or_else(|| panic!("{flag} in {argv:?}"))
     };
-    let granted = value_of("--add-dir");
+    let settings: serde_json::Value = serde_json::from_str(&value_of("--settings")).unwrap();
+    let granted = settings["permissions"]["additionalDirectories"][0]
+        .as_str()
+        .unwrap()
+        .to_owned();
     assert_eq!(granted, agent.private_directory().to_str().unwrap());
     assert_eq!(
         value_of("--append-system-prompt"),

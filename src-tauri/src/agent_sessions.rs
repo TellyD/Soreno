@@ -1675,12 +1675,6 @@ impl AgentSessions {
                 },
             )
             .and_then(|directory| directory.ok());
-        // Claude asks before reading outside its folders; message files land in this directory.
-        let message_directory_args = private_directory
-            .clone()
-            .filter(|_| agent_provider == Some(conversations::Provider::Claude))
-            .map(|directory| vec!["--add-dir".to_owned(), directory])
-            .unwrap_or_default();
         let initial_prompt = match initial_prompt {
             Some(prompt) if !attachments.is_empty() => {
                 validate_initial_prompt(&prepared_session, prompt, remote_host)?;
@@ -1769,20 +1763,12 @@ impl AgentSessions {
                 .and_then(|runtime| runtime.remote_sidecar_generation.clone());
             conversations::prepare_attach(&store.db, &session, &project, generation)?
         } else {
-            // Pi/OMP ignore APPEND_SYSTEM.md once the flag is given: their bridge appends the text.
-            let system_append = match (agent_provider, &private_directory) {
-                (
-                    Some(conversations::Provider::Pi | conversations::Provider::Omp),
-                    Some(directory),
-                ) => Some(issue_requests::agent_instruction(session.design, directory)),
-                _ => None,
-            };
             let mut prepared = conversations::prepare_launch(
                 &store.db,
                 &store.links_dir,
                 &session,
                 &project,
-                system_append.as_deref(),
+                private_directory.as_deref(),
             )?;
             let windows_local = cfg!(windows) && project.environment.kind == "local";
             if let Some((provider, group, members)) = &group_launch {
@@ -1794,7 +1780,6 @@ impl AgentSessions {
                     windows_local,
                 );
             }
-            prepared.session.args.splice(0..0, message_directory_args);
             if let (Some(provider), Some(directory)) = (agent_provider, &private_directory) {
                 issue_requests::add_instruction(
                     &mut prepared.session.args,
