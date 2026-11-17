@@ -82,7 +82,8 @@ export function AgentConversationDialog({
       title = s.approvalTitle(dialog.tool);
       body = dialog.detail ? (
         <pre className="agent-conversation-dialog-detail">
-          {dialog.detail.replace(/^Command:\s*/, "")}
+          {/* OMP 18.20.3 lists compound bash segments indented below a bare `Command:`. */}
+          {dialog.detail.replace(/^Command:[^\S\n]*\n?/, "")}
         </pre>
       ) : null;
       actions = dialog.options.map((option, index) => (
