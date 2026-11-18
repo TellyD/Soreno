@@ -1,4 +1,5 @@
 pub(crate) mod agents;
+pub(crate) mod app_update;
 pub(crate) mod attention;
 pub(crate) mod codex;
 pub(crate) mod design;

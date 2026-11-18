@@ -284,6 +284,8 @@ pub fn run() {
             commands::settings::reset_window_sizes,
             commands::release_notes::last_seen_version,
             commands::release_notes::mark_version_seen,
+            commands::app_update::download_rpm_update,
+            commands::app_update::install_rpm_update,
             commands::diagnostics::log_webview_error,
             commands::diagnostics::open_log_directory,
             commands::library::save_attachment_image,
