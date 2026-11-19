@@ -82,9 +82,9 @@ pub(super) fn prepare(
         .mode(0o700)
         .create(&directory)?;
     let text = |path: &Path| {
-        path.to_str().map(str::to_owned).ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::InvalidData, "chemin non UTF-8")
-        })
+        path.to_str()
+            .map(str::to_owned)
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "chemin non UTF-8"))
     };
     let file = directory.join(if zsh { "zsh_history" } else { "bash_history" });
     let mut environment = vec![("HISTFILE".to_owned(), text(&file)?)];

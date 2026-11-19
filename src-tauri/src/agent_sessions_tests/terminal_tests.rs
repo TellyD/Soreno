@@ -548,7 +548,10 @@ fn local_shells_write_the_project_history_file() {
             .unwrap();
         assert!(child.wait().unwrap().success(), "{shell}");
         let history = std::fs::read_to_string(&environment[0].1).unwrap_or_default();
-        assert!(history.contains("echo soreno-history"), "{shell}: {history:?}");
+        assert!(
+            history.contains("echo soreno-history"),
+            "{shell}: {history:?}"
+        );
         std::fs::remove_dir_all(home).unwrap();
     }
 }
