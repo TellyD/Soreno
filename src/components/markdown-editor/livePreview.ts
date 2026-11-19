@@ -84,6 +84,20 @@ function widestMarker(list: Node) {
   }
   return width;
 }
+// Text offset of the list items enclosing `node`, so content starts under their text.
+function listIndent(node: Node | null) {
+  let tenthsOfEm = 0,
+    chars = 0;
+  for (let item = node; item; item = item.parent) {
+    if (item.name !== "ListItem") continue;
+    if (item.parent!.name === "OrderedList") {
+      chars += widestMarker(item.parent!);
+      tenthsOfEm += 6;
+    } else
+      tenthsOfEm += item.firstChild?.nextSibling?.name === "Task" ? 20 : 15;
+  }
+  return `calc(${tenthsOfEm / 10}em + ${chars}ch)`;
+}
 const composingEffect = StateEffect.define<boolean>();
 const composing = StateField.define({
   create: () => false,
@@ -268,11 +282,17 @@ function previewRanges(
         let width = paragraph
           ? parseImageWidth(state.doc.sliceString(to, paragraph.to))
           : undefined;
+        // A list item's image needs its own line: replacing a marker line would hide the marker.
+        const item =
+          paragraph?.parent?.name === "ListItem" &&
+          !state.doc.sliceString(state.doc.lineAt(from).from, from).trim()
+            ? paragraph.parent
+            : null;
         if (
           url &&
           closing &&
           paragraph?.name === "Paragraph" &&
-          paragraph.parent?.name === "Document" &&
+          (paragraph.parent?.name === "Document" || item) &&
           paragraph.from === from &&
           (paragraph.to === to || width !== undefined)
         ) {
@@ -323,6 +343,7 @@ function previewRanges(
                   label: labels.resizeImage,
                   readOnly: state.readOnly,
                 },
+                item ? listIndent(item) : undefined,
                 labels.resolveImage,
               ),
             }).range(start, end),
@@ -396,18 +417,6 @@ function previewRanges(
         const indent = /[ \t]*$/u.exec(
           state.doc.sliceString(line.from, from),
         )![0].length;
-        // Parent items' text offsets, so nested items start under their parent's text.
-        let tenthsOfEm = 0,
-          chars = 0;
-        for (let item = list.parent; item; item = item.parent) {
-          if (item.name !== "ListItem") continue;
-          if (item.parent!.name === "OrderedList") {
-            chars += widestMarker(item.parent!);
-            tenthsOfEm += 6;
-          } else
-            tenthsOfEm +=
-              item.firstChild?.nextSibling?.name === "Task" ? 20 : 15;
-        }
         // shortcut: ordered tasks keep their checkbox after the number, so wrapped lines hang under the checkbox; merge them like bullet tasks if seen.
         const first =
           !ordered && node.nextSibling?.name === "Task"
@@ -425,7 +434,7 @@ function previewRanges(
                 ? "cm-md-bullet-line cm-md-ordered-line"
                 : "cm-md-bullet-line",
             attributes: {
-              style: `--md-list-indent: calc(${tenthsOfEm / 10}em + ${chars}ch)${ordered ? `; --md-list-marker: ${widestMarker(list)}` : ""}`,
+              style: `--md-list-indent: ${listIndent(list.parent)}${ordered ? `; --md-list-marker: ${widestMarker(list)}` : ""}`,
             },
           }).range(line.from),
           // shortcut: a tab after the mark (`-\titem`) stays outside the widget, so inserts at the prefix end precede it; include tabs if seen.
@@ -566,14 +575,16 @@ export function livePreview(labels: PreviewLabels): Extension {
   // shortcut: an IME composition started at an image gap still lands on the neighbouring line; open the gap on compositionstart if reported.
   const imageGapAt = (state: EditorState) => {
     const { head } = state.selection.main;
-    const gaps: { at: number; after: boolean }[] = [];
+    const gaps: { at: number; after: boolean; indent: string }[] = [];
     state.field(decorations).between(head, head, (from, to, value) => {
       const widget: unknown = value.spec.widget;
       if (!(widget instanceof ImageWidget) || !widget.gap) return;
+      // The new paragraph keeps the image line's indentation, so list items stay open.
+      const indent = state.doc.sliceString(from, widget.from);
       gaps.push(
         widget.gap === "after"
-          ? { at: to, after: true }
-          : { at: from, after: false },
+          ? { at: to, after: true, indent }
+          : { at: from, after: false, indent },
       );
       return false;
     });
@@ -582,10 +593,14 @@ export function livePreview(labels: PreviewLabels): Extension {
   const openImageGap = (view: EditorView) => {
     const gap = imageGapAt(view.state);
     if (!gap) return false;
+    const breaks = view.state.lineBreak.repeat(2);
     view.dispatch({
-      changes: { from: gap.at, insert: view.state.lineBreak.repeat(2) },
+      changes: {
+        from: gap.at,
+        insert: gap.after ? breaks + gap.indent : gap.indent + breaks,
+      },
       // Positions count each line break as one character, whatever the separator.
-      selection: { anchor: gap.after ? gap.at + 2 : gap.at },
+      selection: { anchor: gap.at + gap.indent.length + (gap.after ? 2 : 0) },
       scrollIntoView: true,
       userEvent: "input",
     });
@@ -602,7 +617,7 @@ export function livePreview(labels: PreviewLabels): Extension {
         const widget: unknown = value.spec.widget;
         if (
           widget instanceof ImageWidget &&
-          widget.from === main.from &&
+          (widget.from === main.from || from === main.from) &&
           widget.to === main.to
         ) {
           at = from;
@@ -660,17 +675,21 @@ export function livePreview(labels: PreviewLabels): Extension {
       if (!gap) return tr;
       const insert = tr.state.lineBreak.repeat(2);
       const end = tr.changes.mapPos(gap.at, 1);
+      const start = tr.changes.mapPos(gap.at, -1);
       return [
         tr,
         gap.after
           ? {
-              changes: { from: tr.changes.mapPos(gap.at, -1), insert },
-              selection: { anchor: end + 2 },
+              changes: { from: start, insert: insert + gap.indent },
+              selection: { anchor: end + 2 + gap.indent.length },
               sequential: true,
             }
           : {
-              changes: { from: end, insert },
-              selection: { anchor: end },
+              changes: [
+                { from: start, insert: gap.indent },
+                { from: end, insert },
+              ],
+              selection: { anchor: end + gap.indent.length },
               sequential: true,
             },
       ];

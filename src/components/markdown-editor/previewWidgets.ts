@@ -93,6 +93,8 @@ export class ImageWidget extends WidgetType {
       label: string;
       readOnly: boolean;
     },
+    // List item hang, so the image starts under the item's text.
+    readonly indent: string | undefined,
     readonly resolveImage?: ImageResolver,
   ) {
     super();
@@ -113,6 +115,7 @@ export class ImageWidget extends WidgetType {
       this.sizing.width === other.sizing.width &&
       this.sizing.label === other.sizing.label &&
       this.sizing.readOnly === other.sizing.readOnly &&
+      this.indent === other.indent &&
       this.resolveImage === other.resolveImage
     );
   }
@@ -159,6 +162,7 @@ export class ImageWidget extends WidgetType {
   }
   private bindDOM(wrapper: HTMLElement, view: EditorView) {
     wrapper.className = `cm-md-widget cm-md-image${this.selected ? " cm-md-image-selected" : ""}${this.gap ? ` cm-md-image-gap-${this.gap}` : ""}`;
+    wrapper.style.setProperty("--md-image-indent", this.indent ?? "0px");
     wrapper.setAttribute("role", "group");
     const surface = wrapper.querySelector<HTMLElement>(".cm-md-image-select")!;
     surface.tabIndex = 0;

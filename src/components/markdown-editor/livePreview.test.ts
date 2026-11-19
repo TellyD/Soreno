@@ -122,6 +122,16 @@ it("hides only code fences, not code, HTML, references, inline images or unsuppo
     "\n```",
   ]);
 });
+it("renders images on their own line in list items, but not on a marker or quote line", () => {
+  const image = "![a](https://example.com/a.png)";
+  const doc = `1. one\n\n   ${image}\n- two\n\n  ${image}\n- ${image}\n\n> - q\n>\n>   ${image}`;
+  const editor = state(doc);
+  expect(
+    decorations(editor)
+      .filter((range) => range.value.spec.widget instanceof ImageWidget)
+      .map(({ from }) => editor.doc.lineAt(from).number),
+  ).toEqual([3, 6]);
+});
 it("uses centered-divider styling only outside editing and composition", () => {
   const doc = "Before\n\n***\n\nAfter";
   const view = new EditorView({ state: state(doc) });
@@ -412,6 +422,44 @@ it("keeps standalone images rendered at the cursor, skips their source with arro
     expect(crlf.state.selection.main.head).toBe(1);
   } finally {
     crlf.destroy();
+  }
+});
+it("opens a keyboard-selected list image with Enter and keeps the item's indentation at its gap", () => {
+  const image = "![a](https://example.com/a.png)";
+  const doc = `- item\n\n  ${image}\n\n  tail`;
+  const end = 10 + image.length;
+  const view = new EditorView({ state: state(doc, end) });
+  try {
+    labels.openImage.mockClear();
+    const head = view.moveByChar(EditorSelection.cursor(end), false).head;
+    expect(head).toBe(8);
+    view.dispatch({ selection: { anchor: end, head } });
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    expect(labels.openImage).toHaveBeenCalledWith(
+      "https://example.com/a.png",
+      "a",
+    );
+    expect(view.state.sliceDoc()).toBe(doc);
+    view.dispatch({ selection: { anchor: end } });
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    view.dispatch(view.state.replaceSelection("x"));
+    expect(view.state.sliceDoc()).toBe(
+      `- item\n\n  ${image}\n\n  x\n\n  tail`,
+    );
+    view.dispatch({ selection: { anchor: 8 } });
+    view.dispatch(view.state.replaceSelection("y"), {
+      userEvent: "input.paste",
+    });
+    expect(view.state.sliceDoc()).toBe(
+      `- item\n\n  y\n\n  ${image}\n\n  x\n\n  tail`,
+    );
+    expect(view.state.selection.main.head).toBe(11);
+  } finally {
+    view.destroy();
   }
 });
 it("refreshes image selection coordinates after preceding edits without recreating the image", () => {

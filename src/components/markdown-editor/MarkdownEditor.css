@@ -364,12 +364,13 @@
 .markdown-editor .cm-md-image {
   position: relative;
   width: fit-content;
-  max-width: min(100%, 720px);
+  max-width: min(100% - var(--md-image-indent), 720px);
+  margin-inline-start: var(--md-image-indent);
   overflow: visible;
   cursor: pointer;
 }
 .markdown-editor .cm-md-image-resized {
-  max-width: 100%;
+  max-width: calc(100% - var(--md-image-indent));
 }
 .markdown-editor .cm-md-image-resized img {
   width: 100%;
