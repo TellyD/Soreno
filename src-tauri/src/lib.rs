@@ -122,6 +122,14 @@ pub fn run() {
                 agent_sessions::AgentSessions::open(&app_data_dir)
                     .map_err(std::io::Error::other)?,
             );
+            let saving = app.handle().clone();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(10));
+                let sessions = saving.state::<agent_sessions::AgentSessions>();
+                if let Err(error) = sessions.save_terminal_histories() {
+                    eprintln!("Historique des terminaux : {error}");
+                }
+            });
             app.manage(state);
             Ok(())
         })

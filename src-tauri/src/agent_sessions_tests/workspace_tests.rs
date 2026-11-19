@@ -173,14 +173,9 @@ fn default_shell_validation_and_commands_are_explicit() {
 
     terminal.executable.clear();
     let command = windows_command(&terminal).unwrap();
-    assert_eq!(
-        command
-            .get_argv()
-            .iter()
-            .map(|arg| arg.to_string_lossy().into_owned())
-            .collect::<Vec<_>>(),
-        ["powershell.exe", "-NoLogo"]
-    );
+    let argv = command.get_argv();
+    assert_eq!(argv[0], "powershell.exe");
+    assert!(argv.iter().any(|arg| arg == "-NoExit"), "{argv:?}");
 
     terminal.executable = "tool.exe".into();
     let command = windows_command(&terminal).unwrap();

@@ -44,6 +44,9 @@ fn runtime(cols: u16, rows: u16, replies: Arc<Mutex<Vec<u8>>>) -> Arc<Runtime> {
         process_handle: 0,
         #[cfg(unix)]
         run_token: "grid".into(),
+        keeps_history: false,
+        #[cfg(unix)]
+        shell_pid: None,
     })
 }
 
@@ -285,6 +288,29 @@ fn the_text_command_returns_the_selected_text() {
     assert_eq!(runtime.grid_text(channel_id).unwrap(), "");
     runtime.grid_unsubscribe(channel_id).unwrap();
     assert!(runtime.grid_text(channel_id).is_err());
+}
+
+#[test]
+fn a_restored_history_keeps_its_lines_above_the_new_prompt() {
+    let runtime = runtime(80, 24, Arc::new(Mutex::new(Vec::new())));
+    let (channel_id, _) = subscribe(&runtime, None);
+    {
+        let mut output = lock(&runtime.output).unwrap();
+        output.append_history(&crate::agent_sessions::terminal_history::replay(
+            b"one\r\ntwo\r\nthree\r\nfour\r\nfive".to_vec(),
+            80,
+        ));
+        output.append(b"prompt$ ");
+    }
+    wait_until(|| buffer_text(&runtime, channel_id).is_ok_and(|text| text.contains("prompt$")));
+    let text = buffer_text(&runtime, channel_id).unwrap();
+    let lines: Vec<_> = text.lines().collect();
+    assert_eq!(
+        lines[..5],
+        ["one", "two", "three", "four", "five"],
+        "{text}"
+    );
+    assert_eq!(lines[6..], ["prompt$"], "{text}");
 }
 
 #[test]
