@@ -126,7 +126,9 @@ export function installBridge(api, config) {
   function finishedTurn(messages) {
     // Only the loop's final reply counts; a trailing user/tool message means none.
     const last = Array.isArray(messages) ? messages.at(-1) : undefined;
-    if (last?.role !== "assistant" || last === summarizedReply) return null;
+    if (last?.role !== "assistant") return null;
+    // OMP closes a paused run by replaying its reply: keep the turn Soreno may not have read yet.
+    if (last === summarizedReply) return turn;
     const content = last.content;
     const message = typeof content === "string" ? content
       : Array.isArray(content) ? content.filter((part) => part?.type === "text" && typeof part.text === "string").map((part) => part.text).join("\n")
@@ -171,8 +173,8 @@ export function installBridge(api, config) {
   api.on("agent_end", (event, nextContext) => {
     if (!isMainSession(nextContext)) return;
     pendingQuestions.clear();
-    // OMP also ends loops that continue on their own.
-    if (event?.willContinue !== true && event?.isTerminal !== false) turn = finishedTurn(event?.messages);
+    // OMP also ends loops that continue on their own; one awaiting background work has answered the user (OMP 18.21.0).
+    if (event?.awaitingAsyncWork === true || (event?.willContinue !== true && event?.isTerminal !== false)) turn = finishedTurn(event?.messages);
     publish();
   });
   api.on("tool_execution_start", (event, nextContext) => {

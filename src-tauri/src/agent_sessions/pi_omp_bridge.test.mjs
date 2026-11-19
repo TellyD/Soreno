@@ -95,6 +95,12 @@ it("publishes the final assistant message of each terminal loop as a finished tu
   expect(run.read().turn).toBeNull();
   run.emit("agent_end", { willContinue: true, messages: [assistant(summary)] });
   expect(run.read().turn).toBeNull();
+  const waiting = assistant("Waiting.");
+  run.emit("agent_end", { willContinue: true, awaitingAsyncWork: true, messages: [waiting] });
+  const paused = run.read().turn;
+  expect(paused).toEqual({ id: expect.any(String), message: "Waiting." });
+  run.emit("agent_end", { messages: [waiting] });
+  expect(run.read().turn).toEqual(paused);
   run.emit("agent_end", { messages: [assistant("Draft"), { role: "user", content: "Go" }, assistant(summary)] });
   const { turn } = run.read();
   expect(turn).toEqual({ id: expect.any(String), message: summary });

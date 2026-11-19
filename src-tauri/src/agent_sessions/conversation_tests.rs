@@ -187,6 +187,12 @@ fn a_yielded_agent_end_gives_the_last_assistant_text() {
         json!({ "type": "agent_end", "yielded": true, "messages": [] }),
     );
     assert_eq!(state.last_message.as_deref(), Some("Streamé"));
+    // A loop that yielded to background jobs has answered.
+    handle(
+        &mut state,
+        json!({ "type": "agent_end", "isTerminal": false, "yielded": true, "awaitingAsyncWork": true, "messages": [reply] }),
+    );
+    assert_eq!(state.last_message.as_deref(), Some("Fait."));
 }
 
 #[test]

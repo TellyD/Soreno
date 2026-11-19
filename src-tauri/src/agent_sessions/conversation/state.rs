@@ -171,10 +171,12 @@ impl State {
                     self.last_assistant = reply(message);
                 }
             }
+            // A loop awaiting background work has answered the user (OMP 18.21.0).
             "agent_end"
                 if record.get("yielded") != Some(&Value::Bool(false))
-                    && record.get("willContinue") != Some(&Value::Bool(true))
-                    && record.get("isTerminal") != Some(&Value::Bool(false)) =>
+                    && (record.get("awaitingAsyncWork") == Some(&Value::Bool(true))
+                        || record.get("willContinue") != Some(&Value::Bool(true))
+                            && record.get("isTerminal") != Some(&Value::Bool(false))) =>
             {
                 let last = record
                     .get("messages")
