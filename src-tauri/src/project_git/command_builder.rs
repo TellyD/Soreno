@@ -37,8 +37,22 @@ fn git_arguments(project: &AgentProject, args: &[&str]) -> Result<Vec<String>, G
     Ok(git_args)
 }
 
+const GIT_ENVIRONMENT: [(&str, &str); 5] = [
+    ("LC_ALL", "C"),
+    ("GIT_PAGER", "cat"),
+    ("GIT_TERMINAL_PROMPT", "0"),
+    ("GIT_EDITOR", "true"),
+    ("GIT_ALLOW_PROTOCOL", "https:ssh:file"),
+];
+
 pub(super) fn posix_git_environment() -> String {
-    format!("unset {}; export LC_ALL=C GIT_PAGER=cat GIT_TERMINAL_PROMPT=0 GIT_EDITOR=true GIT_ALLOW_PROTOCOL=https:ssh:file;", GIT_OVERRIDES.join(" "))
+    format!(
+        "unset {}; export {};",
+        GIT_OVERRIDES.join(" "),
+        GIT_ENVIRONMENT
+            .map(|(name, value)| format!("{name}={value}"))
+            .join(" ")
+    )
 }
 
 pub(super) fn ssh_git_script(project: &AgentProject, args: &[&str]) -> Result<String, GitError> {
@@ -81,26 +95,15 @@ pub(super) fn git_program(project: &AgentProject) -> Command {
         for name in GIT_OVERRIDES {
             command.args(["-u", name]);
         }
-        command.args([
-            "LC_ALL=C",
-            "GIT_PAGER=cat",
-            "GIT_TERMINAL_PROMPT=0",
-            "GIT_EDITOR=true",
-            "GIT_ALLOW_PROTOCOL=https:ssh:file",
-            "git",
-        ]);
+        command
+            .args(GIT_ENVIRONMENT.map(|(name, value)| format!("{name}={value}")))
+            .arg("git");
         command
     } else {
         Command::new("git")
     };
     clear_git_overrides(&mut command);
-    command
-        .arg("--no-replace-objects")
-        .env("LC_ALL", "C")
-        .env("GIT_PAGER", "cat")
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("GIT_EDITOR", "true")
-        .env("GIT_ALLOW_PROTOCOL", "https:ssh:file");
+    command.arg("--no-replace-objects").envs(GIT_ENVIRONMENT);
     #[cfg(windows)]
     command.env("WSLENV", crate::agent_sessions::host_wslenv());
     command
