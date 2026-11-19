@@ -1,4 +1,5 @@
 import type { KanbanSource } from "./kanban";
+import { isWindowsPath } from "./projectGit";
 
 export type SshConnection = {
   host: string;
@@ -153,9 +154,10 @@ export function isAbsoluteProjectPath(
   environment: AgentEnvironment,
   path: string,
 ): boolean {
-  return environment.kind === "local"
-    ? /^(\/|[A-Za-z]:[\\/]|\\\\)/.test(path)
-    : path.startsWith("/");
+  return (
+    path.startsWith("/") ||
+    (environment.kind === "local" && isWindowsPath(path))
+  );
 }
 
 export type AgentProject = {
