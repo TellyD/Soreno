@@ -502,6 +502,59 @@ fn missing_posix_working_directory_does_not_launch_service() {
 
 #[cfg(unix)]
 #[test]
+fn local_shells_write_the_project_history_file() {
+    use std::io::Write;
+    let mut terminal = session();
+    terminal.executable.clear();
+    terminal.args.clear();
+    // macOS CI covers zsh behind the system zshrc that reassigns HISTFILE.
+    for shell in ["/bin/bash", "/bin/zsh"] {
+        if !Path::new(shell).exists() {
+            continue;
+        }
+        let home = unique_temp_path("soreno-shell-history");
+        std::fs::create_dir(&home).unwrap();
+        // Some system zshrc leave SAVEHIST at 0; the zsh wrapper must reach an inherited ZDOTDIR.
+        std::fs::create_dir(home.join("zdotdir")).unwrap();
+        std::fs::write(home.join("zdotdir/.zshrc"), "SAVEHIST=100\n").unwrap();
+        let environment =
+            shell_history::prepare(&home.join("history"), "project", shell.ends_with("zsh"))
+                .unwrap();
+        let mut child = std::process::Command::new(shell)
+            .args([
+                "-ilc",
+                &posix_command_in_with_environment(
+                    home.to_str().unwrap(),
+                    &terminal,
+                    &environment,
+                    None,
+                ),
+            ])
+            .env_clear()
+            .env("HOME", &home)
+            .env("ZDOTDIR", home.join("zdotdir"))
+            .env("SHELL", shell)
+            .env("PATH", "/usr/bin:/bin")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"echo soreno-history\nexit\n")
+            .unwrap();
+        assert!(child.wait().unwrap().success(), "{shell}");
+        let history = std::fs::read_to_string(&environment[0].1).unwrap_or_default();
+        assert!(history.contains("echo soreno-history"), "{shell}: {history:?}");
+        std::fs::remove_dir_all(home).unwrap();
+    }
+}
+
+#[cfg(unix)]
+#[test]
 fn hostile_posix_arguments_are_data() {
     let args = [
         "",

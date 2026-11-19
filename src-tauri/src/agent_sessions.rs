@@ -32,6 +32,8 @@ mod program_status;
 mod remote_dtach;
 mod remote_host;
 mod remote_mobile;
+#[cfg(unix)]
+mod shell_history;
 pub(crate) use remote_mobile::{SshMobilePairing, SshMobileStatus};
 mod validation;
 pub(crate) use validation::validate_project;
@@ -777,6 +779,10 @@ fn remove_stopped_projects_locked(
             .map_err(|error| error.to_string())?;
     }
     tx.commit().map_err(|error| error.to_string())?;
+    #[cfg(unix)]
+    for project_id in project_ids {
+        shell_history::remove(&shell_history::root(&store.links_dir), project_id);
+    }
     conversations::remove_launch_directories(&launch_directories);
     for (connection, names) in &remote_launch_directories {
         conversations::remove_remote_launch_directories(connection, names);
@@ -1802,10 +1808,18 @@ impl AgentSessions {
             run_token(&store.db).or_else(|error| launch_session.rollback(&store.db, error))?;
         #[cfg(unix)]
         let command = {
+            let mut environment = launch_session.environment.clone();
+            if launch_session.executable.is_empty() && project.environment.kind == "local" {
+                environment.extend(shell_history::environment(
+                    &shell_history::root(&store.links_dir),
+                    &project.id,
+                    &local_shell(),
+                ));
+            }
             let mut command = local_command_with_environment(
                 &project,
                 &launch_session,
-                &launch_session.environment,
+                &environment,
                 remote_host,
                 remote_dtach.as_deref(),
                 launch_session.remote_directory(),
@@ -2811,20 +2825,26 @@ fn posix_command_with_environment(
     let notice = notice
         .map(|notice| format!("printf '%s\\r\\n' {}; ", crate::ssh::quote(notice)))
         .unwrap_or_default();
+    let exports = environment
+        .iter()
+        .map(|(key, value)| format!("export {key}={}; ", crate::ssh::quote(value)))
+        .collect::<String>();
     // Clear the startup display after login/cd hooks, before any CLI output; the grid moves a
     // cleared screen into history, so `3J` drops it too (no scrollbar while the CLI starts).
     if session.executable.is_empty() {
+        // The zsh wrapper of shell_history restores the ZDOTDIR this login shell would export.
+        let zdotdir = if environment.iter().any(|(key, _)| key == "ZDOTDIR") {
+            "SORENO_ZDOTDIR=$(printenv ZDOTDIR || :); export SORENO_ZDOTDIR; "
+        } else {
+            ""
+        };
         return format!(
-            "printf '\\033[H\\033[2J\\033[3J'; {notice}exec \"${{SHELL:-/bin/bash}}\" -il"
+            "printf '\\033[H\\033[2J\\033[3J'; {notice}{zdotdir}{exports}exec \"${{SHELL:-/bin/bash}}\" -il"
         );
     }
     let remote_conversation = environment
         .iter()
         .any(|(key, value)| key == "SORENO_CONVERSATION_REMOTE" && value == "1");
-    let exports = environment
-        .iter()
-        .map(|(key, value)| format!("export {key}={}; ", crate::ssh::quote(value)))
-        .collect::<String>();
     let command = std::iter::once(&session.executable)
         .chain(&session.args)
         .map(|word| crate::ssh::quote(word))
@@ -2891,11 +2911,7 @@ fn local_command_with_environment(
     validate_local_directory(directory)?;
     #[cfg(unix)]
     let mut command = {
-        let defaults = CommandBuilder::new("/bin/bash");
-        let shell = defaults
-            .get_env("SHELL")
-            .unwrap_or_else(|| std::ffi::OsStr::new("/bin/bash"));
-        let mut command = CommandBuilder::new(shell);
+        let mut command = CommandBuilder::new(local_shell());
         command.args([
             "-ilc",
             &posix_command_in_with_environment(directory, session, environment, None),
@@ -2911,6 +2927,13 @@ fn local_command_with_environment(
     }
     command.cwd(directory);
     Ok(command)
+}
+#[cfg(unix)]
+fn local_shell() -> std::ffi::OsString {
+    CommandBuilder::new("/bin/bash")
+        .get_env("SHELL")
+        .unwrap_or_else(|| std::ffi::OsStr::new("/bin/bash"))
+        .to_owned()
 }
 #[cfg(all(test, unix))]
 fn local_command(project: &AgentProject, session: &AgentSession) -> Result<CommandBuilder> {
