@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@/fonts.css";
 import "@/App.css";
 import "./mobile.css";
-import { captureInstallPrompt } from "./installHint";
+import { captureInstallPrompt, installPlatform } from "./installHint";
 import { MobileApp } from "./MobileApp";
 import { takePairingFragment } from "./pairing";
 
@@ -27,10 +27,6 @@ function trackVisualViewport() {
   document.addEventListener("visibilitychange", update);
   update();
 }
-
-const isIOS =
-  /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-  (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 
 function opensKeyboard(target: EventTarget | null): target is HTMLElement {
   return (
@@ -78,7 +74,8 @@ function keepPageStillOnFocus() {
 
 const pairing = takePairingFragment(window.location, window.history);
 trackVisualViewport();
-if (isIOS) keepPageStillOnFocus();
+if (installPlatform(navigator.userAgent, navigator.maxTouchPoints) === "ios")
+  keepPageStillOnFocus();
 captureInstallPrompt();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
