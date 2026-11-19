@@ -165,6 +165,8 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: text;
+  /* The hidden "[" leaves CodeMirror widget buffers, a wrap point that would push a long label to the next line. */
+  word-break: break-all;
 }
 .markdown-editor-preview .cm-md-quote {
   border-inline-start: 2px solid var(--border);
