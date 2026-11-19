@@ -36,6 +36,15 @@ export function gitPathParts(path: string) {
   };
 }
 
+/** Drops the remote segment: `origin/feature/x` → `feature/x`. */
+function remoteBranchName(name: string): string {
+  return name.slice(name.indexOf("/") + 1);
+}
+
+export function localBranchName(branch: Pick<GitBranch, "name" | "remote">) {
+  return branch.remote ? remoteBranchName(branch.name) : branch.name;
+}
+
 export type GitIdentity = { root: string; gitDir: string; commonDir: string };
 export type GitFile = {
   path: string;
@@ -289,7 +298,6 @@ export function gitReferenceBadges(
   const sorted = [...references].sort(
     (left, right) => referenceOrder[left.kind] - referenceOrder[right.kind],
   );
-  const remoteBranchName = (name: string) => name.slice(name.indexOf("/") + 1);
   const remotes = sorted.filter(
     (reference) =>
       reference.kind === "remoteBranch" &&
@@ -380,8 +388,7 @@ export function worktreeBranchSource(
   );
   if (local) return { branch: local, createBranch: false };
   const remotes = branches.filter(
-    (branch) =>
-      branch.remote && branch.name.slice(branch.name.indexOf("/") + 1) === name,
+    (branch) => branch.remote && remoteBranchName(branch.name) === name,
   );
   const remote =
     remotes.find((branch) => branch.name === `origin/${name}`) ?? remotes[0];
@@ -464,7 +471,7 @@ export function groupGitBranches(
   const rows = new Map<string, GitGroupBranch>();
   for (const { projectId, branches } of repositories)
     for (const { name, remote, current } of branches) {
-      const local = remote ? name.slice(name.indexOf("/") + 1) : name;
+      const local = remote ? remoteBranchName(name) : name;
       const row = rows.get(local) ?? { name: local, refs: {} };
       rows.set(local, row);
       if (!remote || !row.refs[projectId])

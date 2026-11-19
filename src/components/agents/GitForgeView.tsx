@@ -44,6 +44,7 @@ import {
 import { projectFileName, projectFileParent } from "../../domain/projectFiles";
 import {
   gitErrorMessage,
+  localBranchName,
   type GitComparison,
   type GitWorktree,
 } from "../../domain/projectGit";
@@ -753,9 +754,7 @@ export function GitForgeView({
         await onWorktreeCreated?.(created, {
           path: created.path,
           head: request.branch.oid,
-          branch: request.branch.remote
-            ? request.branch.name.slice(request.branch.name.indexOf("/") + 1)
-            : request.branch.name,
+          branch: localBranchName(request.branch),
         });
       }
     } finally {

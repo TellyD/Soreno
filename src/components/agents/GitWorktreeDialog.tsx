@@ -3,6 +3,7 @@ import { useId, type ReactNode, type RefObject } from "react";
 import type { AgentProject } from "../../domain/agentSessions";
 import {
   isWindowsPath,
+  localBranchName,
   type GitBranch,
   type GitRepository,
 } from "../../domain/projectGit";
@@ -48,9 +49,7 @@ export function worktreeDefaults(
   branch: GitBranch,
 ): WorktreeRequest {
   const { parentPath, folderName } = splitRoot(root);
-  const local = branch.remote
-    ? branch.name.slice(branch.name.indexOf("/") + 1)
-    : branch.name;
+  const local = localBranchName(branch);
   const suffix =
     local
       .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
