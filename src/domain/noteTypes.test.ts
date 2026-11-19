@@ -5,20 +5,8 @@ import {
   nextAvailableNoteTypeName,
   orderNoteTypesByIds,
   validateNoteTypeName,
-  type NoteType,
 } from "./noteTypes";
-
-function noteType(id: string, name: string, sortOrder = 0): NoteType {
-  return {
-    color: "#608ef8",
-    createdAt: "2026-06-28T10:00:00.000Z",
-    icon: "book-open",
-    id,
-    name,
-    sortOrder,
-    updatedAt: "2026-06-28T10:00:00.000Z",
-  };
-}
+import { noteType } from "./testNoteType";
 
 describe("validateNoteTypeName", () => {
   it("rejects blank, duplicate, and too long names", () => {
