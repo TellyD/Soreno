@@ -1,4 +1,5 @@
 mod arguments;
+mod codex_restart;
 mod history;
 mod hooks;
 mod launch_files;
@@ -6,6 +7,7 @@ mod remote_metadata;
 mod retention;
 mod sidecar;
 pub(super) use arguments::validate_group_args;
+pub(super) use codex_restart::{codex_requested_restart, forget_codex_update_run};
 use history::{history_exists, verify_history};
 pub(super) use history::{history_files, HistoryFile};
 #[cfg(all(test, unix))]
@@ -328,60 +330,6 @@ fn forget_run(db: &Connection, session_id: &str, mut record: ConversationRecord)
     record.conversation_error = None;
     record.pending = false;
     put(db, session_id, &record)
-}
-
-pub(super) fn forget_codex_update_run(
-    db: &Connection,
-    session: &AgentSession,
-    restart_requested: impl FnOnce() -> bool,
-) -> Result<()> {
-    if provider(&session.executable) != Some(Provider::Codex) {
-        return Ok(());
-    }
-    let Ok(Some(record)) = get(db, &session.id) else {
-        return Ok(());
-    };
-    let Some(path) = record.metadata_path.as_deref() else {
-        return Ok(());
-    };
-    if !record.pending
-        || record.provider != Provider::Codex.as_str()
-        || !matches!(Path::new(path).try_exists(), Ok(false))
-        || !restart_requested()
-    {
-        return Ok(());
-    }
-    forget_run(db, &session.id, record)
-}
-
-// ConPTY may replace spaces with cursor moves.
-pub(super) fn codex_requested_restart(output: impl IntoIterator<Item = u8>) -> bool {
-    const BANNER: &[u8] = b"Updateransuccessfully!PleaserestartCodex.";
-    let mut text = Vec::new();
-    let mut bytes = output.into_iter();
-    while let Some(byte) = bytes.next() {
-        if byte != 0x1b {
-            if !byte.is_ascii_whitespace() {
-                text.push(byte);
-            }
-            continue;
-        }
-        match bytes.next() {
-            Some(b'[') => {
-                bytes.find(|byte| (0x40..=0x7e).contains(byte));
-            }
-            Some(b']') => {
-                let mut escape = false;
-                bytes.find(|&byte| {
-                    let end = byte == 0x07 || escape && byte == b'\\';
-                    escape = byte == 0x1b;
-                    end
-                });
-            }
-            _ => {}
-        }
-    }
-    text.windows(BANNER.len()).any(|window| window == BANNER)
 }
 
 fn validate_uuid(value: &str) -> bool {
