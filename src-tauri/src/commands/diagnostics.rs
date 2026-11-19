@@ -14,11 +14,11 @@ pub(crate) async fn log_webview_error(app: AppHandle, message: String) -> Result
         .filter(|character| matches!(character, '\n' | '\t') || !character.is_control())
         .take(WEBVIEW_ERROR_LIMIT)
         .collect();
-    tauri::async_runtime::spawn_blocking(move || {
-        log_file::append(&path, &format!("webview version={version} {message}"))
+    super::run_blocking(move || {
+        log_file::append(&path, &format!("webview version={version} {message}"));
+        Ok(())
     })
     .await
-    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]

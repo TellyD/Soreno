@@ -14,6 +14,7 @@ import {
 } from "./library";
 import type { Note } from "./notes";
 import type { NoteType } from "./noteTypes";
+import { noteType } from "./testNoteType";
 
 const baseNote = {
   createdAt: "2026-06-28T10:00:00.000Z",
@@ -44,18 +45,6 @@ function note(
     favorite: false,
     title,
     updatedAt,
-  };
-}
-
-function noteType(id: string, name: string, sortOrder: number): NoteType {
-  return {
-    color: "#608ef8",
-    createdAt: "2026-06-28T10:00:00.000Z",
-    icon: "book-open",
-    id,
-    name,
-    sortOrder,
-    updatedAt: "2026-06-28T10:00:00.000Z",
   };
 }
 

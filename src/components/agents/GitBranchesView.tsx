@@ -24,6 +24,7 @@ import {
   comparableGitPath,
   gitErrorCode,
   gitErrorMessage,
+  localBranchName,
   orderGitRefs,
   type GitBranch as GitBranchValue,
   type GitWorktree,
@@ -340,9 +341,7 @@ export function GitBranchesView({
         await onWorktreeCreated?.(created, {
           path: created.path,
           head: request.branch.oid,
-          branch: request.branch.remote
-            ? request.branch.name.slice(request.branch.name.indexOf("/") + 1)
-            : request.branch.name,
+          branch: localBranchName(request.branch),
         });
       }
     } finally {
@@ -488,8 +487,7 @@ export function GitBranchesView({
     branch.remote
       ? local.find(
           (candidate) =>
-            candidate.name ===
-              branch.name.slice(branch.name.indexOf("/") + 1) &&
+            candidate.name === localBranchName(branch) &&
             candidate.upstream === branch.name,
         )
       : branch;
@@ -886,10 +884,7 @@ export function GitBranchesView({
                 <span className="git-commit-confirmation">
                   <span>{s.switchDescription}</span>
                   <span>
-                    <strong>{s.destination}:</strong>{" "}
-                    {pending.remote
-                      ? pending.name.slice(pending.name.indexOf("/") + 1)
-                      : pending.name}
+                    <strong>{s.destination}:</strong> {localBranchName(pending)}
                   </span>
                   {pending.remote ? (
                     <span>

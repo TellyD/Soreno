@@ -35,7 +35,7 @@ export type ProjectTextSearchLine = {
   selection: [number, number] | null;
 };
 
-export type ProjectTextSearchFile = {
+type ProjectTextSearchFile = {
   path: string;
   lines: ProjectTextSearchLine[];
 };

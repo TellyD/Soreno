@@ -4,9 +4,8 @@ export type ForgeKind = "github" | "gitlab";
 export type ForgeMergeMethod = "merge" | "squash" | "rebase";
 export type ForgeFilter = "open" | "mine" | "review" | "closed";
 export type ForgeState = "open" | "closed" | "merged";
-export type ForgeChecks = "success" | "failure" | "pending" | null;
-export type ForgeReview =
-  "approved" | "changesRequested" | "reviewRequired" | null;
+type ForgeChecks = "success" | "failure" | "pending" | null;
+type ForgeReview = "approved" | "changesRequested" | "reviewRequired" | null;
 export type ForgeMergeBlocker =
   | "draft"
   | "conflicts"

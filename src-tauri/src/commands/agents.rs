@@ -41,9 +41,7 @@ pub(crate) async fn agent_workspace(app: AppHandle) -> Result<AgentWorkspace, St
 }
 #[tauri::command]
 pub(crate) async fn agent_environments() -> Result<AgentEnvironments, String> {
-    tauri::async_runtime::spawn_blocking(agent_sessions::environments)
-        .await
-        .map_err(|e| e.to_string())
+    super::run_blocking(|| Ok(agent_sessions::environments())).await
 }
 #[tauri::command]
 pub(crate) async fn agent_ssh_scan(
@@ -799,11 +797,11 @@ pub(crate) async fn agent_grid_diagnostic(
         .filter(|character| !character.is_control())
         .take(2000)
         .collect();
-    tauri::async_runtime::spawn_blocking(move || {
-        agent_sessions::append_grid_log(&path, &session_id, &format!("webview {message}"))
+    super::run_blocking(move || {
+        agent_sessions::append_grid_log(&path, &session_id, &format!("webview {message}"));
+        Ok(())
     })
     .await
-    .map_err(|error| error.to_string())
 }
 pub(crate) fn grid_log_path(app: &AppHandle) -> Result<PathBuf, String> {
     crate::log_file::path(app, GRID_LOG_FILE)

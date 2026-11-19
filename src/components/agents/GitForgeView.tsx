@@ -41,9 +41,9 @@ import {
   type ForgeStateError,
   type ForgeUpdateAction,
 } from "../../domain/forge";
-import { projectFileName, projectFileParent } from "../../domain/projectFiles";
 import {
   gitErrorMessage,
+  localBranchName,
   type GitComparison,
   type GitWorktree,
 } from "../../domain/projectGit";
@@ -62,7 +62,7 @@ import { LoadingState } from "../ui/LoadingState";
 import { SegmentedControl, SegmentedControlItem } from "../ui/SegmentedControl";
 import { Select } from "../ui/Select";
 import { useAgentStrings } from "./agentStrings";
-import { GitFileStats } from "./GitChangeList";
+import { GitFileSummary } from "./GitChangeList";
 import GitDiffView from "./GitDiffView";
 import {
   GitWorktreeDialog,
@@ -753,9 +753,7 @@ export function GitForgeView({
         await onWorktreeCreated?.(created, {
           path: created.path,
           head: request.branch.oid,
-          branch: request.branch.remote
-            ? request.branch.name.slice(request.branch.name.indexOf("/") + 1)
-            : request.branch.name,
+          branch: localBranchName(request.branch),
         });
       }
     } finally {
@@ -794,19 +792,7 @@ export function GitForgeView({
                   className={selectedPath === file.path ? "is-selected" : ""}
                   onClick={() => setFilePath(file.path)}
                 >
-                  <span className="git-file-path">
-                    <span>{projectFileName(file.path)}</span>
-                    {file.path.includes("/") ? (
-                      <small>{projectFileParent(file.path)}</small>
-                    ) : null}
-                  </span>
-                  <GitFileStats added={file.added} deleted={file.deleted} />
-                  <span
-                    className="git-history-file-status"
-                    data-status={file.indexStatus}
-                  >
-                    {file.indexStatus}
-                  </span>
+                  <GitFileSummary file={file} />
                 </button>
               </li>
             ))}

@@ -1,4 +1,7 @@
-use crate::{note_types, sqlite::table_column_exists};
+use crate::{
+    note_types,
+    sqlite::{table_column_exists, validation_error},
+};
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde::Serialize;
 
@@ -288,16 +291,16 @@ fn remove_legacy_kind_check(conn: &Connection) -> rusqlite::Result<()> {
     )?;
 
     if has_legacy_check && has_partial_rebuild {
-        return Err(rusqlite::Error::InvalidParameterName(
-            "Both legacy notes tables exist; manual recovery is required before rebuilding".into(),
+        return Err(validation_error(
+            "Both legacy notes tables exist; manual recovery is required before rebuilding",
         ));
     }
     if !has_legacy_check && !has_partial_rebuild {
         return Ok(());
     }
     if has_partial_rebuild && foreign_keys_reference_legacy_notes(conn)? {
-        return Err(rusqlite::Error::InvalidParameterName(
-            "Legacy notes recovery has foreign keys targeting notes_legacy_kind_check; manual recovery is required".into(),
+        return Err(validation_error(
+            "Legacy notes recovery has foreign keys targeting notes_legacy_kind_check; manual recovery is required",
         ));
     }
 
@@ -368,8 +371,8 @@ fn remove_legacy_kind_check(conn: &Connection) -> rusqlite::Result<()> {
             statement.exists([])?
         };
         if has_foreign_key_errors {
-            return Err(rusqlite::Error::InvalidParameterName(
-                "Notes rebuild failed foreign key validation".into(),
+            return Err(validation_error(
+                "Notes rebuild failed foreign key validation",
             ));
         }
         transaction.commit()

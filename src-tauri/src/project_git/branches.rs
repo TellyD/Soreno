@@ -975,7 +975,7 @@ fn result(message: &str, oid: Option<String>) -> GitMutationResult {
 #[path = "branches/worktree_layout.rs"]
 mod worktree_layout;
 #[cfg(test)]
-use worktree_layout::{parse_worktree_layout, parse_worktrees, require_worktree_list_version};
+use worktree_layout::{parse_worktree_layout, require_worktree_list_version};
 use worktree_layout::{plausible_worktree_alias, worktree_layout};
 #[path = "branches/merge.rs"]
 mod merge;

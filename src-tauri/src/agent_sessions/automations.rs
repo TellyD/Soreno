@@ -369,10 +369,7 @@ fn failure(status: u8, stderr: &[u8]) -> String {
         33 => "Impossible de maintenir les minuteurs après déconnexion : faites lancer `sudo loginctl enable-linger $USER` sur le serveur par un administrateur.".into(),
         34 => "systemd a refusé le minuteur de l’automatisation : consultez `systemctl --user status 'soreno-automation-*'` sur le serveur.".into(),
         35 => "Cette automatisation est absente du serveur : enregistrez-la de nouveau.".into(),
-        _ => format!(
-            "Connexion ou commande SSH échouée : {}",
-            String::from_utf8_lossy(stderr).trim()
-        ),
+        _ => crate::ssh::failure_message(stderr),
     }
 }
 

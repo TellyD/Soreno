@@ -3,6 +3,7 @@ import type {
   AgentConversationHistoryPage,
   AgentConversationRecord,
 } from "../domain/agentConversation";
+import { isObject } from "../domain/agentConversationRecords";
 
 // Each subscription replaces the session's subscriber: the latest must reach the backend last.
 const subscribing = new Map<string, Promise<unknown>>();
@@ -18,8 +19,7 @@ export async function subscribeAgentConversation(
     if (!open) return;
     try {
       const record: unknown = JSON.parse(line);
-      if (record && typeof record === "object" && !Array.isArray(record))
-        onRecord(record as AgentConversationRecord);
+      if (isObject(record)) onRecord(record as AgentConversationRecord);
     } catch {
       // The backend only forwards JSON objects; anything else is not a record.
     }

@@ -1851,9 +1851,8 @@ fn parses_normal_and_detached_worktrees_while_ignoring_bare_repositories() {
     let layout = parse_worktree_layout(bytes.as_bytes()).unwrap();
     assert_eq!(layout.root_path, "/repo.git");
     assert!(layout.primary.is_none());
-    let parsed = parse_worktrees(bytes.as_bytes()).unwrap();
     assert_eq!(
-        parsed,
+        layout.worktrees,
         vec![
             GitWorktree {
                 path: "/repo".into(),
@@ -1868,8 +1867,9 @@ fn parses_normal_and_detached_worktrees_while_ignoring_bare_repositories() {
         ]
     );
     assert_eq!(
-        parse_worktrees(format!("worktree /repo\0branch refs/heads/main\0\0").as_bytes())
-            .unwrap_err()
+        parse_worktree_layout(format!("worktree /repo\0branch refs/heads/main\0\0").as_bytes())
+            .err()
+            .unwrap()
             .code,
         "malformed"
     );

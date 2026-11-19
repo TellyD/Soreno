@@ -11,6 +11,7 @@ import {
   transferKanbanIssueToLinear,
   updateKanbanIssue,
 } from "../data/kanbanApi";
+import { compareByName } from "../domain/agentSessions";
 import { isNewer } from "../domain/dateTime";
 import {
   applyIssueUpdate,
@@ -54,9 +55,7 @@ function withLabel(
   labels: readonly KanbanLabel[],
   label: KanbanLabel,
 ): KanbanLabel[] {
-  return [...labels, label].sort((left, right) =>
-    left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
-  );
+  return [...labels, label].sort(compareByName);
 }
 
 function issueUpdateFrom(issue: KanbanIssue): KanbanIssueUpdate {

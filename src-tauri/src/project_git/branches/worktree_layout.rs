@@ -39,11 +39,6 @@ pub(super) fn worktree_layout(project: &AgentProject) -> Result<WorktreeLayout, 
     parse_worktree_layout(&output.stdout)
 }
 
-#[cfg(test)]
-pub(super) fn parse_worktrees(bytes: &[u8]) -> Result<Vec<GitWorktree>, GitError> {
-    Ok(parse_worktree_layout(bytes)?.worktrees)
-}
-
 pub(super) fn parse_worktree_layout(bytes: &[u8]) -> Result<WorktreeLayout, GitError> {
     #[derive(Default)]
     struct Pending {
