@@ -242,7 +242,21 @@ function SelectDialog({
   s: Strings;
 }) {
   const initial = useRef<HTMLElement>(null);
-  useEffect(() => focusUnlessTyping(initial.current), [dialog.id]);
+  useEffect(() => {
+    const row = initial.current?.closest<HTMLElement>(
+      ".agent-conversation-dialog-option",
+    );
+    const body = row?.closest<HTMLElement>(".agent-conversation-dialog-body");
+    // Not scrollIntoView: a re-send remounts at the top, and only the body may scroll.
+    if (row && body) {
+      const top =
+        row.getBoundingClientRect().top - body.getBoundingClientRect().top;
+      if (top < 0) body.scrollTop += top;
+      else if (top + row.offsetHeight > body.clientHeight)
+        body.scrollTop += top + row.offsetHeight - body.clientHeight;
+    }
+    focusUnlessTyping(initial.current);
+  }, [dialog.id]);
   // A callback: the initial option is a button or a checkbox span.
   const setInitial = (element: HTMLElement | null) => {
     initial.current = element;
@@ -280,6 +294,17 @@ function SelectDialog({
                 ref={ref}
                 checked={option.checked}
                 onCheckedChange={() => onAnswer({ value: option.label })}
+                // Base UI ignores Enter on a checkbox; here it takes the option like a click.
+                onKeyDown={(event) => {
+                  if (
+                    event.key !== "Enter" ||
+                    isImeComposing(event.nativeEvent) ||
+                    event.defaultPrevented
+                  )
+                    return;
+                  event.preventDefault();
+                  onAnswer({ value: option.label });
+                }}
               />
               <span>{option.label}</span>
               {description}

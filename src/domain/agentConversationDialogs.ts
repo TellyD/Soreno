@@ -37,10 +37,11 @@ const APPROVAL = /^Allow tool: (\S+)\n?([\s\S]*)$/;
 
 /** OMP 18.20.0 puts an `ask` field's form context on the lines above its question. */
 function prompt(title: string) {
-  const end = title.lastIndexOf("\n");
+  const trimmed = title.trimEnd();
+  const end = trimmed.lastIndexOf("\n");
   return {
-    title: title.slice(end + 1),
-    context: title.slice(0, end + 1).trim(),
+    title: trimmed.slice(end + 1),
+    context: trimmed.slice(0, end + 1).trim(),
   };
 }
 

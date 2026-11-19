@@ -852,6 +852,36 @@ it("answers an ask round and an ask form field in the dock", async () => {
     id: "ui-field",
     value: "Pear",
   });
+  // Base UI ignores Enter on a checkbox; the re-sent list takes it like a click.
+  await act(async () =>
+    emit({
+      type: "extension_ui_request",
+      id: "ui-field-2",
+      method: "select",
+      title: "(2 selected) Fruits",
+      options: ["Apple", "Pear", "Other (type your own)", "✔ Done selecting"],
+      initialIndex: 1,
+      selectionMarker: "checkbox",
+      checkedIndices: [0, 1],
+      markableCount: 3,
+    }),
+  );
+  await act(async () =>
+    container
+      .querySelectorAll('.agent-conversation-dock [role="checkbox"]')[0]!
+      .dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+  );
+  expect(sent().pop()).toEqual({
+    type: "extension_ui_response",
+    id: "ui-field-2",
+    value: "Apple",
+  });
 });
 
 it("recalls sent messages with ↑ and ↓ from the edge lines, then the draft", async () => {

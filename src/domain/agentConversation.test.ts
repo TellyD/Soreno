@@ -320,8 +320,19 @@ describe("OMP conversation transcript", () => {
         checkedIndices: [0, 1],
         markableCount: 3,
       },
+      {
+        type: "extension_ui_request",
+        id: "ui-11",
+        method: "input",
+        title: "Note\n",
+      },
     ]);
-    expect(state.dialogs).toEqual([
+    expect(state.dialogs[1]).toMatchObject({
+      kind: "input",
+      title: "Note",
+      context: "",
+    });
+    expect(state.dialogs.slice(0, 1)).toEqual([
       {
         kind: "select",
         id: "ui-10",
