@@ -485,10 +485,11 @@ pub(crate) fn probe_output_limited(
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
+        use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
         command
             .env("WSLENV", host_wslenv())
             .env_remove("WSL_UTF8") // --list is parsed as UTF-16LE, regardless of host settings.
-            .creation_flags(0x08000000);
+            .creation_flags(CREATE_NO_WINDOW);
     }
     command
         .stdin(Stdio::null())
