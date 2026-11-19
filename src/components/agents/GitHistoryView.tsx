@@ -29,13 +29,12 @@ import {
   type GitGraphRow,
   type GitHistory,
 } from "../../domain/projectGit";
-import { projectFileName, projectFileParent } from "../../domain/projectFiles";
 import { useNotification } from "../../notifications";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
 import { IconButton } from "../ui/IconButton";
 import { LoadingState } from "../ui/LoadingState";
-import { GitFileStats } from "./GitChangeList";
+import { GitFileSummary } from "./GitChangeList";
 import { useGitStrings } from "./gitStrings";
 import { GitFileContextMenu, type GitFileMenu } from "./ProjectPathMenu";
 import { RailResizer } from "./RailResizer";
@@ -841,22 +840,7 @@ export function GitHistoryView({
                             setSelection({ ...selected, path: file.path })
                           }
                         >
-                          <span className="git-file-path">
-                            <span>{projectFileName(file.path)}</span>
-                            {file.path.includes("/") ? (
-                              <small>{projectFileParent(file.path)}</small>
-                            ) : null}
-                          </span>
-                          <GitFileStats
-                            added={file.added}
-                            deleted={file.deleted}
-                          />
-                          <span
-                            className="git-history-file-status"
-                            data-status={file.indexStatus}
-                          >
-                            {file.indexStatus}
-                          </span>
+                          <GitFileSummary file={file} />
                         </button>
                       </li>
                     ))}

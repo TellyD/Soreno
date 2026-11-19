@@ -15,6 +15,7 @@ import {
   canResolveGitFile,
   canRestoreGitFile,
   type GitChange,
+  type GitFile,
   type GitSide,
 } from "../../domain/projectGit";
 import type { GitFileTreeNode } from "../../domain/gitFileTree";
@@ -50,7 +51,7 @@ function statusName(status: string, s: GitStrings): string {
   );
 }
 
-export function GitFileStats({
+function GitFileStats({
   added,
   deleted,
 }: {
@@ -66,6 +67,23 @@ export function GitFileStats({
         <span className="git-lines-deleted">−{deleted}</span>
       ) : null}
     </span>
+  );
+}
+
+export function GitFileSummary({ file }: { file: GitFile }) {
+  return (
+    <>
+      <span className="git-file-path">
+        <span>{projectFileName(file.path)}</span>
+        {file.path.includes("/") ? (
+          <small>{projectFileParent(file.path)}</small>
+        ) : null}
+      </span>
+      <GitFileStats added={file.added} deleted={file.deleted} />
+      <span className="git-history-file-status" data-status={file.indexStatus}>
+        {file.indexStatus}
+      </span>
+    </>
   );
 }
 
