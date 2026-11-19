@@ -25,7 +25,6 @@ const REQUEST_PREFIX: &str = "kanban-issue-";
 const REQUEST_SUFFIX: &str = ".json";
 const REQUEST_STEM_LIMIT: usize = 100;
 const REQUEST_LIMIT: usize = 64 * 1024;
-const TITLE_LIMIT: usize = 255;
 /// The agent may still be writing the file: invalid content is retried for this many scans.
 const PARSE_ATTEMPTS: u8 = 3;
 const APPEND_SYSTEM_PROMPT: &str = "--append-system-prompt";
@@ -188,14 +187,6 @@ enum Request {
     Update(IssueEdit),
 }
 
-fn valid_title(title: &str) -> Result<String> {
-    let title = title.trim();
-    if title.is_empty() || title.chars().count() > TITLE_LIMIT || title.contains('\0') {
-        return Err(kanban::TITLE_MESSAGE.into());
-    }
-    Ok(title.to_owned())
-}
-
 fn parse_request(bytes: &[u8]) -> Result<Request> {
     if bytes.len() > REQUEST_LIMIT {
         return Err("[Kanban/requestTooLarge] Demande trop volumineuse (64 Kio maximum).".into());
@@ -214,13 +205,18 @@ fn parse_request(bytes: &[u8]) -> Result<Request> {
             return Err(MISSING_SUMMARY.into());
         }
         return Ok(Request::Update(IssueEdit {
-            title: file.title.as_deref().map(valid_title).transpose()?,
+            title: file
+                .title
+                .as_deref()
+                .map(kanban::required_title)
+                .transpose()?
+                .map(str::to_owned),
             description,
             summary: summary.to_owned(),
         }));
     }
     Ok(Request::Create(IssueContent {
-        title: valid_title(file.title.as_deref().unwrap_or_default())?,
+        title: kanban::required_title(file.title.as_deref().unwrap_or_default())?.to_owned(),
         description: description.filter(|description| !description.is_empty()),
         linear: file.linear,
         project: file.project,
