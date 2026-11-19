@@ -46,6 +46,7 @@ fn exited_wsl_cleanup_is_retried_before_runtime_identity_is_discarded() {
         // A successful retry proves stop did not signal this invalid handle
         // after observing that the main process had already exited.
         process_handle: 0,
+        keeps_history: false,
     });
     lock(&state.store)
         .unwrap()

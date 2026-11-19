@@ -34,6 +34,9 @@ fn exited_ssh_runtime(connection: SshConnection, run_token: &str) -> Arc<Runtime
         process_handle: 0,
         #[cfg(unix)]
         run_token: run_token.into(),
+        keeps_history: false,
+        #[cfg(unix)]
+        shell_pid: None,
     })
 }
 #[test]
@@ -255,6 +258,7 @@ fn ssh_command_attaches_or_creates_with_the_deployed_dtach() {
             Some(dtach),
             None,
             None,
+            false,
         )
         .unwrap()
         .get_argv()
@@ -292,7 +296,8 @@ fn ssh_command_attaches_or_creates_with_the_deployed_dtach() {
         None,
         Some(dtach),
         None,
-        None
+        None,
+        false
     )
     .is_err());
     assert!(local_command_with_environment(
@@ -303,6 +308,7 @@ fn ssh_command_attaches_or_creates_with_the_deployed_dtach() {
         None,
         None,
         None,
+        false,
     )
     .is_err());
 }
@@ -1528,6 +1534,9 @@ fn ssh_auth_rotation_preserves_target_sessions_and_conversation_metadata() {
         process_handle: 0,
         #[cfg(unix)]
         run_token: "ssh-auth-rotation-test-no-process".into(),
+        keeps_history: false,
+        #[cfg(unix)]
+        shell_pid: None,
     });
     lock(&state.store)
         .unwrap()

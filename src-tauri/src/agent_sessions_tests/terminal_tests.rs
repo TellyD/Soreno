@@ -313,7 +313,7 @@ fn conversation_environment_reaches_posix_cli_children() {
             "SORENO_CONVERSATION_METADATA".into(),
             "/tmp/sidecar with ' quote.json".into(),
         )],
-        None,
+        false,
     );
     let output = std::process::Command::new("sh")
         .args(["-c", &command])
@@ -345,7 +345,7 @@ fn posix_environment_executes_paths_containing_equals() {
     let command = posix_command_with_environment(
         &agent,
         &[("SORENO_TEST_VALUE".into(), "value with ' apostrophe".into())],
-        None,
+        false,
     );
     let output = std::process::Command::new("sh")
         .args(["-c", &command])
@@ -374,7 +374,7 @@ fn conversation_tty_path_survives_closed_fds_and_setsid() {
             ("SORENO_CONVERSATION_REMOTE".into(), "1".into()),
             ("SORENO_TEST_DETACHED_WRITER".into(), "1".into()),
         ],
-        None,
+        false,
     );
     let pair = native_pty_system().openpty(size(80, 24).unwrap()).unwrap();
     let mut reader = pair.master.try_clone_reader().unwrap();
@@ -559,6 +559,122 @@ fn default_shell_is_interactive_in_the_project_directory() {
     state.write("session", "exit\n").unwrap();
     wait_for(|| state.statuses().unwrap()[0].state == "exited");
     assert_eq!(state.statuses().unwrap()[0].exit_code, Some(0));
+    std::fs::remove_dir_all(root).unwrap();
+}
+#[cfg(unix)]
+#[test]
+fn a_restarted_shell_resumes_its_output_and_directory_unless_deleted() {
+    // Canonical, as the shell's process reports it (macOS links /var to /private/var).
+    let root = unique_temp_path("soreno-terminal-history");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.canonicalize().unwrap();
+    let project_directory = root.join("project");
+    let moved = root.join("moved ' there");
+    std::fs::create_dir(&project_directory).unwrap();
+    std::fs::create_dir(&moved).unwrap();
+    let database = root.join("agents.sqlite");
+    let open = || AgentSessions::from_connection(Connection::open(&database).unwrap()).unwrap();
+    let output = |state: &AgentSessions| terminal(state, "session").unwrap();
+    let cwd = |state: &AgentSessions, directory: &Path| {
+        state
+            .write("session", "printf 'cwd:%s:\\n' \"$PWD\"\n")
+            .unwrap();
+        let expected = format!("cwd:{}:", directory.display());
+        wait_for(|| {
+            let terminal = output(state);
+            terminal.text()[terminal.restored_end as usize..].contains(&expected)
+        });
+    };
+
+    let state = open();
+    let mut saved_project = project();
+    saved_project.path = project_directory.to_string_lossy().into();
+    state.save_project(saved_project).unwrap();
+    let mut shell = session();
+    shell.executable.clear();
+    shell.args.clear();
+    state.save_session(shell).unwrap();
+    state.start("session", 80, 24, None).unwrap();
+    state
+        .write(
+            "session",
+            &format!(
+                "cd {} && printf 'before-%s\\n' restart\n",
+                crate::ssh::quote(&moved.to_string_lossy())
+            ),
+        )
+        .unwrap();
+    wait_for(|| output(&state).text().contains("before-restart"));
+    drop(state);
+
+    let state = open();
+    state.start("session", 80, 24, None).unwrap();
+    cwd(&state, &moved);
+    let terminal = output(&state);
+    let text = terminal.text();
+    let (history, live) = text.split_at(terminal.restored_end as usize);
+    assert!(history.contains("before-restart"), "{history:?}");
+    assert!(
+        !live.contains("\x1b[3J"),
+        "the new run cleared the history: {live:?}"
+    );
+
+    state.write("session", "exit\n").unwrap();
+    wait_for(|| state.statuses().unwrap()[0].state == "exited");
+    state.start("session", 80, 24, None).unwrap();
+    cwd(&state, &moved);
+
+    state.stop("session").unwrap();
+    wait_for(|| state.statuses().unwrap()[0].state == "exited");
+    std::fs::remove_dir(&moved).unwrap();
+    state.start("session", 80, 24, None).unwrap();
+    cwd(&state, &project_directory);
+    drop(state);
+    std::fs::remove_dir_all(root).unwrap();
+}
+#[cfg(unix)]
+#[test]
+fn stopping_a_shell_keeps_its_command_history() {
+    let root = unique_temp_path("soreno-shell-history");
+    std::fs::create_dir_all(&root).unwrap();
+    let history = root.join("history");
+    let state = memory_state();
+    let mut saved_project = project();
+    saved_project.path = root.to_string_lossy().into();
+    state.save_project(saved_project).unwrap();
+    let mut shell = session();
+    shell.executable.clear();
+    shell.args.clear();
+    state.save_session(shell).unwrap();
+    state.start("session", 80, 24, None).unwrap();
+    // Set after startup, so the user's rc files cannot redirect this history.
+    state
+        .write(
+            "session",
+            &format!(
+                "HISTFILE={} HISTSIZE=100 SAVEHIST=100 HISTFILESIZE=100 HISTCONTROL= HISTIGNORE= PS1='history-ready> '\n\
+                 unset PROMPT_COMMAND; [ -z \"$ZSH_VERSION\" ] || unsetopt inc_append_history share_history inc_append_history_time\n\
+                 printf 'typed-%s\\n' command\n",
+                crate::ssh::quote(&history.to_string_lossy())
+            ),
+        )
+        .unwrap();
+    // Waits for the prompt after the output, so SIGHUP does not land while the shell prepares it.
+    wait_for(|| {
+        terminal(&state, "session")
+            .unwrap()
+            .text()
+            .split_once("typed-command")
+            .is_some_and(|(_, after)| after.contains("history-ready>"))
+    });
+    let command = "printf 'typed-%s\\n' command";
+    let unsaved = std::fs::read_to_string(&history).unwrap_or_default();
+    assert!(!unsaved.contains(command), "{unsaved:?}");
+
+    state.stop("session").unwrap();
+    let saved = std::fs::read_to_string(&history).unwrap_or_default();
+    assert!(saved.contains(command), "{saved:?}");
+    drop(state);
     std::fs::remove_dir_all(root).unwrap();
 }
 #[cfg(unix)]

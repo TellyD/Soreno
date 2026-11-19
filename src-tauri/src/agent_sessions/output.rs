@@ -43,6 +43,10 @@ pub(super) struct Output {
     pub(super) grid_claimed: u64,
     /// Arrival of the oldest output no grid engine has taken yet.
     pub(super) grid_unclaimed_since: Option<Instant>,
+    /// Last directory the shell reported (OSC 7) or Soreno read from its process.
+    pub(super) directory: Option<String>,
+    /// End and directory of the terminal history last saved for the next start.
+    pub(super) saved_history: Option<(u64, Option<String>)>,
 }
 impl Output {
     pub(super) fn append(&mut self, bytes: &[u8]) {
@@ -249,6 +253,9 @@ impl OutputPipeline {
                         output.program_message = None;
                     }
                     program_status::Event::Prompt => {}
+                    program_status::Event::Directory(directory) => {
+                        output.directory = Some(directory)
+                    }
                     // A replayed query was answered when it was live. Replying before the output
                     // reaches a grid engine puts this reply ahead of a following `CSI c`.
                     program_status::Event::Query if matches!(segment, Segment::Live(_)) => {

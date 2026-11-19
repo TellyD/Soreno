@@ -1,5 +1,6 @@
 //! Program Status Protocol (OSC 7501): the root record's state and the feature query.
 //! Spec: https://www.superlogical.com/rex/docs/build/program-status
+//! Also reads the working directory a shell reports with OSC 7.
 
 use base64::{
     alphabet,
@@ -11,6 +12,7 @@ const ESC: u8 = 0x1b;
 const PREFIX: &[u8] = b"7501;";
 /// OSC 133 `A`, a new shell prompt. Other OSC bodies are cut to the length of `PREFIX`.
 const PROMPT: &[u8] = b"133;A";
+const DIRECTORY: &[u8] = b"7;";
 /// `ESC ]` through `ESC \` is capped at 4096 bytes.
 const BODY_LIMIT: usize = 4096 - 4;
 /// Encoded and decoded byte limits of `msg`.
@@ -38,6 +40,8 @@ pub(super) enum Event {
     /// New root state, with the `msg` of a `blocked` or `error` one; `None` when the records are cleared.
     Root(Option<ProgramState>, Option<String>),
     Prompt,
+    /// Path of an OSC 7 `file://` report.
+    Directory(String),
 }
 
 #[derive(Clone, Copy, Default)]
@@ -70,7 +74,8 @@ impl ProgramStatusScan {
                 (Scan::Osc, _) => {
                     // Other OSCs are only skipped: keep just enough to tell them apart.
                     if self.body.len() < PREFIX.len()
-                        || (self.body.starts_with(PREFIX) && self.body.len() <= BODY_LIMIT)
+                        || ((self.body.starts_with(PREFIX) || self.body.starts_with(DIRECTORY))
+                            && self.body.len() <= BODY_LIMIT)
                     {
                         self.body.push(byte);
                     }
@@ -98,6 +103,9 @@ impl ProgramStatusScan {
         }
         if self.body == PROMPT {
             return Some(Event::Prompt);
+        }
+        if let Some(uri) = self.body.strip_prefix(DIRECTORY) {
+            return directory(uri).map(Event::Directory);
         }
         let pairs = self.body.strip_prefix(PREFIX)?;
         if pairs == b"?" {
@@ -134,6 +142,39 @@ impl ProgramStatusScan {
         let message =
             message.filter(|_| matches!(state, ProgramState::Blocked(_) | ProgramState::Error));
         Some(Event::Root(Some(state), message.and_then(text)))
+    }
+}
+
+/// Decoded path of `file://host/path`; a drive path `/C:/…` becomes `C:\…`.
+// shortcut: the host is dropped, so a Windows UNC location falls back to the default directory;
+// rebuild `\\host\path` if PowerShell users start from network shares.
+fn directory(uri: &[u8]) -> Option<String> {
+    let rest = uri.strip_prefix(b"file://")?;
+    let mut path = &rest[rest.iter().position(|&byte| byte == b'/')?..];
+    let mut decoded = Vec::with_capacity(path.len());
+    while let Some((&byte, rest)) = path.split_first() {
+        path = rest;
+        if byte != b'%' {
+            decoded.push(byte);
+            continue;
+        }
+        let hex = path
+            .get(..2)
+            .filter(|hex| hex.iter().all(u8::is_ascii_hexdigit))?;
+        decoded.push(u8::from_str_radix(std::str::from_utf8(hex).ok()?, 16).ok()?);
+        path = &path[2..];
+    }
+    let path = String::from_utf8(decoded).ok()?;
+    if path.chars().any(char::is_control) {
+        return None;
+    }
+    match path.as_bytes() {
+        // A UNC or device path would make Windows contact the share when it is validated.
+        [b'/', b'/' | b'\\', ..] => None,
+        [b'/', drive, b':', b'/', ..] if drive.is_ascii_alphabetic() => {
+            Some(path[1..].replace('/', "\\"))
+        }
+        _ => Some(path),
     }
 }
 
@@ -248,5 +289,33 @@ mod tests {
     #[test]
     fn a_full_reset_clears_the_root_record() {
         assert_eq!(scan_in_pieces(b"\x1bc", 1), vec![Event::Root(None, None)]);
+    }
+
+    #[test]
+    fn reads_osc_7_directories() {
+        for (report, directory) in [
+            ("file://host/home/me/my%20dir", Some("/home/me/my dir")),
+            ("file:///C:/Users/me/a%23b", Some("C:\\Users\\me\\a#b")),
+            ("file://host/caf%C3%A9", Some("/café")),
+            ("file://host/a%2", None),
+            ("file://host/a%+1", None),
+            ("file://host/a%0Ab", None),
+            ("file://host/a%FF", None),
+            ("https://host/a", None),
+            ("file://host", None),
+            ("file:////attacker/share", None),
+            ("file://host//attacker/share", None),
+            ("file://host/%5Cattacker/share", None),
+            ("file:////?/C:/x", None),
+        ] {
+            assert_eq!(
+                scan_in_pieces(format!("\x1b]7;{report}\x1b\\").as_bytes(), 3),
+                directory
+                    .map(|directory| Event::Directory(directory.into()))
+                    .into_iter()
+                    .collect::<Vec<_>>(),
+                "{report}"
+            );
+        }
     }
 }
