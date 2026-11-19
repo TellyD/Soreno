@@ -29,11 +29,13 @@ pub struct AgentIssueSummary {
     pub text: String,
 }
 
-/// A Linear summary reserved for posting: the session's earlier comment, if any, receives it.
+/// A Linear summary reserved for posting: the session's earlier comment, if any and unedited, receives it.
 #[derive(Debug, PartialEq)]
 pub struct ClaimedIssueSummary {
     pub issue_id: String,
     pub comment_id: Option<String>,
+    /// The comment's body as Linear returned it when last posted.
+    pub comment_body: Option<String>,
 }
 
 /// A local comment as the transfer copied it to Linear.
@@ -349,7 +351,7 @@ impl AgentSessions {
                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
                 ON CONFLICT(linear_issue_id) DO UPDATE SET linear_issue_identifier=excluded.linear_issue_identifier, linear_issue_title=excluded.linear_issue_title, session_id=excluded.session_id,
                     session_name=excluded.session_name, executable=excluded.executable, project_name=excluded.project_name, started_at=excluded.started_at,
-                    ended_at=NULL, end_reason=NULL, merged_into=NULL, summary_comment_id=NULL",
+                    ended_at=NULL, end_reason=NULL, merged_into=NULL, summary_comment_id=NULL, summary_comment_body=NULL",
                 params![
                     issue_id,
                     issue_identifier,
@@ -374,10 +376,15 @@ impl AgentSessions {
         let store = lock(&self.store)?;
         let mut removed = 0;
         for table in LINK_TABLES {
+            let body = if table == "agent_linear_issue_sessions" {
+                ", summary_comment_body=NULL"
+            } else {
+                ""
+            };
             removed += store
                 .db
                 .execute(
-                    &format!("UPDATE {table} SET session_id=NULL, summary_comment_id=NULL WHERE session_id=?1"),
+                    &format!("UPDATE {table} SET session_id=NULL, summary_comment_id=NULL{body} WHERE session_id=?1"),
                     [session_id],
                 )
                 .map_err(|error| error.to_string())?;
@@ -544,12 +551,12 @@ impl AgentSessions {
         id(session_id)?;
         text(summary_id, "Identifiant du résumé", 64)?;
         let store = lock(&self.store)?;
-        let (issue_id, comment_id): (String, Option<String>) = store
+        let (issue_id, comment_id, comment_body): (String, Option<String>, Option<String>) = store
             .db
             .query_row(
-                "SELECT linear_issue_id, summary_comment_id FROM agent_linear_issue_sessions WHERE session_id=?1",
+                "SELECT linear_issue_id, summary_comment_id, summary_comment_body FROM agent_linear_issue_sessions WHERE session_id=?1",
                 [session_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
             .optional()
             .map_err(|error| error.to_string())?
@@ -565,6 +572,7 @@ impl AgentSessions {
         Ok((claimed == 1).then_some(ClaimedIssueSummary {
             issue_id,
             comment_id,
+            comment_body,
         }))
     }
 
@@ -574,6 +582,7 @@ impl AgentSessions {
         session_id: &str,
         issue_id: &str,
         comment_id: &str,
+        comment_body: &str,
     ) -> Result<()> {
         id(session_id)?;
         text(comment_id, "Identifiant du commentaire", 128)?;
@@ -581,8 +590,8 @@ impl AgentSessions {
         store
             .db
             .execute(
-                "UPDATE agent_linear_issue_sessions SET summary_comment_id=?3 WHERE session_id=?1 AND linear_issue_id=?2",
-                params![session_id, issue_id, comment_id],
+                "UPDATE agent_linear_issue_sessions SET summary_comment_id=?3, summary_comment_body=?4 WHERE session_id=?1 AND linear_issue_id=?2",
+                params![session_id, issue_id, comment_id, comment_body],
             )
             .map_err(|error| error.to_string())?;
         Ok(())

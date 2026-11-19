@@ -522,13 +522,13 @@ pub async fn delete_comment(comment_id: &str) -> Result<()> {
     confirmed(payload, "Le commentaire n’a pas été supprimé.")
 }
 
-/// Extends the session's summary comment when Linear still lists it, else creates one; `true` when created.
+/// Replaces the session's summary comment while Linear still holds it as last posted, else creates one; `true` when created.
 pub async fn post_issue_summary(
     issue_id: &str,
-    summary_comment_id: Option<&str>,
+    summary_comment: Option<(&str, &str)>,
     summary: &str,
 ) -> Result<(KanbanComment, bool)> {
-    if let Some(comment_id) = summary_comment_id {
+    if let Some((comment_id, recorded_body)) = summary_comment {
         let client = linear_client()?;
         let api_key = api_key_for(&client, issue_id).await?;
         let existing = graphql::<IssueConnectionData<RawIssueComment>>(
@@ -542,8 +542,8 @@ pub async fn post_issue_summary(
         .comments
         .nodes
         .pop();
-        if let Some(existing) = existing {
-            let body = kanban::appended_summary(&existing.body, summary);
+        if existing.is_some_and(|comment| comment.body == recorded_body) {
+            let body = summary.trim();
             let payload = graphql::<CommentUpdateData>(
                 &client,
                 &api_key,

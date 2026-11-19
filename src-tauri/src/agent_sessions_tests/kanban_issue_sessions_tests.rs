@@ -453,7 +453,7 @@ fn a_failed_post_leaves_the_summary_unclaimed() {
 }
 
 #[test]
-fn the_first_summary_moves_to_review_and_later_ones_extend_its_comment() {
+fn the_first_summary_moves_to_review_and_later_ones_replace_its_comment() {
     let state = state();
     let issues = issues(&state, 1);
     save_session(&state, "a");
@@ -474,7 +474,7 @@ fn the_first_summary_moves_to_review_and_later_ones_extend_its_comment() {
     assert_eq!(second.comment.id, first.comment.id);
     assert_eq!(
         comment_bodies(&state, &issues[0]),
-        ["Fixed it.\n\n---\n\nReviewed it.\n\n— Codex via Soreno"]
+        ["Reviewed it.\n\n— Codex via Soreno"]
     );
 
     // A new session on the issue starts its own comment.

@@ -168,6 +168,7 @@ fn a_linear_summary_is_claimed_once_and_its_comment_recorded_for_the_live_sessio
         Some(ClaimedIssueSummary {
             issue_id: "lin-1".into(),
             comment_id: None,
+            comment_body: None,
         })
     );
     assert_eq!(
@@ -175,19 +176,37 @@ fn a_linear_summary_is_claimed_once_and_its_comment_recorded_for_the_live_sessio
         None
     );
     state
-        .record_linear_issue_summary_comment("a", "lin-1", "comment-1")
+        .record_linear_issue_summary_comment("a", "lin-1", "comment-1", "Fait.")
         .unwrap();
     assert_eq!(
         state.claim_linear_issue_summary("a", "turn-2").unwrap(),
         Some(ClaimedIssueSummary {
             issue_id: "lin-1".into(),
             comment_id: Some("comment-1".into()),
+            comment_body: Some("Fait.".into()),
         })
     );
     save_session(&state, "b");
     assert_eq!(
         state.claim_linear_issue_summary("b", "turn-3").unwrap_err(),
         "[Kanban/sessionNotLinked] Cette session d’agent n’est liée à aucune issue."
+    );
+
+    // The session leaves the issue: its comment is no longer the issue's summary comment.
+    state.unlink_session_issue("a").unwrap();
+    state
+        .record_linear_issue_summary_comment("a", "lin-1", "comment-2", "Encore.")
+        .unwrap();
+    state
+        .link_session_linear_issue("b", "lin-1", "ENG-1", "Issue")
+        .unwrap();
+    assert_eq!(
+        state.claim_linear_issue_summary("b", "turn-4").unwrap(),
+        Some(ClaimedIssueSummary {
+            issue_id: "lin-1".into(),
+            comment_id: None,
+            comment_body: None,
+        })
     );
 }
 
