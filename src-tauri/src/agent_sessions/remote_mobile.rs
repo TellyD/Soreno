@@ -729,9 +729,7 @@ fn failure(status: u8, stderr: &[u8]) -> String {
         43 => ("kill", "soreno-remote ne s’arrête pas ; ses fichiers sont conservés : arrêtez le processus indiqué dans `~/.cache/soreno/remote/pid` sur le serveur, puis réessayez."),
         50 => ("pairing", "soreno-remote n’a pas pu créer de code d’appairage :"),
         51 => ("revoke", "soreno-remote n’a pas pu révoquer cet appareil :"),
-        _ => {
-            return format!("Connexion ou commande SSH échouée : {detail}");
-        }
+        _ => return crate::ssh::failure_message(stderr),
     };
     let message = coded(code, message);
     if matches!(code, "pairing" | "revoke") && !detail.is_empty() {

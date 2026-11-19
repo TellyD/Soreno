@@ -41,10 +41,7 @@ pub(super) fn remote_read(
         }
         Ok(output) => Err(GitError::new(
             "inaccessible",
-            format!(
-                "Connexion ou commande SSH échouée : {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ),
+            crate::ssh::failure_message(&output.stderr),
         )),
         Err(message) => Err(remote_read_error(message, read_budget_expires_first)),
     }

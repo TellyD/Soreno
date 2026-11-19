@@ -416,11 +416,18 @@ pub(crate) fn run(
     checked_output(run_output(connection, script, input, limit)?)
 }
 
+pub(crate) fn failure_message(stderr: &[u8]) -> String {
+    format!(
+        "Connexion ou commande SSH échouée : {}",
+        String::from_utf8_lossy(stderr).trim()
+    )
+}
+
 fn checked_output(output: SshOutput) -> Result<Vec<u8>> {
     if output.status != 0 {
         return Err(format!(
-            "Connexion ou commande SSH échouée : {}\nVérifiez l’identité du serveur, votre clé ou ssh-agent, et les droits du compte.",
-            String::from_utf8_lossy(&output.stderr).trim()
+            "{}\nVérifiez l’identité du serveur, votre clé ou ssh-agent, et les droits du compte.",
+            failure_message(&output.stderr)
         ));
     }
     Ok(output.stdout)
