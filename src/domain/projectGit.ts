@@ -45,7 +45,7 @@ export function localBranchName(branch: Pick<GitBranch, "name" | "remote">) {
   return branch.remote ? remoteBranchName(branch.name) : branch.name;
 }
 
-export type GitIdentity = { root: string; gitDir: string; commonDir: string };
+type GitIdentity = { root: string; gitDir: string; commonDir: string };
 export type GitFile = {
   path: string;
   oldPath: string | null;

@@ -1,6 +1,6 @@
 export type SkillScope = "global" | "project";
 
-export type SkillSource = {
+type SkillSource = {
   lockName: string;
   source: string;
   sourceType: string;

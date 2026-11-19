@@ -13,7 +13,7 @@ export type MarkdownContentInline =
       type: "link";
     };
 
-export type MarkdownContentListItem = {
+type MarkdownContentListItem = {
   content: MarkdownContentInline[];
   /** Lists nested under this item. */
   children?: MarkdownContentBlock[];
