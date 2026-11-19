@@ -85,7 +85,7 @@ pub(super) fn add_instruction(
         Provider::Pi | Provider::Omp => {}
     }
     if design {
-        design::restrict_launch(args, provider, directory, windows_local)?;
+        design::launch_policy::restrict_launch(args, provider, directory, windows_local)?;
     }
     Ok(())
 }
