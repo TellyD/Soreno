@@ -167,7 +167,7 @@ fn launch_command(project: &AgentProject, session: &AgentSession, prompt: &str) 
         directory,
         &launch,
         &[],
-        None,
+        false,
     ))
 }
 

@@ -35,6 +35,7 @@ mod remote_mobile;
 #[cfg(unix)]
 mod shell_history;
 pub(crate) use remote_mobile::{SshMobilePairing, SshMobileStatus};
+mod terminal_history;
 mod validation;
 pub(crate) use validation::validate_project;
 use validation::{validate_initial_prompt, validate_launch_args, validate_session};
@@ -113,6 +114,9 @@ const BUFFER_LIMIT: usize = 2 * 1024 * 1024;
 const KEYFRAME_LIMIT: usize = 32 * 1024 * 1024;
 /// A TUI must read the grown size before the restore, as dtach's FORCE_REDRAW does.
 const REPAINT_SETTLE: Duration = Duration::from_millis(300);
+/// Time a shell gets to save its history and exit after SIGHUP, before the run is killed.
+#[cfg(unix)]
+const SHELL_HANGUP_GRACE: Duration = Duration::from_millis(500);
 const REMOTE_CLIPBOARD_IMAGE_LIMIT: usize = 4 * 1024 * 1024;
 pub(crate) const AGENT_ATTACHMENT_LIMIT: usize = 32 * 1024 * 1024;
 const NORMALIZE_DISCONNECTED_SSH_GROUPS_MIGRATION: &str = "normalize_disconnected_ssh_groups_v1";
@@ -368,6 +372,10 @@ struct Runtime {
     process_handle: usize,
     #[cfg(unix)]
     run_token: String,
+    /// A local shell, whose output and directory its next start restores.
+    keeps_history: bool,
+    #[cfg(unix)]
+    shell_pid: Option<u32>,
 }
 impl Runtime {
     fn replace_remote_clipboard_connection(&self, connection: SshConnection) -> Result<()> {
@@ -416,9 +424,56 @@ impl Runtime {
         }
         Ok(())
     }
+    /// Called under the killer lock, which keeps an unexited shell's pid from being recycled.
+    // shortcut: a Unix shell exiting on its own within the 10 s save period after a `cd` leaves
+    // the previous directory saved; record it at each prompt if users notice.
+    fn record_directory(&self) {
+        #[cfg(unix)]
+        if let Some(pid) = self.shell_pid {
+            if self.output.lock().is_ok_and(|output| !output.exited) {
+                if let (Some(directory), Ok(mut output)) =
+                    (process_directory(pid), self.output.lock())
+                {
+                    output.directory = Some(directory);
+                }
+            }
+        }
+    }
+    /// Lets an unexited shell write its command history, as bash and zsh do on SIGHUP, before
+    /// the run is killed. Called under the killer lock, like `record_directory`.
+    // shortcut: a stop as a prompt draws loses the session's commands (bash skips the save during PROMPT_COMMAND,
+    // and holds a SIGHUP caught while preparing its prompt until its next read); ask the shell to `history -a` if reported.
+    #[cfg(unix)]
+    fn hang_up_shell(&self) {
+        let Some(pid) = self.shell_pid.map(sysinfo::Pid::from_u32) else {
+            return;
+        };
+        if self.output.lock().map_or(true, |output| output.exited) {
+            return;
+        }
+        let system = unix_processes(sysinfo::ProcessesToUpdate::Some(&[pid]));
+        if system
+            .process(pid)
+            .and_then(|process| process.kill_with(sysinfo::Signal::Hangup))
+            != Some(true)
+        {
+            return;
+        }
+        let deadline = Instant::now() + SHELL_HANGUP_GRACE;
+        while Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(25));
+            let system = unix_processes(sysinfo::ProcessesToUpdate::Some(&[pid]));
+            if system.process(pid).map_or(true, |process| {
+                process.status() == sysinfo::ProcessStatus::Zombie
+            }) {
+                return;
+            }
+        }
+    }
     fn stop(&self) -> Result<()> {
         // Serialize signaling with wait/reaping: never signal a recycled process id.
         let _killer = lock(&self.killer)?;
+        self.record_directory();
         #[cfg(windows)]
         let result = {
             let wsl_result = self.wsl.as_ref().map(WslRun::stop).unwrap_or(Ok(()));
@@ -430,7 +485,10 @@ impl Runtime {
             wsl_result.and(process_result)
         };
         #[cfg(unix)]
-        let result = stop_unix_run(&self.run_token);
+        let result = {
+            self.hang_up_shell();
+            stop_unix_run(&self.run_token)
+        };
         // Do not wait on a writer blocked by a full PTY. Its worker releases the
         // handle after process termination; unrelated sessions stay responsive.
         if let Ok(mut writer) = self.writer.try_lock() {
@@ -488,6 +546,19 @@ fn unix_processes(processes: sysinfo::ProcessesToUpdate<'_>) -> sysinfo::System 
 fn unix_run_member(process: &sysinfo::Process, token: &std::ffi::OsStr) -> bool {
     process.status() != sysinfo::ProcessStatus::Zombie
         && process.environ().iter().any(|entry| entry == token)
+}
+#[cfg(unix)]
+fn process_directory(pid: u32) -> Option<String> {
+    let pid = sysinfo::Pid::from_u32(pid);
+    let mut system = sysinfo::System::new();
+    system.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::Some(&[pid]),
+        true,
+        sysinfo::ProcessRefreshKind::nothing()
+            .without_tasks()
+            .with_cwd(sysinfo::UpdateKind::Always),
+    );
+    system.process(pid)?.cwd()?.to_str().map(str::to_owned)
 }
 /// Marks every process of one run for the Unix stop sweep.
 fn run_token(db: &Connection) -> Result<String> {
@@ -859,6 +930,7 @@ impl AgentSessions {
         messages::initialize(&db)?;
         closed_sessions::initialize(&db)?;
         automations::initialize(&db)?;
+        terminal_history::initialize(&db)?;
         design::initialize(&db)?;
         crate::kanban::initialize(&mut db)?;
         crate::kanban::images::purge_abandoned_uploads(&mut db, &kanban_images_directory)?;
@@ -1740,6 +1812,19 @@ impl AgentSessions {
         if let Some(prompt) = initial_prompt {
             validate_initial_prompt(&session, prompt, remote_host)?;
         }
+        let keeps_history = session.kind == "terminal"
+            && session.executable.is_empty()
+            && project.environment.kind != "ssh";
+        let (restored_directory, restored_output) = if keeps_history {
+            if let Some(previous) = store.runtimes.get(session_id) {
+                terminal_history::save(&store.db, session_id, previous)?;
+            }
+            terminal_history::load(&store.db, session_id)?
+        } else {
+            Default::default()
+        };
+        let restored_output =
+            (!restored_output.is_empty()).then(|| terminal_history::replay(restored_output, cols));
         let group = groups::group_by_group_project(&store.db, &project.id)?;
         #[cfg(windows)]
         conpty::ensure_loaded()?;
@@ -1803,6 +1888,14 @@ impl AgentSessions {
             }
             prepared
         };
+        // A directory deleted since falls back to the project's.
+        // shortcut: a WSL directory reported by OSC 7 is ignored (WslRun probes before the history
+        // loads); validate it in the distribution if WSL users configure OSC 7.
+        if let Some(directory) = restored_directory.filter(|directory| {
+            project.environment.kind == "local" && validate_local_directory(directory).is_ok()
+        }) {
+            launch_session.session.working_directory = Some(directory);
+        }
         #[cfg(unix)]
         let run_token =
             run_token(&store.db).or_else(|error| launch_session.rollback(&store.db, error))?;
@@ -1824,6 +1917,7 @@ impl AgentSessions {
                 remote_dtach.as_deref(),
                 launch_session.remote_directory(),
                 remote_prompt.as_deref(),
+                restored_output.is_some(),
             )
             .or_else(|error| launch_session.rollback(&store.db, error))?;
             command.env("SORENO_AGENT_RUN", &run_token);
@@ -1831,7 +1925,12 @@ impl AgentSessions {
         };
         #[cfg(windows)]
         let command = if let Some(wsl) = &wsl {
-            wsl.command(&project, &launch_session, &launch_session.environment)
+            wsl.command(
+                &project,
+                &launch_session,
+                &launch_session.environment,
+                restored_output.is_some(),
+            )
         } else {
             local_command_with_environment(
                 &project,
@@ -1841,6 +1940,7 @@ impl AgentSessions {
                 remote_dtach.as_deref(),
                 launch_session.remote_directory(),
                 remote_prompt.as_deref(),
+                restored_output.is_some(),
             )
             .or_else(|error| launch_session.rollback(&store.db, error))?
         };
@@ -1880,8 +1980,17 @@ impl AgentSessions {
             .as_raw_handle()
             .ok_or("Handle du processus Windows indisponible.")?
             as usize;
+        let mut output = Output {
+            directory: keeps_history
+                .then(|| launch_session.session.working_directory.clone())
+                .flatten(),
+            ..Output::default()
+        };
+        if let Some(history) = &restored_output {
+            output.append_history(history);
+        }
         let runtime = Arc::new(Runtime {
-            output: Mutex::new(Output::default()),
+            output: Mutex::new(output),
             grid: Mutex::new(None),
             writer: Mutex::new(Some(writer)),
             size: Mutex::new(size),
@@ -1896,6 +2005,9 @@ impl AgentSessions {
             process_handle,
             #[cfg(unix)]
             run_token,
+            keeps_history,
+            #[cfg(unix)]
+            shell_pid: keeps_history.then(|| child.process_id()).flatten(),
         });
         remote_host::schedule_redraw(Arc::downgrade(&runtime), ssh, remote_host, session_id);
         if let Some(sync) = remote_sidecar_sync {
@@ -2406,9 +2518,40 @@ impl AgentSessions {
                 eprintln!("Arrêt agent : {error}");
             }
         }
+        // shortcut: the PTY reader is not joined, so bytes still in flight when the processes die
+        // miss this last save; drain the reader first if output lost at quit is reported.
+        if let Err(error) = self.save_terminal_histories() {
+            eprintln!("Historique des terminaux : {error}");
+        }
         if let Err(error) = cleanup_attachment_directory(&attachment_instance_directory) {
             eprintln!("Nettoyage des pièces jointes locales : {error}");
         }
+    }
+    /// Saves each local shell's output and directory for its next start, also called
+    /// periodically so that a crash or a forced quit loses little.
+    pub fn save_terminal_histories(&self) -> Result<()> {
+        let runtimes: Vec<_> = lock(&self.store)?
+            .runtimes
+            .iter()
+            .filter(|(_, runtime)| runtime.keeps_history)
+            .map(|(session_id, runtime)| (session_id.clone(), Arc::clone(runtime)))
+            .collect();
+        for (_, runtime) in &runtimes {
+            let _killer = lock(&runtime.killer)?;
+            runtime.record_directory();
+        }
+        let store = lock(&self.store)?;
+        for (session_id, runtime) in runtimes {
+            // A restart or a deletion may have replaced this run meanwhile.
+            if store
+                .runtimes
+                .get(&session_id)
+                .is_some_and(|current| Arc::ptr_eq(current, &runtime))
+            {
+                terminal_history::save(&store.db, &session_id, &runtime)?;
+            }
+        }
+        Ok(())
     }
 }
 impl Drop for AgentSessions {
@@ -2820,17 +2963,20 @@ const MISSING_EXECUTABLE_EXIT_CODE: u32 = 209;
 fn posix_command_with_environment(
     session: &AgentSession,
     environment: &[(String, String)],
-    notice: Option<&str>,
+    keep_screen: bool,
 ) -> String {
-    let notice = notice
-        .map(|notice| format!("printf '%s\\r\\n' {}; ", crate::ssh::quote(notice)))
-        .unwrap_or_default();
     let exports = environment
         .iter()
         .map(|(key, value)| format!("export {key}={}; ", crate::ssh::quote(value)))
         .collect::<String>();
     // Clear the startup display after login/cd hooks, before any CLI output; the grid moves a
     // cleared screen into history, so `3J` drops it too (no scrollbar while the CLI starts).
+    // A restored history stays on screen above the new run instead.
+    let clear = if keep_screen {
+        ""
+    } else {
+        "printf '\\033[H\\033[2J\\033[3J'; "
+    };
     if session.executable.is_empty() {
         // The zsh wrapper of shell_history restores the ZDOTDIR this login shell would export.
         let zdotdir = if environment.iter().any(|(key, _)| key == "ZDOTDIR") {
@@ -2838,9 +2984,7 @@ fn posix_command_with_environment(
         } else {
             ""
         };
-        return format!(
-            "printf '\\033[H\\033[2J\\033[3J'; {notice}{zdotdir}{exports}exec \"${{SHELL:-/bin/bash}}\" -il"
-        );
+        return format!("{clear}{zdotdir}{exports}exec \"${{SHELL:-/bin/bash}}\" -il");
     }
     let remote_conversation = environment
         .iter()
@@ -2851,7 +2995,7 @@ fn posix_command_with_environment(
         .collect::<Vec<_>>()
         .join(" ");
     format!(
-        "command -v {} >/dev/null 2>&1 || exit {MISSING_EXECUTABLE_EXIT_CODE}; printf '\\033[H\\033[2J\\033[3J'; {notice}{exports}{}exec {command}",
+        "command -v {} >/dev/null 2>&1 || exit {MISSING_EXECUTABLE_EXIT_CODE}; {clear}{exports}{}exec {command}",
         crate::ssh::quote(&session.executable),
         if remote_conversation {
             "SORENO_CONVERSATION_OUTPUT=$(tty) || exit; export SORENO_CONVERSATION_OUTPUT; "
@@ -2862,23 +3006,23 @@ fn posix_command_with_environment(
 }
 #[cfg(test)]
 fn posix_command(session: &AgentSession) -> String {
-    posix_command_with_environment(session, &[], None)
+    posix_command_with_environment(session, &[], false)
 }
 fn posix_command_in_with_environment(
     directory: &str,
     session: &AgentSession,
     environment: &[(String, String)],
-    notice: Option<&str>,
+    keep_screen: bool,
 ) -> String {
     format!(
         "cd -- {} || exit; {}",
         crate::ssh::quote(directory),
-        posix_command_with_environment(session, environment, notice)
+        posix_command_with_environment(session, environment, keep_screen)
     )
 }
 #[cfg(all(test, unix))]
 fn posix_command_in(directory: &str, session: &AgentSession) -> String {
-    posix_command_in_with_environment(directory, session, &[], None)
+    posix_command_in_with_environment(directory, session, &[], false)
 }
 fn local_command_with_environment(
     project: &AgentProject,
@@ -2888,6 +3032,7 @@ fn local_command_with_environment(
     remote_dtach: Option<&str>,
     remote_agent: Option<&str>,
     remote_prompt: Option<&str>,
+    keep_screen: bool,
 ) -> Result<CommandBuilder> {
     let directory = session
         .working_directory
@@ -2903,7 +3048,7 @@ fn local_command_with_environment(
             &format!("{} · {}", project.name, session.display_name()),
             remote_agent,
             remote_prompt,
-            &posix_command_in_with_environment(directory, session, environment, None),
+            &posix_command_in_with_environment(directory, session, environment, false),
             session.executable.is_empty(),
         )?;
         return crate::ssh::terminal_command(connection, &script);
@@ -2914,13 +3059,16 @@ fn local_command_with_environment(
         let mut command = CommandBuilder::new(local_shell());
         command.args([
             "-ilc",
-            &posix_command_in_with_environment(directory, session, environment, None),
+            &posix_command_in_with_environment(directory, session, environment, keep_screen),
         ]);
         command.env("TERM", "xterm-256color");
         command
     };
     #[cfg(windows)]
     let mut command = windows_command(session)?;
+    // The PowerShell shell starts without clearing the screen.
+    #[cfg(windows)]
+    let _ = keep_screen;
     #[cfg(windows)]
     for (key, value) in environment {
         command.env(key, value);
@@ -2945,6 +3093,7 @@ fn local_command(project: &AgentProject, session: &AgentSession) -> Result<Comma
         Some("/tmp/dtach"),
         None,
         None,
+        false,
     )
 }
 
@@ -2998,6 +3147,7 @@ impl WslRun {
         project: &AgentProject,
         session: &AgentSession,
         environment: &[(String, String)],
+        keep_screen: bool,
     ) -> CommandBuilder {
         let directory = session
             .working_directory
@@ -3019,7 +3169,7 @@ impl WslRun {
             &format!("exec env TERM=xterm-256color {WSL_RUN_GATE}"),
             "soreno",
             &self.directory,
-            &posix_command_in_with_environment(directory, session, environment, None),
+            &posix_command_in_with_environment(directory, session, environment, keep_screen),
         ]);
         command
     }
@@ -3102,11 +3252,28 @@ fn legacy_powershell_args_safe(args: &[String]) -> bool {
             && !(arg.ends_with('\\') && arg.chars().any(char::is_whitespace))
     })
 }
+/// Reports the location as OSC 7 at each prompt, after the profile defined it: PowerShell's
+/// process directory does not follow `Set-Location`.
+#[cfg(any(windows, test))]
+const POWERSHELL_DIRECTORY_PROMPT: &str = r#"$global:SorenoPrompt = $function:prompt
+function global:prompt {
+  $prompt = & $global:SorenoPrompt
+  $location = $executionContext.SessionState.Path.CurrentLocation
+  if ($location.Provider.Name -eq 'FileSystem') {
+    [Console]::Write(([string][char]27) + ']7;' + ([Uri]$location.ProviderPath).AbsoluteUri + ([string][char]7))
+  }
+  $prompt
+}"#;
 #[cfg(any(windows, test))]
 fn windows_command(session: &AgentSession) -> Result<CommandBuilder> {
     if session.executable.is_empty() {
         let mut command = CommandBuilder::new("powershell.exe");
-        command.arg("-NoLogo");
+        command.args([
+            "-NoLogo",
+            "-NoExit",
+            "-EncodedCommand",
+            &powershell_encoded_command(POWERSHELL_DIRECTORY_PROMPT),
+        ]);
         return Ok(command);
     }
     let mut command = CommandBuilder::new("powershell.exe");
