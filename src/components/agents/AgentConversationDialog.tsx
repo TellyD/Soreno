@@ -107,33 +107,16 @@ export function AgentConversationDialog({
       break;
     }
     case "select":
-      title = dialog.title;
-      body = (
-        <div className="agent-conversation-dialog-options">
-          {dialog.options.map((option, index) => (
-            <button
-              key={option.label}
-              ref={index === 0 ? primary : undefined}
-              type="button"
-              className="agent-conversation-dialog-option"
-              onClick={() => onAnswer({ value: option.label })}
-            >
-              <span>{option.label}</span>
-              {option.description ? (
-                <small>
-                  <MarkdownInline content={option.description} />
-                </small>
-              ) : null}
-            </button>
-          ))}
-        </div>
+      return (
+        <SelectDialog
+          dialog={dialog}
+          titleId={titleId}
+          waiting={waiting}
+          onAnswer={onAnswer}
+          onKeyDown={onKeyDown}
+          s={s}
+        />
       );
-      actions = (
-        <Button size="small" onClick={cancel}>
-          {s.dialogCancel}
-        </Button>
-      );
-      break;
     case "confirm":
       title = dialog.title;
       body = dialog.message ? (
@@ -197,6 +180,7 @@ export function AgentConversationDialog({
 function DialogFrame({
   kind,
   title,
+  context,
   titleId,
   waiting,
   onKeyDown,
@@ -206,6 +190,7 @@ function DialogFrame({
 }: {
   kind: Dialog["kind"];
   title: string;
+  context?: string;
   titleId: string;
   waiting: number;
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
@@ -228,11 +213,124 @@ function DialogFrame({
           </span>
         ) : null}
       </header>
-      {children ? (
-        <div className="agent-conversation-dialog-body">{children}</div>
+      {context || children ? (
+        <div className="agent-conversation-dialog-body">
+          {context ? (
+            <p className="agent-conversation-dialog-message">{context}</p>
+          ) : null}
+          {children}
+        </div>
       ) : null}
       <div className="agent-conversation-dialog-actions">{actions}</div>
     </section>
+  );
+}
+
+function SelectDialog({
+  dialog,
+  titleId,
+  waiting,
+  onAnswer,
+  onKeyDown,
+  s,
+}: {
+  dialog: Extract<Dialog, { kind: "select" }>;
+  titleId: string;
+  waiting: number;
+  onAnswer: (answer: AgentConversationDialogAnswer) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
+  s: Strings;
+}) {
+  const initial = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const row = initial.current?.closest<HTMLElement>(
+      ".agent-conversation-dialog-option",
+    );
+    const body = row?.closest<HTMLElement>(".agent-conversation-dialog-body");
+    // Not scrollIntoView: a re-send remounts at the top, and only the body may scroll.
+    if (row && body) {
+      const top =
+        row.getBoundingClientRect().top - body.getBoundingClientRect().top;
+      if (top < 0) body.scrollTop += top;
+      else if (top + row.offsetHeight > body.clientHeight)
+        body.scrollTop += top + row.offsetHeight - body.clientHeight;
+    }
+    focusUnlessTyping(initial.current);
+  }, [dialog.id]);
+  // A callback: the initial option is a button or a checkbox span.
+  const setInitial = (element: HTMLElement | null) => {
+    initial.current = element;
+  };
+  return (
+    <DialogFrame
+      kind="select"
+      title={dialog.title}
+      context={dialog.context}
+      titleId={titleId}
+      waiting={waiting}
+      onKeyDown={onKeyDown}
+      s={s}
+      actions={
+        <Button size="small" onClick={() => onAnswer({ cancelled: true })}>
+          {s.dialogCancel}
+        </Button>
+      }
+    >
+      <div className="agent-conversation-dialog-options">
+        {dialog.options.map((option, index) => {
+          const ref = index === dialog.initial ? setInitial : undefined;
+          const description = option.description ? (
+            <small>
+              <MarkdownInline content={option.description} />
+            </small>
+          ) : null;
+          // OMP re-sends a checkbox list after each toggle, focused on the toggled option.
+          return option.marked && dialog.marker === "checkbox" ? (
+            <label
+              key={option.label}
+              className="agent-conversation-dialog-option is-check"
+            >
+              <Checkbox
+                ref={ref}
+                checked={option.checked}
+                onCheckedChange={() => onAnswer({ value: option.label })}
+                // Base UI ignores Enter on a checkbox; here it takes the option like a click.
+                onKeyDown={(event) => {
+                  if (
+                    event.key !== "Enter" ||
+                    isImeComposing(event.nativeEvent) ||
+                    event.defaultPrevented
+                  )
+                    return;
+                  event.preventDefault();
+                  onAnswer({ value: option.label });
+                }}
+              />
+              <span>{option.label}</span>
+              {description}
+            </label>
+          ) : (
+            <button
+              key={option.label}
+              ref={ref}
+              type="button"
+              className={`agent-conversation-dialog-option${option.marked ? " is-check" : ""}`}
+              aria-pressed={option.marked ? option.checked : undefined}
+              onClick={() => onAnswer({ value: option.label })}
+            >
+              {option.marked ? (
+                <span
+                  className="agent-conversation-dialog-radio"
+                  aria-hidden="true"
+                />
+              ) : null}
+              <span>{option.label}</span>
+              {description}
+            </button>
+          );
+        })}
+      </div>
+    </DialogFrame>
   );
 }
 
@@ -260,6 +358,7 @@ function TextDialog({
     <DialogFrame
       kind={dialog.kind}
       title={dialog.title}
+      context={dialog.context}
       titleId={titleId}
       waiting={waiting}
       onKeyDown={onKeyDown}

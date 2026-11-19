@@ -126,6 +126,10 @@ fn the_migration_keeps_linear_links_drops_the_legacy_table_and_seeds_the_default
             table_column_exists(&db, "agent_linear_issue_sessions", "summary_comment_id").unwrap()
         );
         assert!(
+            table_column_exists(&db, "agent_linear_issue_sessions", "summary_comment_body")
+                .unwrap()
+        );
+        assert!(
             table_column_exists(&db, "agent_linear_issue_sessions", "linear_issue_title").unwrap()
         );
         // Sub-issues were removed with their parent column.
@@ -500,7 +504,7 @@ fn pull_requests_come_from_the_description_then_the_comments_once() {
 }
 
 #[test]
-fn a_summary_extends_its_comment_while_it_exists_else_starts_a_new_one() {
+fn a_summary_replaces_its_comment_while_it_exists_else_starts_a_new_one() {
     let db = database();
     let issue = create(&db, "Issue");
     let (first, created) =
@@ -515,15 +519,7 @@ fn a_summary_extends_its_comment_while_it_exists_else_starts_a_new_one() {
     .unwrap();
     assert!(!created);
     assert_eq!(second.id, first.id);
-    assert_eq!(
-        second.body,
-        "Fixed it.\n\n---\n\nReviewed it.\n\n— Codex via Soreno"
-    );
-    // A comment edited without its signature keeps all its text.
-    assert_eq!(
-        appended_summary("Fixed it.\nSee — the log", "Again.\n\n— Pi via Soreno"),
-        "Fixed it.\nSee — the log\n\n---\n\nAgain.\n\n— Pi via Soreno"
-    );
+    assert_eq!(second.body, "Reviewed it.\n\n— Codex via Soreno");
 
     let other = create(&db, "Other");
     let (moved, created) = post_summary(&db, &other.id, Some(&first.id), "Elsewhere").unwrap();

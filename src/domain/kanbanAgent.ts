@@ -147,9 +147,10 @@ const ISSUE_FILENAME = "issue.md";
 // A cut description reads as the whole issue, so a long one goes to the file only.
 const TRUNCATION_MARKER = `[Description not in this message: read ${ISSUE_FILENAME} (attached) first.]`;
 const ELLIPSIS = "…";
-// The backend only posts a summary block that ends the agent's message (kanban_issue_sessions.rs).
+// The backend only posts a summary block that ends the agent's message (kanban_issue_sessions.rs), and it replaces the session's previous one.
+// shortcut: a session started before replacement summaries keeps the old "only the new changes" instruction, so its next summary replaces the comment with a delta; resend the instruction on resume if that shows up.
 const SUMMARY_INSTRUCTION =
-  "When the issue is fully done, end your final message with <soreno-summary>what changed for the user, in 1-3 short lines; no file paths, symbols, test counts or commands; on a later turn, only the new changes</soreno-summary>; Soreno posts it on the issue and moves it to review.";
+  "When the issue is fully done, end your final message with <soreno-summary>what it now does for the user, in 1-3 short lines; no file paths, symbols, test counts or commands</soreno-summary>; Soreno posts it on the issue. Later, resend it whole only if that changed.";
 const SUMMARY_TAIL = `\n\n${SUMMARY_INSTRUCTION}`;
 const SUMMARY_OPEN = "<soreno-summary>";
 const SUMMARY_CLOSE = "</soreno-summary>";

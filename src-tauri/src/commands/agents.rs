@@ -347,20 +347,29 @@ pub(crate) async fn agent_complete_kanban_issue(
     let Some(claim) = claimed else {
         return Ok(None);
     };
+    let recorded = claim
+        .comment_id
+        .as_deref()
+        .zip(claim.comment_body.as_deref());
     let (comment, created) =
-        linear::post_issue_summary(&claim.issue_id, claim.comment_id.as_deref(), &summary).await?;
+        linear::post_issue_summary(&claim.issue_id, recorded, &summary).await?;
+    let (comment_id, comment_body) = (comment.id.clone(), comment.body.clone());
+    let issue_id = claim.issue_id.clone();
+    // Recorded before the state move: a failed move must not orphan the posted comment.
+    if let Err(error) = blocking(app.clone(), move |state| {
+        state.record_linear_issue_summary_comment(
+            &session_id,
+            &issue_id,
+            &comment_id,
+            &comment_body,
+        )
+    })
+    .await
+    {
+        eprintln!("Résumé Linear : {error}");
+    }
     let mut update = None;
     if created {
-        let comment_id = comment.id.clone();
-        let issue_id = claim.issue_id.clone();
-        // Recorded before the state move: a failed move must not orphan the posted comment.
-        if let Err(error) = blocking(app.clone(), move |state| {
-            state.record_linear_issue_summary_comment(&session_id, &issue_id, &comment_id)
-        })
-        .await
-        {
-            eprintln!("Résumé Linear : {error}");
-        }
         let links = super::linear::project_links(&app).await?;
         update = linear::move_issue_to_review(&claim.issue_id, &links).await?;
     }

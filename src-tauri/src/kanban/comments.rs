@@ -2,7 +2,7 @@ use super::{
     claim_images, comment_row, issue_team, new_id, sql, touch, trimmed, update_description,
     KanbanComment, Result, EMPTY_COMMENT_MESSAGE,
 };
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::Connection;
 
 pub(crate) fn create_comment(db: &Connection, issue_id: &str, body: &str) -> Result<KanbanComment> {
     let body = trimmed(Some(body)).ok_or(EMPTY_COMMENT_MESSAGE)?;
@@ -63,48 +63,27 @@ pub(crate) fn replace_description(
     Ok(())
 }
 
-/// The signed summary closes the comment, so the previous trailing signature is dropped.
-pub(crate) fn appended_summary(existing: &str, summary: &str) -> String {
-    let existing = existing.trim_end();
-    let unsigned = existing
-        .rsplit_once('\n')
-        .filter(|(_, last)| last.trim_start().starts_with("— ") && last.ends_with(" via Soreno"))
-        .map_or(existing, |(head, _)| head.trim_end());
-    format!("{unsigned}\n\n---\n\n{}", summary.trim())
-}
-
-/// Extends the session's summary comment while it still exists, else creates one; `true` when created.
+/// Replaces the session's summary comment while it still exists, else creates one; `true` when created.
 pub(crate) fn post_summary(
     db: &Connection,
     issue_id: &str,
     summary_comment_id: Option<&str>,
     summary: &str,
 ) -> Result<(KanbanComment, bool)> {
-    let existing: Option<String> = match summary_comment_id {
-        Some(comment_id) => db
-            .query_row(
-                "SELECT body FROM kanban_comments WHERE id=?1 AND issue_id=?2",
-                [comment_id, issue_id],
-                |row| row.get(0),
-            )
-            .optional()
-            .map_err(sql)?,
-        None => None,
+    let Some(comment_id) = summary_comment_id else {
+        return Ok((create_comment(db, issue_id, summary)?, true));
     };
-    match (summary_comment_id, existing) {
-        (Some(comment_id), Some(body)) => {
-            if trimmed(Some(summary)).is_none() {
-                return Err(EMPTY_COMMENT_MESSAGE.into());
-            }
-            db.execute(
-                "UPDATE kanban_comments SET body=?2 WHERE id=?1",
-                [comment_id, &appended_summary(&body, summary)],
-            )
-            .map_err(sql)?;
-            touch(db, issue_id)?;
-            claim_images(db, issue_id, summary)?;
-            Ok((comment(db, comment_id)?, false))
-        }
-        _ => Ok((create_comment(db, issue_id, summary)?, true)),
+    let body = trimmed(Some(summary)).ok_or(EMPTY_COMMENT_MESSAGE)?;
+    let replaced = db
+        .execute(
+            "UPDATE kanban_comments SET body=?3 WHERE id=?1 AND issue_id=?2",
+            [comment_id, issue_id, body],
+        )
+        .map_err(sql)?;
+    if replaced == 0 {
+        return Ok((create_comment(db, issue_id, summary)?, true));
     }
+    touch(db, issue_id)?;
+    claim_images(db, issue_id, body)?;
+    Ok((comment(db, comment_id)?, false))
 }
