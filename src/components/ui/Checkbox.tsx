@@ -1,9 +1,9 @@
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import { Check } from "lucide-react";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentProps } from "react";
 import "./Checkbox.css";
 
-type CheckboxProps = ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>;
+type CheckboxProps = ComponentProps<typeof CheckboxPrimitive.Root>;
 
 export function Checkbox({ className, ...props }: CheckboxProps) {
   return (

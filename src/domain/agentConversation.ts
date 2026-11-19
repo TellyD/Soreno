@@ -96,17 +96,35 @@ export type AgentConversationDialog =
       kind: "select";
       id: string;
       title: string;
-      options: { label: string; description: string | null }[];
+      /** Text above the question, such as an `ask` form's context for this field. */
+      context: string;
+      /** OMP 18.20.0: marked options show `marker`; unmarked trailing ones are actions. */
+      marker: "radio" | "checkbox" | null;
+      options: {
+        label: string;
+        description: string | null;
+        marked: boolean;
+        checked: boolean;
+      }[];
+      /** The option to focus first. */
+      initial: number;
     }
   | { kind: "confirm"; id: string; title: string; message: string }
   | {
       kind: "input";
       id: string;
       title: string;
+      context: string;
       placeholder: string;
       secret: boolean;
     }
-  | { kind: "editor"; id: string; title: string; prefill: string }
+  | {
+      kind: "editor";
+      id: string;
+      title: string;
+      context: string;
+      prefill: string;
+    }
   | { kind: "ask"; id: string; questions: AgentConversationAskQuestion[] };
 
 /** The `extension_ui_response` fields answering a dialog, besides its type and id. */
