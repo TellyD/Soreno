@@ -7,6 +7,7 @@ import {
 import { agentConversationDialog } from "./agentConversationDialogs";
 import { count, isObject, text, type Json } from "./agentConversationRecords";
 import { withSubagent } from "./agentConversationSubagents";
+import { todoPhases } from "./agentConversationTodos";
 import { resultChanges } from "./agentConversationToolResults";
 
 type AgentConversationToolStatus = "pending" | "running" | "done" | "error";
@@ -319,39 +320,6 @@ function withLatestBtwTurn(
   const turns = [...topic.turns];
   turns[turns.length - 1] = change(turns[turns.length - 1]);
   return { ...topic, turns };
-}
-
-const TODO_STATUSES: Record<string, true> = {
-  pending: true,
-  in_progress: true,
-  completed: true,
-  abandoned: true,
-  blocked: true,
-};
-
-function todoPhases(value: unknown): AgentConversationTodoPhase[] | null {
-  if (!Array.isArray(value)) return null;
-  return value.filter(isObject).flatMap((phase) => {
-    const tasks = (Array.isArray(phase.tasks) ? phase.tasks : [])
-      .filter(isObject)
-      .flatMap((task) =>
-        text(task.content)
-          ? [
-              {
-                content: text(task.content),
-                // OMP statuses are free text: `__proto__` must not resolve through Object.prototype.
-                status: Object.prototype.hasOwnProperty.call(
-                  TODO_STATUSES,
-                  text(task.status),
-                )
-                  ? (task.status as AgentConversationTodoStatus)
-                  : "pending",
-              },
-            ]
-          : [],
-      );
-    return tasks.length ? [{ name: text(phase.name), tasks }] : [];
-  });
 }
 
 // Local command output keeps the terminal's colors; the view shows plain text.
