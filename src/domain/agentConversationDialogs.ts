@@ -35,6 +35,15 @@ function waitingToolCall(state: AgentConversationState, tool: string) {
 
 const APPROVAL = /^Allow tool: (\S+)\n?([\s\S]*)$/;
 
+/** OMP 18.20.0 puts an `ask` field's form context on the lines above its question. */
+function prompt(title: string) {
+  const end = title.lastIndexOf("\n");
+  return {
+    title: title.slice(end + 1),
+    context: title.slice(0, end + 1).trim(),
+  };
+}
+
 /** The questions of an `ask` request or tool call. */
 function agentConversationAskQuestions(
   value: unknown,
@@ -85,10 +94,20 @@ export function agentConversationDialog(
       const details = Array.isArray(record.optionDetails)
         ? record.optionDetails
         : [];
+      const marker =
+        record.selectionMarker === "radio" ||
+        record.selectionMarker === "checkbox"
+          ? record.selectionMarker
+          : null;
+      const markable = count(record.markableCount) ?? labels.length;
+      const checked = Array.isArray(record.checkedIndices)
+        ? record.checkedIndices
+        : [];
       return {
         kind: "select",
         id,
-        title,
+        ...prompt(title),
+        marker,
         options: labels.map((label, index) => {
           const detail = details[index];
           return {
@@ -96,8 +115,11 @@ export function agentConversationDialog(
             description: isObject(detail)
               ? text(detail.description) || null
               : null,
+            marked: marker !== null && index < markable,
+            checked: checked.includes(index),
           };
         }),
+        initial: count(record.initialIndex) ?? 0,
       };
     }
     case "confirm":
@@ -106,12 +128,17 @@ export function agentConversationDialog(
       return {
         kind: "input",
         id,
-        title,
+        ...prompt(title),
         placeholder: text(record.placeholder),
         secret: record.secret === true,
       };
     case "editor":
-      return { kind: "editor", id, title, prefill: text(record.prefill) };
+      return {
+        kind: "editor",
+        id,
+        ...prompt(title),
+        prefill: text(record.prefill),
+      };
     case "ask":
       return {
         kind: "ask",

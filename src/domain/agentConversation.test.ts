@@ -307,6 +307,48 @@ describe("OMP conversation transcript", () => {
     ]);
   });
 
+  it("reads an ask form field's context and checked options from a select", () => {
+    const state = apply([
+      {
+        type: "extension_ui_request",
+        id: "ui-10",
+        method: "select",
+        title: "Context paragraph.\n\n- item\n\n(2 selected) Fruits",
+        options: ["Apple", "Pear", "Other (type your own)", "✔ Done selecting"],
+        initialIndex: 1,
+        selectionMarker: "checkbox",
+        checkedIndices: [0, 1],
+        markableCount: 3,
+      },
+    ]);
+    expect(state.dialogs).toEqual([
+      {
+        kind: "select",
+        id: "ui-10",
+        title: "(2 selected) Fruits",
+        context: "Context paragraph.\n\n- item",
+        marker: "checkbox",
+        options: [
+          { label: "Apple", description: null, marked: true, checked: true },
+          { label: "Pear", description: null, marked: true, checked: true },
+          {
+            label: "Other (type your own)",
+            description: null,
+            marked: true,
+            checked: false,
+          },
+          {
+            label: "✔ Done selecting",
+            description: null,
+            marked: false,
+            checked: false,
+          },
+        ],
+        initial: 1,
+      },
+    ]);
+  });
+
   it("rebuilds the history without the messages OMP adds on the user's behalf", () => {
     const state = apply([
       {

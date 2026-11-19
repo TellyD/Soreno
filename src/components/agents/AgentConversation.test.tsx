@@ -727,7 +727,7 @@ it("asks a side question during a turn, streams it apart, stops it and follows i
   expect(topics).not.toContain("Pourquoi ?");
 });
 
-it("answers an ask round in the dock", async () => {
+it("answers an ask round and an ask form field in the dock", async () => {
   let emit = (_record: AgentConversationRecord) => {};
   vi.mocked(api.subscribeAgentConversation).mockImplementation(
     async (_sessionId, onRecord) => {
@@ -821,6 +821,36 @@ it("answers an ask round in the dock", async () => {
       { id: "db", selectedOptions: ["SQLite"] },
       { id: "sync", selectedOptions: [] },
     ],
+  });
+
+  // OMP 18.20.0 walks an `ask` form field by field, re-sending a checkbox list after each toggle.
+  await act(async () =>
+    emit({
+      type: "extension_ui_request",
+      id: "ui-field",
+      method: "select",
+      title: "Le contexte.\n\n(1 selected) Fruits",
+      options: ["Apple", "Pear", "Other (type your own)", "✔ Done selecting"],
+      initialIndex: 0,
+      selectionMarker: "checkbox",
+      checkedIndices: [0],
+      markableCount: 3,
+    }),
+  );
+  const field = container.querySelector(".agent-conversation-dock")!;
+  expect(field.textContent).toContain("Le contexte.");
+  const boxes = [...field.querySelectorAll('[role="checkbox"]')];
+  expect(boxes.map((box) => box.getAttribute("aria-checked"))).toEqual([
+    "true",
+    "false",
+    "false",
+  ]);
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  await act(async () => (boxes[1] as HTMLElement).click());
+  expect(sent().pop()).toEqual({
+    type: "extension_ui_response",
+    id: "ui-field",
+    value: "Pear",
   });
 });
 
