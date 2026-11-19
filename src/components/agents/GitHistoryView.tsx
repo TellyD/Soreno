@@ -29,6 +29,7 @@ import {
   type GitGraphRow,
   type GitHistory,
 } from "../../domain/projectGit";
+import { isProjectFileWithin } from "../../domain/projectFiles";
 import { useNotification } from "../../notifications";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
@@ -280,8 +281,8 @@ export function GitHistoryView({
             : selectedDetail?.files.find((file) =>
                 [file.path, file.oldPath].some(
                   (candidate) =>
-                    candidate === gitPath ||
-                    candidate?.startsWith(`${gitPath}/`),
+                    candidate !== null &&
+                    isProjectFileWithin(candidate, gitPath),
                 ),
               )?.path) ??
           selectedDetail?.files[0]?.path ??
