@@ -74,6 +74,11 @@ export class TaskWidget extends WidgetType {
 /** Display URL for an image the webview cannot load as is; null leaves it to the webview. */
 export type ImageResolver = (url: string) => Promise<string> | null;
 
+// Natural sizes of loaded images, so a widget rebuilt on scroll keeps its height before loading; the
+// inline editor's parent scrolls, and WebKit has no scroll anchoring to absorb the change.
+// shortcut: never evicted and keyed by the full URL, so distinct data: images stay in memory until reload; bound it if embedded images get common.
+const imageSizes = new Map<string, { width: number; height: number }>();
+
 export class ImageWidget extends WidgetType {
   constructor(
     readonly from: number,
@@ -133,20 +138,33 @@ export class ImageWidget extends WidgetType {
       this.onError(this.errorLabel);
     } else {
       const image = document.createElement("img");
+      const size = imageSizes.get(this.url);
+      if (size) {
+        image.width = size.width;
+        image.height = size.height;
+      }
+      // shortcut: an image changing size behind the same URL keeps its first size until reload; refresh the attributes on load if reported.
+      image.onload = () => {
+        if (image.naturalWidth)
+          imageSizes.set(this.url, {
+            width: image.naturalWidth,
+            height: image.naturalHeight,
+          });
+      };
       if (src) image.src = src;
       else {
         // Without a source yet, WebKit draws the image as broken.
-        image.style.display = "none";
+        if (size) image.style.visibility = "hidden";
+        else image.style.display = "none";
         void resolved?.then(
           (url) => {
             image.src = url;
-            image.style.display = "";
+            image.style.visibility = image.style.display = "";
           },
           () => image.dispatchEvent(new Event("error")),
         );
       }
       image.alt = this.alt;
-      image.loading = "lazy";
       image.draggable = false;
       surface.append(image);
     }
