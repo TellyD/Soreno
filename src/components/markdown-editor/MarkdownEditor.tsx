@@ -291,6 +291,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                 tableAddRow: t("editor.tableAddRow"),
                 tableAddColumn: t("editor.tableAddColumn"),
                 toggleTask: t("editor.command.toggleTask"),
+                toggleSection: t("editor.toggleSection"),
                 imageError: t("editor.imagePreviewError"),
                 linkError: t("editor.linkError"),
                 copyCode: t("editor.copyCode"),

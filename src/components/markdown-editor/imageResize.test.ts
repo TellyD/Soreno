@@ -26,6 +26,7 @@ const labels = {
   tableAddRow: "Add row",
   tableAddColumn: "Add column",
   toggleTask: "Task",
+  toggleSection: "Section",
   imageError: "Failed",
   linkError: "Failed",
   onError: vi.fn(),

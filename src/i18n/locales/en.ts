@@ -45,6 +45,7 @@ export const en = {
   "editor.plainText": "Plain text",
   "editor.copyCode": "Copy code",
   "editor.codeCopied": "Code copied",
+  "editor.toggleSection": "Show or hide section",
   "editor.copyCodeError":
     "Unable to copy the code. Select it and use the keyboard shortcut to copy.",
   "editor.command.bold": "Bold",

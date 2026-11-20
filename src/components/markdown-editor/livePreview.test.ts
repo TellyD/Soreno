@@ -10,7 +10,13 @@ import {
   type Decoration,
   type DecorationSet,
 } from "@codemirror/view";
-import { cursorCharLeft, undo, history } from "@codemirror/commands";
+import {
+  cursorCharLeft,
+  deleteCharForward,
+  deleteCharBackward,
+  undo,
+  history,
+} from "@codemirror/commands";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stubEditorGeometry } from "./testGeometry";
 import { markdownSupport } from "./document";
@@ -37,6 +43,7 @@ const labels = {
   tableAddRow: "Add row",
   tableAddColumn: "Add column",
   toggleTask: "Toggle task",
+  toggleSection: "Toggle section",
   imageError: "Image failed",
   linkError: "Link failed",
   onError: vi.fn(),
@@ -151,6 +158,90 @@ it("uses centered-divider styling only outside editing and composition", () => {
     );
     expect(view.dom.querySelector(".cm-md-rule-preview")).not.toBeNull();
     expect(view.state.sliceDoc()).toBe(doc);
+  } finally {
+    view.destroy();
+  }
+});
+it("collapses Linear `+++` sections until toggled or entered", () => {
+  const doc = "Intro\n\n+++ Agent notes\n\nHidden body\n\n+++\n\nAfter";
+  const view = new EditorView({ state: state(doc) });
+  const text = () => view.contentDOM.textContent;
+  const toggle = () =>
+    view.dom.querySelector<HTMLButtonElement>(".cm-md-section-toggle")!;
+  try {
+    expect(text()).toContain("Agent notes");
+    expect(text()).not.toContain("+++");
+    expect(text()).not.toContain("Hidden body");
+    expect(text()).toContain("After");
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    toggle().click();
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(text()).toContain("Hidden body");
+    expect(text()).not.toContain("+++");
+    view.dispatch({ selection: { anchor: doc.lastIndexOf("+++") } });
+    expect(text()).toContain("+++");
+    toggle().click();
+    expect(text()).not.toContain("Hidden body");
+    // Undo or typing into hidden content shows it.
+    view.dispatch({ selection: { anchor: doc.indexOf("Hidden") } });
+    expect(text()).toContain("Hidden body");
+    // A replaced document, e.g. an outside update, collapses everything again.
+    view.dispatch({
+      changes: { from: 0, to: doc.length, insert: doc },
+      selection: { anchor: 0 },
+    });
+    expect(text()).not.toContain("Hidden body");
+    expect(view.state.sliceDoc()).toBe(doc);
+  } finally {
+    view.destroy();
+  }
+});
+it("keeps a `+++` section intact when collapsed around the cursor, replaced or typed before", () => {
+  const doc = "+++ T\n\nabcdef\n\n+++\n\nAfter";
+  const view = new EditorView({ state: state(doc, doc.length) });
+  const expanded = () =>
+    view.dom
+      .querySelector(".cm-md-section-toggle")!
+      .getAttribute("aria-expanded");
+  const toggle = () =>
+    view.dom.querySelector<HTMLButtonElement>(".cm-md-section-toggle")!.click();
+  try {
+    toggle();
+    view.dispatch({ changes: { from: 0, to: doc.length, insert: doc } });
+    expect(expanded()).toBe("false");
+    toggle();
+    view.dispatch({ selection: { anchor: doc.indexOf("def") } });
+    toggle();
+    expect(view.state.selection.main.head).toBe("+++ T".length);
+    deleteCharForward(view);
+    expect(view.state.sliceDoc()).toBe(doc);
+    expect(expanded()).toBe("true");
+    toggle();
+    deleteCharBackward(view);
+    expect(view.state.sliceDoc()).toBe(doc.replace("T", ""));
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: doc },
+      selection: { anchor: 4 },
+    });
+    cursorCharLeft(view);
+    expect(view.state.selection.main.head).toBe(0);
+    // The paste handler re-dispatches the selection.
+    view.dispatch({ selection: view.state.selection });
+    expect(view.state.selection.main.head).toBe(4);
+    cursorCharLeft(view);
+    expect(
+      view.state
+        .facet(EditorView.inputHandler)
+        .some((handler) =>
+          handler(view, 0, 0, "X", () =>
+            view.state.update(view.state.replaceSelection("X")),
+          ),
+        ),
+    ).toBe(true);
+    expect(view.state.sliceDoc()).toBe(doc.replace("T", "XT"));
+    // Switching from source mode with the cursor in the content shows it.
+    view.setState(state(doc, doc.indexOf("def")));
+    expect(expanded()).toBe("true");
   } finally {
     view.destroy();
   }
@@ -447,9 +538,7 @@ it("opens a keyboard-selected list image with Enter and keeps the item's indenta
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
     );
     view.dispatch(view.state.replaceSelection("x"));
-    expect(view.state.sliceDoc()).toBe(
-      `- item\n\n  ${image}\n\n  x\n\n  tail`,
-    );
+    expect(view.state.sliceDoc()).toBe(`- item\n\n  ${image}\n\n  x\n\n  tail`);
     view.dispatch({ selection: { anchor: 8 } });
     view.dispatch(view.state.replaceSelection("y"), {
       userEvent: "input.paste",
@@ -596,13 +685,11 @@ it("updates selection-only previews exactly like a full rebuild", () => {
     });
     return ranges;
   };
-  const current = () => {
-    const sets = editor
+  // The preview field is the first static source; collapsible sections come after it.
+  const current = () =>
+    editor
       .facet(EditorView.decorations)
-      .filter((source) => typeof source !== "function");
-    expect(sets).toHaveLength(1);
-    return sets[0];
-  };
+      .find((source) => typeof source !== "function") as DecorationSet;
   const selections = [
     ...Array.from({ length: doc.length + 1 }, (_, index) =>
       EditorSelection.single(index),

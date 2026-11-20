@@ -32,6 +32,10 @@ import {
   CodeLanguageWidget,
   type CodeLanguageLabels,
 } from "./CodeLanguageWidget";
+import {
+  collapsibleSections,
+  SectionToggleWidget,
+} from "./collapsibleSections";
 
 type PreviewLabels = CodeCopyLabels &
   CodeLanguageLabels & {
@@ -41,6 +45,7 @@ type PreviewLabels = CodeCopyLabels &
     tableAddRow: string;
     tableAddColumn: string;
     toggleTask: string;
+    toggleSection: string;
     imageError: string;
     linkError: string;
     resolveImage?: ImageResolver;
@@ -56,21 +61,23 @@ const hiddenPrefix = Decoration.replace({});
 const isPrefix = (decoration: Decoration) =>
   decoration === hiddenPrefix ||
   decoration.spec.widget instanceof BulletWidget ||
-  decoration.spec.widget instanceof TaskWidget;
+  decoration.spec.widget instanceof TaskWidget ||
+  decoration.spec.widget instanceof SectionToggleWidget;
 // Chains prefix ranges from the line start, across spaces between them (`> # `, `> > `, `> - `).
-function prefixEnd(value: DecorationSet, line: Line) {
+function prefixEnd(values: DecorationSet[], line: Line) {
   let end: number,
     next = line.from;
   do {
     end = next;
     let gap = end;
     while (gap < line.to && " \t".includes(line.text[gap - line.from])) gap++;
-    value.between(end, gap, (rangeFrom, rangeTo, decoration) => {
-      if (rangeFrom < end || rangeTo === rangeFrom || !isPrefix(decoration))
-        return;
-      next = rangeTo;
-      return false;
-    });
+    for (const value of values)
+      value.between(end, gap, (rangeFrom, rangeTo, decoration) => {
+        if (rangeFrom < end || rangeTo === rangeFrom || !isPrefix(decoration))
+          return;
+        next = rangeTo;
+        return false;
+      });
   } while (next !== end);
   return end;
 }
@@ -634,20 +641,26 @@ export function livePreview(labels: PreviewLabels): Extension {
     labels.openImage(image.src, image.alt);
     return true;
   };
+  const sections = collapsibleSections(labels.toggleSection);
+  const lineStart = (state: EditorState, line: Line) =>
+    prefixEnd(
+      [state.field(decorations), state.field(sections).decorations],
+      line,
+    );
   return [
     composing,
     decorations,
+    sections,
     // Cursors landing before a hidden block prefix move past it, so commands and pastes keep the block;
     // a cursor moving backward out of the prefix stays, otherwise ArrowLeft/Home would get stuck.
     // shortcut: toolbar formatting from a cursor moved back before the prefix still inserts before it; normalize in commands if reported.
     EditorState.transactionFilter.of((tr) => {
       if (!tr.selection) return tr;
-      const value = tr.state.field(decorations);
       const start = tr.startState.selection.ranges;
       let changed = false;
       const ranges = tr.selection.ranges.map((range, index) => {
         if (!range.empty) return range;
-        const end = prefixEnd(value, tr.state.doc.lineAt(range.head));
+        const end = lineStart(tr.state, tr.state.doc.lineAt(range.head));
         const before =
           index < start.length
             ? tr.changes.mapPos(start[index].head)
@@ -697,10 +710,7 @@ export function livePreview(labels: PreviewLabels): Extension {
     // The cursor can still sit before a hidden block prefix; edits there must not break the block.
     // shortcut: an IME composition started before a hidden prefix bypasses it (prefixes drop while composing); normalize on compositionstart if reported.
     EditorView.inputHandler.of((view, from, to, text) => {
-      const end = prefixEnd(
-        view.state.field(decorations),
-        view.state.doc.lineAt(from),
-      );
+      const end = lineStart(view.state, view.state.doc.lineAt(from));
       if (from !== to || from >= end) return false;
       view.dispatch({
         changes: { from: end, insert: text },
@@ -719,7 +729,7 @@ export function livePreview(labels: PreviewLabels): Extension {
             const { selection, doc } = view.state;
             const { head, empty } = selection.main;
             const line = doc.lineAt(head);
-            const end = prefixEnd(view.state.field(decorations), line);
+            const end = lineStart(view.state, line);
             if (selection.ranges.length > 1 || !empty || head >= end)
               return false;
             view.dispatch({

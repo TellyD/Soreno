@@ -350,8 +350,31 @@
   overflow-x: auto;
   cursor: text;
 }
+.markdown-editor .cm-md-section-toggle {
+  --icon-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 0 6px 0 0;
+  padding: 0;
+  vertical-align: -4px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-meta);
+  background: transparent;
+  cursor: pointer;
+}
+.markdown-editor .cm-md-section-toggle:hover {
+  background: var(--surface-hover);
+}
+.markdown-editor .cm-md-section-toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
 .markdown-editor .cm-md-widget:focus-visible,
 .markdown-editor .cm-md-task:focus-visible,
+.markdown-editor .cm-md-section-toggle:focus-visible,
 .markdown-toolbar-settings input[type="checkbox"]:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;

@@ -41,6 +41,7 @@ export const fr = {
   "editor.plainText": "Texte brut",
   "editor.copyCode": "Copier le code",
   "editor.codeCopied": "Code copié",
+  "editor.toggleSection": "Afficher ou masquer la section",
   "editor.copyCodeError":
     "Impossible de copier le code. Sélectionnez-le et copiez-le avec le raccourci clavier.",
   "editor.command.bold": "Gras",
