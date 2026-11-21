@@ -248,7 +248,6 @@ fn omp_script(directory: &str, resume: Option<&str>, launch_args: &[String]) -> 
     )
 }
 
-/// `omp_script` in the user's login shell.
 fn launch_script(directory: &str, resume: Option<&str>, launch_args: &[String]) -> String {
     crate::ssh::login_shell_script(&omp_script(directory, resume, launch_args))
 }

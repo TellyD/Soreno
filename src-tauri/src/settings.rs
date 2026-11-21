@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-// ponytail: one process-wide lock; use per-directory locks if settings I/O becomes concurrent across profiles.
+// shortcut: one process-wide lock; use per-directory locks if settings I/O becomes concurrent across profiles.
 static SETTINGS_IO: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

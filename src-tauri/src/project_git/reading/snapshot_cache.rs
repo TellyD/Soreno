@@ -16,7 +16,7 @@ pub(super) struct SnapshotCache(Mutex<Option<(SnapshotCacheKey, Arc<Snapshot>)>>
 
 impl SnapshotCache {
     pub(super) fn store(&self, key: SnapshotCacheKey, snapshot: Arc<Snapshot>) {
-        // ponytail: one snapshot bounds memory; cache more projects only if cross-project misses matter.
+        // shortcut: one snapshot bounds memory; cache more projects only if cross-project misses matter.
         *self
             .0
             .lock()

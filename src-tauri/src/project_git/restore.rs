@@ -107,7 +107,7 @@ pub(crate) fn restore(
 }
 
 fn list_backup_oids(project: &AgentProject) -> Result<Vec<String>, GitError> {
-    // La classe empêche Git d’ajouter `/*` à un glob sans métacaractère.
+    // The character class keeps Git from appending `/*` to a glob without a metacharacter.
     let output = execute(
         project,
         &[

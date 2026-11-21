@@ -14,6 +14,8 @@ Soreno: Tauri 2 desktop app (React/TypeScript, Rust, SQLite) for notes and a wor
 
 Comment sparingly. No comment or doc comment that paraphrases the code, a function name or the context of the change. Keep them for non-obvious constraints (platform workaround, invariant, surprising choice), in one short line.
 
+Mark a known limit as `shortcut: <the limit>, <when to fix it>`.
+
 ## UI
 
 - Follow the conventions of existing views: typography, spacing, colors, borders, interactive states. No new local visual treatment without an explicit need, in particular no extra border or accent for an active state already shown by a background. Keep keyboard focus indicators.

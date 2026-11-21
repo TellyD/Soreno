@@ -9,8 +9,6 @@ default-run = "soreno"
 homepage = "https://github.com/TellyD/Soreno"
 repository = "https://github.com/TellyD/Soreno"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
@@ -73,12 +71,9 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSBundle", "NSDictionary", "NSError", "NSObject", "NSString"] }
 objc2-user-notifications = { version = "0.3", default-features = false, features = ["std", "bitflags", "block2", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationResponse", "UNNotificationSound", "UNNotificationTrigger", "UNUserNotificationCenter"] }
 
-# Binaire de release plus compact, ce qui pese legerement dans les scores
-# antivirus heuristiques. On NE met volontairement PAS `strip = true` : retirer
-# les symboles rend l'exe plus opaque et pousse ces moteurs (Trapmine, Acronis
-# Static ML) vers un score plus eleve, pas plus bas.
-# LTO fine plutot que complete : l'essentiel du gain de taille sans exploser le
-# temps de build depuis WSL.
+# A smaller binary scores slightly better with heuristic antivirus engines. Deliberately no
+# `strip = true`: without symbols, engines such as Trapmine and Acronis Static ML score the exe higher.
+# Thin LTO keeps most of the size gain without blowing up build time from WSL.
 [profile.release]
 lto = "thin"
 codegen-units = 1

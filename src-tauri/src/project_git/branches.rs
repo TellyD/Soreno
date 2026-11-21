@@ -842,8 +842,8 @@ pub(crate) fn switch_branch(
                     None,
                 )
             } else {
-                // Git valide la référence et refuse nativement une branche déjà utilisée
-                // par une autre worktree, sans lecture préparatoire redondante.
+                // Git validates the ref and natively refuses a branch already checked out
+                // in another worktree, without a redundant preliminary read.
                 execute(
                     project,
                     &["switch", "--no-overwrite-ignore", "--no-guess", &name],

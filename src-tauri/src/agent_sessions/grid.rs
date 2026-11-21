@@ -1,4 +1,4 @@
-//! Prototype: terminal emulation in Rust, the webview only paints the visible rows.
+//! Terminal emulation in Rust, the webview only paints the visible rows.
 use super::{grid_log, lock, output::Output, AgentSessions, Result, Runtime};
 use portable_pty::PtySize;
 pub(super) use soreno_terminal_grid::GridTheme;

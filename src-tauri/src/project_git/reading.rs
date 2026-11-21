@@ -961,7 +961,7 @@ fn posix_worktree_fingerprints(
                         scan.reused += 1;
                         known.clone()
                     }
-                    // ponytail: large SSH files use size only; the stamp could replace it if same-size rewrites must invalidate previews.
+                    // shortcut: large SSH files use size only; the stamp could replace it if same-size rewrites must invalidate previews.
                     (None, None) => WorktreeFingerprint::Present {
                         mode,
                         kind: "size",

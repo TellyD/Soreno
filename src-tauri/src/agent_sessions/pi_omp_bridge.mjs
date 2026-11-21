@@ -153,7 +153,7 @@ export function installBridge(api, config) {
     publish();
     clearInterval(timer);
     if (!rejected) {
-      // ponytail: APIs have no common rename event; sample the live manager every
+      // shortcut: APIs have no common rename event; sample the live manager every
       // 250 ms. A forced kill can lose that last interval, not acknowledged history.
       timer = setInterval(publish, 250);
       timer.unref?.();

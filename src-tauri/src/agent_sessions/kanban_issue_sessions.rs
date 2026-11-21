@@ -171,7 +171,6 @@ pub(super) fn has_live_link(db: &Connection, session_id: &str) -> Result<bool> {
     .map_err(|error| error.to_string())
 }
 
-/// The Linear issue the session works on, if any.
 pub(super) fn linked_linear_issue(db: &Connection, session_id: &str) -> Result<Option<String>> {
     db.query_row(
         "SELECT linear_issue_id FROM agent_linear_issue_sessions WHERE session_id=?1",

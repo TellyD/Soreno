@@ -106,7 +106,7 @@ fn with_mutation_state<T>(
         path: identity.root.clone(),
         ..lease.project.clone()
     };
-    // ponytail: this optimistic token is not a transaction against external Git tools;
+    // shortcut: this optimistic token is not a transaction against external Git tools;
     // keep the lease local and require a fresh snapshot after every mutation.
     mutation(&rooted, &snapshot)
 }

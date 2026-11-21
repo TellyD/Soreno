@@ -45,7 +45,6 @@ pub(super) fn instruction(directory: &str) -> String {
     )
 }
 
-/// The launch-time instruction of a session: the design board one, else the Kanban one.
 pub(super) fn agent_instruction(design: bool, directory: &str) -> String {
     if design {
         design::instruction(directory, true)

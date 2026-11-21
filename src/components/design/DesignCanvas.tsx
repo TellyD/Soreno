@@ -484,7 +484,6 @@ export function DesignCanvas(
     nudged.current = null;
   }
 
-  // Dots at least 12px apart, whatever the zoom.
   let grid = 24 * view.scale;
   while (grid < 12) grid *= 2;
   const panning = gesture.current?.kind === "pan" && gesture.current.moved;

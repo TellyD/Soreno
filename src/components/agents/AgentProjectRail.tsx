@@ -123,7 +123,6 @@ type AgentProjectRailProps = {
   onAsk: (confirmation: Confirmation) => void;
   /** Menu move: restores focus to the moved row. */
   onMoveProjectToGroup: (projectId: string, groupId: string | null) => void;
-  /** Drag and drop move. */
   onDropProjectInGroup: (projectId: string, groupId: string | null) => void;
   onOpenExternalWorktree: (
     repositoryProjectId: string,

@@ -56,7 +56,6 @@ type KanbanIssueDetailProps = {
   // Executable of the last started agent preset, if remembered.
   agentPreset: string | null;
   agentSession: KanbanIssueAgentSession | undefined;
-  // An agent start for the shown issue is in flight.
   agentStarting: boolean;
   // Shown beside the issue's own session: comments go to that agent or nowhere, and it needs no open button.
   besideSession: boolean;

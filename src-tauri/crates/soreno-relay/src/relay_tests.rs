@@ -117,7 +117,6 @@ fn binary(ws: &mut WebSocket<TcpStream>) -> Option<Vec<u8>> {
     }
 }
 
-/// The close code the relay sent.
 fn close_code<S: Read + Write>(ws: &mut WebSocket<S>) -> u16 {
     loop {
         match ws.read() {

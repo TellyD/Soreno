@@ -230,7 +230,7 @@ export function ProjectGroupPanel({
     connected.map((member) => [member.id, gitReadScope(member)]),
   );
 
-  // ponytail: reads on open, focus, demand and agent turn end; poll if mid-turn updates matter.
+  // shortcut: reads on open, focus, demand and agent turn end; poll if mid-turn updates matter.
   const refresh = useCallback(
     (allowDuringMutation = false) => {
       if (!mountedRef.current || (mutationRef.current && !allowDuringMutation))

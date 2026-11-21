@@ -769,7 +769,6 @@ export function AgentWorkspace({
   });
   const statusById = useMemo(() => {
     const byId = new Map<string, AgentSessionStatus>();
-    // Keeps the first status per session, as the former linear search did.
     for (const status of workspace.statuses)
       if (!byId.has(status.sessionId)) byId.set(status.sessionId, status);
     return byId;

@@ -97,7 +97,6 @@ function closeEnd(code: number, opened: boolean): ChannelEnd {
   return "network";
 }
 
-/** A field of a parsed JSON value, `undefined` when it is not an object. */
 export function jsonField(value: unknown, name: string): unknown {
   return value !== null && typeof value === "object" && name in value
     ? (value as Record<string, unknown>)[name]

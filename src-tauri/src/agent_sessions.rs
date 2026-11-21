@@ -945,7 +945,7 @@ impl AgentSessions {
         purge_launch_directories(&db, &links_dir);
         let attachment_root = attachment_root(&links_dir);
         std::fs::create_dir_all(&attachment_root).map_err(|error| error.to_string())?;
-        // ponytail: crash leftovers stay isolated; add owner locks before scavenging them.
+        // shortcut: crash leftovers stay isolated; add owner locks before scavenging them.
         let attachment_instance_directory =
             create_unique_attachment_directory(&attachment_root, "instance")?;
         Ok(Self {

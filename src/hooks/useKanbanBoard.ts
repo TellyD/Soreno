@@ -545,7 +545,6 @@ export function useKanbanBoard({
     };
   }, [linearConnected, readLinear, visible]);
 
-  // Without a source, both reload.
   const reload = useCallback(
     (source?: KanbanSource) => {
       if (source !== "linear") void loadLocal();

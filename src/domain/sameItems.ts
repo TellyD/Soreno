@@ -1,4 +1,3 @@
-/** Same strings in the same order. */
 export function sameItems(left: readonly string[], right: readonly string[]) {
   return (
     left.length === right.length &&

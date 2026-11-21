@@ -221,7 +221,7 @@ pub fn write(
         ));
     }
 
-    // ponytail: one process-wide lock keeps the complete compare-and-replace atomic for in-app
+    // shortcut: one process-wide lock keeps the complete compare-and-replace atomic for in-app
     // writers; use per-project locks only if unrelated writes become measurably contended.
     let _write_guard = WRITE_LOCK
         .lock()

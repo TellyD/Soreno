@@ -384,7 +384,6 @@ export function filterIssuesBySource(
     : issues.filter(({ source }) => source === filter);
 }
 
-/** Decision 3: local→local; linear→linear when available; all→remembered when available, else local. */
 export function defaultCreateSource(
   filter: KanbanSourceFilter,
   remembered: KanbanSource | null,

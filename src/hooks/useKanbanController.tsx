@@ -721,7 +721,6 @@ export function useKanbanController({
       // shortcut: a title-only agent edit cancels it too, the event not telling what changed; report description changes in the event if notices go missing.
       window.clearTimeout(descriptionTimers.current.get(issue.id));
       descriptionTimers.current.delete(issue.id);
-      // issueContentSaved reloads the local board and the views showing the issue.
       issueContentSaved(issue);
       if (issue.source === "local" && issueAgentsRef.current.live.has(issue.id))
         onLinkedIssueRenamed?.();
