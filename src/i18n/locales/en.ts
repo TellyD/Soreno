@@ -844,6 +844,7 @@ export const en = {
   "automations.serverHint":
     "Runs on the server through a systemd user timer, even with Soreno closed. At the scheduled time, a run is skipped while the session is still open.",
   "design.boards": "Switch board",
+  "design.allBoards": "All boards",
   "design.noProject": "No project",
   "design.newBoard": "New board",
   "design.newBoardDescription":

@@ -858,6 +858,7 @@ export const fr = {
   "automations.serverHint":
     "Tourne sur le serveur via un minuteur systemd utilisateur, même Soreno fermé. À l’heure prévue, une exécution est sautée si la session est encore ouverte.",
   "design.boards": "Changer de tableau",
+  "design.allBoards": "Tous les tableaux",
   "design.noProject": "Sans projet",
   "design.newBoard": "Nouveau tableau",
   "design.newBoardDescription":

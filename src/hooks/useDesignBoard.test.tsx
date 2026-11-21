@@ -68,6 +68,7 @@ beforeEach(async () => {
   container = document.createElement("div");
   root = createRoot(container);
   await act(async () => root.render(<Probe />));
+  await act(async () => hook.selectBoard("b"));
 });
 
 afterEach(async () => {

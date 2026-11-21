@@ -2,6 +2,7 @@ import { Menu } from "@base-ui/react/menu";
 import {
   Check,
   ChevronDown,
+  LayoutGrid,
   Palette,
   Pencil,
   Plus,
@@ -31,6 +32,7 @@ import { Button } from "../ui/Button";
 import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { EmptyState } from "../ui/EmptyState";
 import { MenuItem, MenuSurface } from "../ui/Menu";
+import { DesignBoardGallery } from "./DesignBoardGallery";
 import { DesignBoardView, type DesignDraft } from "./DesignBoardView";
 import { DesignBoardForm, type DesignBoardFormValues } from "./DesignBoardForm";
 import { DesignLinkedAgents } from "./DesignAgents";
@@ -298,7 +300,8 @@ export function DesignWorkspace({
     });
     if (changed) setBusyFrames(next);
   });
-  const switcherRef = useRef<HTMLButtonElement>(null);
+  // The switcher, or the gallery's New board button: dialogs return focus here.
+  const returnFocusRef = useRef<HTMLButtonElement>(null);
   const projectName = (id: string | null) =>
     id === null
       ? t("design.noProject")
@@ -453,7 +456,7 @@ export function DesignWorkspace({
           switcher={
             <Menu.Root modal={false}>
               <Menu.Trigger
-                ref={switcherRef}
+                ref={returnFocusRef}
                 render={
                   <Button
                     size="small"
@@ -501,6 +504,13 @@ export function DesignWorkspace({
                     <Menu.Separator className="agent-menu-separator" />
                     <Menu.Item
                       nativeButton
+                      render={<MenuItem leading={<LayoutGrid />} />}
+                      onClick={() => design.selectBoard(null)}
+                    >
+                      {t("design.allBoards")}
+                    </Menu.Item>
+                    <Menu.Item
+                      nativeButton
                       render={<MenuItem leading={<Plus />} />}
                       onClick={openCreate}
                     >
@@ -526,6 +536,14 @@ export function DesignWorkspace({
             </Menu.Root>
           }
         />
+      ) : design.loaded && boards.length ? (
+        <DesignBoardGallery
+          boards={boards}
+          projectName={projectName}
+          onOpen={design.selectBoard}
+          onCreate={openCreate}
+          createRef={returnFocusRef}
+        />
       ) : design.loaded ? (
         <EmptyState
           fill
@@ -545,7 +563,7 @@ export function DesignWorkspace({
           board={form.kind === "rename" ? form.board : undefined}
           projects={launchProjects}
           pending={pending}
-          returnFocusRef={switcherRef}
+          returnFocusRef={returnFocusRef}
           onCancel={() => setForm(null)}
           onSubmit={(values) => void submitForm(values)}
         />
@@ -560,7 +578,7 @@ export function DesignWorkspace({
               confirmLabel={t("design.delete")}
               confirmPending={pending}
               cancelDisabled={pending}
-              returnFocusRef={switcherRef}
+              returnFocusRef={returnFocusRef}
               onCancel={() => setDeleting(null)}
               onConfirm={() => void confirmDelete()}
             />,

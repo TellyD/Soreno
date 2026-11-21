@@ -44,6 +44,7 @@ vi.mock("../kanban/KanbanBoard", () => ({
   KanbanBoard: () => <div data-testid="kanban-board" />,
 }));
 vi.mock("../design/DesignCanvas", () => ({
+  DESIGN_FRAME_PICKER: "",
   DesignCanvas: ({
     frames,
     busyFrameIds,
@@ -68,6 +69,9 @@ vi.mock("../design/DesignCanvas", () => ({
       ))}
     </div>
   ),
+}));
+vi.mock("../../theme/ThemeProvider", () => ({
+  useTheme: () => ({ theme: "dark" }),
 }));
 vi.mock("../../hooks/useKanbanController", () => ({
   KanbanControllerProvider: ({ children }: { children: ReactNode }) => children,
@@ -1800,6 +1804,7 @@ it("opens a Design board whose hidden session stays out of the agents space and 
   expect(tabNames()).not.toContain("Accueil");
 
   await requestDesign();
+  await click("Accueil");
   const prompt = container.querySelector<HTMLTextAreaElement>(
     'textarea[aria-label="design.placeholder"]',
   )!;
@@ -1882,6 +1887,7 @@ it("marks a frame busy after a prompt targets it, with the agent's work in the p
   });
   await render();
   await requestDesign();
+  await click("Accueil");
   await click("select home");
   const prompt = container.querySelector<HTMLTextAreaElement>(
     'textarea[aria-label="design.placeholder"]',
@@ -1983,6 +1989,7 @@ it("keeps a frame marked through the earlier turn's end, until the agent works o
   vi.mocked(api.sendAgentSessionMessage).mockResolvedValue(message);
   await render();
   await requestDesign();
+  await click("Accueil");
   await click("select home");
   const prompt = container.querySelector<HTMLTextAreaElement>(
     'textarea[aria-label="design.placeholder"]',
@@ -2058,6 +2065,7 @@ it("hands a Design board to a coding agent: saved, linked, started with the fram
   vi.mocked(designApi.linkDesignSession).mockResolvedValue();
   await render();
   await requestDesign();
+  await click("Accueil");
 
   await click("design.implement.button");
   const [worktree] =

@@ -53,6 +53,14 @@ describe("design canvas", () => {
     expect(designFitView([frame("c", 0, 0, 100, 100)], 1000, 1000).scale).toBe(
       1,
     );
+    // Five 1280px frames 80px apart: fitting 280 × 168 needs ~0.04, below the canvas floor.
+    const wide = [0, 1, 2, 3, 4].map((i) =>
+      frame(String(i), i * 1360, 0, 1280, 800),
+    );
+    expect(designFitView(wide, 280, 168, 12).scale).toBe(0.05);
+    const fitted = designFitView(wide, 280, 168, 12, 0);
+    expect(fitted.x).toBeCloseTo(12);
+    expect(6720 * fitted.scale + fitted.x).toBeCloseTo(268);
   });
 
   it("resizes from any edge within the frame size bounds", () => {

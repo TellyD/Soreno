@@ -57,8 +57,7 @@ export function useDesignBoard(
     boardId: string | null;
     frames: DesignFrame[];
   }>({ boardId: null, frames: [] });
-  const board =
-    boards.find((item) => item.id === selectedId) ?? boards[0] ?? null;
+  const board = boards.find((item) => item.id === selectedId) ?? null;
   const boardId = board?.id ?? null;
   const frames = loadedFrames.boardId === boardId ? loadedFrames.frames : [];
   const framesRef = useRef(frames);

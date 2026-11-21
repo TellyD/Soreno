@@ -36,23 +36,28 @@ export function designZoomAt(
 export const designWheelScale = (scale: number, deltaY: number) =>
   scale * Math.exp(-deltaY / 300);
 
-/** The view showing every frame in a `width` × `height` canvas, never above 100%. */
+/** The view showing every frame in a `width` × `height` canvas, never above 100% nor below `minScale`. */
 export function designFitView(
   frames: readonly DesignRect[],
   width: number,
   height: number,
   padding = 48,
+  minScale = DESIGN_ZOOM_MIN,
 ): DesignView {
   if (!frames.length) return { x: width / 2, y: height / 2, scale: 1 };
   const left = Math.min(...frames.map((frame) => frame.x));
   const top = Math.min(...frames.map((frame) => frame.y));
   const right = Math.max(...frames.map((frame) => frame.x + frame.width));
   const bottom = Math.max(...frames.map((frame) => frame.y + frame.height));
-  const scale = clampScale(
-    Math.min(
-      1,
-      Math.max(1, width - 2 * padding) / (right - left),
-      Math.max(1, height - 2 * padding) / (bottom - top),
+  const scale = Math.min(
+    DESIGN_ZOOM_MAX,
+    Math.max(
+      minScale,
+      Math.min(
+        1,
+        Math.max(1, width - 2 * padding) / (right - left),
+        Math.max(1, height - 2 * padding) / (bottom - top),
+      ),
     ),
   );
   return {

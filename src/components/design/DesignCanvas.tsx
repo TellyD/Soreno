@@ -50,7 +50,7 @@ import {
 import pickerUrl from "./framePicker.js?url&no-inline";
 import "./DesignCanvas.css";
 
-const PICKER = new URL(pickerUrl, location.href).href;
+export const DESIGN_FRAME_PICKER = new URL(pickerUrl, location.href).href;
 const HANDLES: DesignHandle[] = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 // Screen pixels within which a moved or resized edge snaps.
 const SNAP_DISTANCE = 6;
@@ -601,7 +601,11 @@ export function DesignCanvas(
                     }}
                     title={frame.title}
                     sandbox="allow-scripts"
-                    srcDoc={designFrameDocument(frame.html, PICKER, theme)}
+                    srcDoc={designFrameDocument(
+                      frame.html,
+                      DESIGN_FRAME_PICKER,
+                      theme,
+                    )}
                     onLoad={(event) => {
                       event.currentTarget.dataset.loaded = "";
                     }}
