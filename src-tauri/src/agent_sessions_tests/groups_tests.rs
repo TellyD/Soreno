@@ -322,10 +322,24 @@ fn deleting_a_group_keeps_members_and_only_removes_an_empty_folder() {
 fn group_folder_links_members_and_deletion_never_follows_them() {
     let root = temp_root("links");
     let folder = root.join("group");
-    for directory in ["repos/api", "forks/API", "web", "group"] {
+    for directory in [
+        "repos/api/.agents/skills/review",
+        "web/.claude/skills/Review",
+        "web/.omp/skills/deploy",
+        "web/.omp/skills/notes",
+        "forks/API",
+        "group",
+    ] {
         std::fs::create_dir_all(root.join(directory)).unwrap();
     }
     std::fs::write(root.join("repos/api/main.rs"), "fn main() {}").unwrap();
+    for skill in [
+        "repos/api/.agents/skills/review",
+        "web/.claude/skills/Review",
+        "web/.omp/skills/deploy",
+    ] {
+        std::fs::write(root.join(skill).join("SKILL.md"), "---\n---\n").unwrap();
+    }
     std::fs::write(folder.join("notes.md"), "garder").unwrap();
     std::os::unix::fs::symlink(root.join("web"), folder.join("old")).unwrap();
     std::os::unix::fs::symlink(root.join("repos/api"), folder.join("web")).unwrap();
@@ -352,7 +366,29 @@ fn group_folder_links_members_and_deletion_never_follows_them() {
         .map(|entry| entry.unwrap().file_name().into_string().unwrap())
         .collect::<Vec<_>>();
     entries.sort();
-    assert_eq!(entries, ["api", "notes.md", "web"]);
+    assert_eq!(entries, [".agents", "api", "notes.md", "web"]);
+    // The first member's skill wins a name, whatever its case; a folder without SKILL.md is no skill.
+    let mut skills = std::fs::read_dir(folder.join(".agents/skills"))
+        .unwrap()
+        .map(|entry| {
+            let entry = entry.unwrap();
+            (
+                entry.file_name().into_string().unwrap(),
+                std::fs::read_link(entry.path()).unwrap(),
+            )
+        })
+        .collect::<Vec<_>>();
+    skills.sort();
+    assert_eq!(
+        skills,
+        [
+            ("deploy".to_owned(), root.join("web/.omp/skills/deploy")),
+            (
+                "review".to_owned(),
+                root.join("repos/api/.agents/skills/review")
+            ),
+        ]
+    );
     assert_eq!(
         std::fs::read_link(folder.join("web")).unwrap(),
         root.join("web")
@@ -364,8 +400,39 @@ fn group_folder_links_members_and_deletion_never_follows_them() {
     assert!(root.join("repos/api/main.rs").is_file());
     std::fs::remove_file(folder.join("notes.md")).unwrap();
     groups::link_members(&environment, &path, &[member("Web", "web")]);
+    assert_eq!(
+        std::fs::read_link(folder.join(".agents/skills/Review")).unwrap(),
+        root.join("web/.claude/skills/Review")
+    );
     assert!(groups::remove_empty_group_directory(&environment, &path));
     assert!(root.join("web").is_dir());
+    // A linked skills folder leads outside the group: it is never cleaned nor filled.
+    let outside = root.join("outside");
+    std::fs::create_dir_all(folder.join(".agents")).unwrap();
+    std::fs::create_dir(&outside).unwrap();
+    std::os::unix::fs::symlink(root.join("web"), outside.join("keep")).unwrap();
+    std::os::unix::fs::symlink(&outside, folder.join(".agents/skills")).unwrap();
+    groups::link_members(&environment, &path, &[member("Web", "web")]);
+    assert!(outside.join("keep").symlink_metadata().is_ok());
+    assert!(outside.join("Review").symlink_metadata().is_err());
+    // A member folder named `.agents` is linked as the group's `.agents`: its skills stay untouched.
+    std::fs::remove_file(folder.join(".agents/skills")).unwrap();
+    std::fs::remove_dir(folder.join(".agents")).unwrap();
+    std::fs::create_dir_all(root.join("home/.agents/skills")).unwrap();
+    std::os::unix::fs::symlink(root.join("web"), root.join("home/.agents/skills/mine")).unwrap();
+    groups::link_members(
+        &environment,
+        &path,
+        &[member("Home", "home/.agents"), member("Web", "web")],
+    );
+    assert!(root
+        .join("home/.agents/skills/mine")
+        .symlink_metadata()
+        .is_ok());
+    assert!(root
+        .join("home/.agents/skills/Review")
+        .symlink_metadata()
+        .is_err());
     std::fs::remove_dir_all(root).unwrap();
 }
 

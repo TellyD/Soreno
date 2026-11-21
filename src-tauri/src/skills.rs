@@ -7,11 +7,11 @@ mod remote;
 
 const SKILL_MD_LIMIT: u64 = 16 * 1024;
 const LOCK_LIMIT: u64 = 512 * 1024;
-const AGENTS_DIRECTORY: &str = ".agents/skills";
+pub(crate) const AGENTS_DIRECTORY: &str = ".agents/skills";
 const DEFAULT_CLAUDE_DIRECTORY: &str = ".claude/skills";
 const DEFAULT_CODEX_DIRECTORY: &str = ".codex/skills";
 const OTHER_GLOBAL_DIRECTORIES: [&str; 2] = [".pi/agent/skills", ".omp/agent/skills"];
-const PROJECT_DIRECTORIES: [&str; 4] = [
+pub(crate) const PROJECT_DIRECTORIES: [&str; 4] = [
     AGENTS_DIRECTORY,
     DEFAULT_CLAUDE_DIRECTORY,
     ".pi/skills",

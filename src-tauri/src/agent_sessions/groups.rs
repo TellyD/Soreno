@@ -15,8 +15,12 @@ use std::{collections::HashSet, path::Path};
 const GROUP_NAME_LIMIT: usize = 100;
 const GROUP_MEMBER_LIMIT: usize = 1024;
 const GROUP_DIRECTORY_SCRIPT: &str = "mkdir -p -- \"$dir\" && cd -- \"$dir\" && pwd -P";
-// Arguments: the group folder, then name/target pairs. Keeps wanted links, drops other links.
-const GROUP_LINKS_SCRIPT: &str = r#"cd -- "$1" || exit 1; shift; wanted() { name=$1; target=$2; shift 2; while [ $# -gt 1 ]; do [ "$1" = "$name" ] && [ "$2" = "$target" ] && return 0; shift 2; done; return 1; }; for link in * .[!.]* ..?*; do [ -L "$link" ] && ! wanted "$link" "$(readlink -- "$link")" "$@" && rm -f -- "$link"; done; while [ $# -gt 1 ]; do [ -e "$1" ] || [ -L "$1" ] || ln -s -- "$2" "$1"; shift 2; done; exit 0"#;
+// Arguments: the group folder, then name/target pairs. Keeps wanted links, drops other links,
+// then links the members' skills under `.agents/skills` from `skills::PROJECT_DIRECTORIES`, first name wins.
+// shortcut: names compare case-sensitively here, so `review` and `Review` both link on Linux; dedupe if agents report duplicates.
+// shortcut: skills come from linked members only, so a member sharing another's folder name brings none; scan every member if groups mix forks.
+// shortcut: skills link before members, so a member folder named `.agents` loses its link on a first remote run; link members first if such groups appear.
+const GROUP_LINKS_SCRIPT: &str = r#"cd -- "$1" || exit 1; shift; wanted() { name=$1; target=$2; shift 2; while [ $# -gt 1 ]; do [ "$1" = "$name" ] && [ "$2" = "$target" ] && return 0; shift 2; done; return 1; }; for link in * .[!.]* ..?*; do [ -L "$link" ] && ! wanted "$link" "$(readlink -- "$link")" "$@" && rm -f -- "$link"; done; s=.agents/skills; if ! [ -L .agents ] && ! [ -L "$s" ]; then for link in "$s"/* "$s"/.[!.]* "$s"/..?*; do [ -L "$link" ] && rm -f -- "$link"; done; skills() { while [ $# -gt 1 ]; do for skill in "$2"/.agents/skills/*/ "$2"/.claude/skills/*/ "$2"/.pi/skills/*/ "$2"/.omp/skills/*/; do skill=${skill%/}; name=${skill##*/}; [ -f "$skill/SKILL.md" ] && ! [ -e "$s/$name" ] && ! [ -L "$s/$name" ] && mkdir -p "$s" && ln -s -- "$skill" "$s/$name"; done; shift 2; done; }; skills "$@"; rmdir "$s" .agents 2>/dev/null; fi; while [ $# -gt 1 ]; do [ -e "$1" ] || [ -L "$1" ] || ln -s -- "$2" "$1"; shift 2; done; exit 0"#;
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -320,6 +324,7 @@ pub(super) fn create_group_directory(environment: &AgentEnvironment, path: &str)
     }
 }
 /// Links each member under its folder name in the group folder: agents complete `@` from their working folder only.
+/// Also links the members' skills under its `.agents/skills`: OMP and Codex discover project skills there, not in added folders.
 // Best effort: a missing link costs the completion, never the launch.
 pub(super) fn link_members(
     environment: &AgentEnvironment,
@@ -328,7 +333,9 @@ pub(super) fn link_members(
 ) {
     let links = member_links(members);
     let _ = match environment.kind.as_str() {
-        "local" => link_local(Path::new(path), &links).map_err(|error| error.to_string()),
+        "local" => link_local(Path::new(path), &links)
+            .and_then(|()| link_local_skills(Path::new(path), &links))
+            .map_err(|error| error.to_string()),
         "wsl" => {
             let mut command = vec!["sh", "-c", GROUP_LINKS_SCRIPT, "soreno", path];
             command.extend(links.iter().flat_map(|&(name, target)| [name, target]));
@@ -394,6 +401,51 @@ fn link_local(directory: &Path, links: &[(&str, &str)]) -> std::io::Result<()> {
             let _ = create_junction(Path::new(target), &link);
         }
     }
+    Ok(())
+}
+fn link_local_skills(directory: &Path, members: &[(&str, &str)]) -> std::io::Result<()> {
+    let skills = directory.join(crate::skills::AGENTS_DIRECTORY);
+    // A linked `.agents` or skills folder points outside the group: never list, clean or fill it.
+    if [&directory.join(".agents"), &skills].iter().any(|path| {
+        path.symlink_metadata()
+            .is_ok_and(|metadata| metadata.file_type().is_symlink())
+    }) {
+        return Ok(());
+    }
+    let mut seen = HashSet::new();
+    let mut links = Vec::new();
+    for &(_, member) in members {
+        for source in crate::skills::PROJECT_DIRECTORIES {
+            let Ok(entries) = std::fs::read_dir(Path::new(member).join(source)) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let (Ok(name), Ok(target)) = (
+                    entry.file_name().into_string(),
+                    entry.path().into_os_string().into_string(),
+                ) else {
+                    continue;
+                };
+                if Path::new(&target).join("SKILL.md").is_file() && seen.insert(name.to_lowercase())
+                {
+                    links.push((name, target));
+                }
+            }
+        }
+    }
+    if !links.is_empty() {
+        std::fs::create_dir_all(&skills)?;
+    }
+    if skills.is_dir() {
+        let links = links
+            .iter()
+            .map(|(name, target)| (name.as_str(), target.as_str()))
+            .collect::<Vec<_>>();
+        link_local(&skills, &links)?;
+    }
+    // Fails while not empty: a folder the user filled stays.
+    let _ =
+        std::fs::remove_dir(&skills).and_then(|()| std::fs::remove_dir(directory.join(".agents")));
     Ok(())
 }
 /// A junction, unlike a directory symlink, needs neither administrator rights nor Developer Mode.
