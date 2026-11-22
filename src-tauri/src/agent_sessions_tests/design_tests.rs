@@ -10,7 +10,7 @@ fn board_state() -> (AgentSessions, PathBuf) {
 
 fn create_board(state: &AgentSessions, project_id: Option<&str>, directory: &Path) -> DesignBoard {
     state
-        .create_design_board_with(" Maquettes ", project_id, "claude", || {
+        .create_design_board_with(" Maquettes ", project_id, "claude", None, || {
             Ok(directory.to_str().unwrap().into())
         })
         .unwrap()
@@ -68,7 +68,7 @@ fn a_design_session_is_never_a_service_and_keeps_its_design_flag() {
 fn a_board_owns_its_hidden_session_and_frames_until_deleted() {
     let (state, directory) = board_state();
     assert!(state
-        .create_design_board_with("Shell", None, "bash", || unreachable!())
+        .create_design_board_with("Shell", None, "bash", None, || unreachable!())
         .is_err());
     let loose = create_board(&state, None, &directory);
     assert_eq!(
@@ -84,13 +84,14 @@ fn a_board_owns_its_hidden_session_and_frames_until_deleted() {
     assert!(state.delete_project(design::PROJECT_ID).is_err());
     let cjk = "設".repeat(100);
     let wide = state
-        .create_design_board_with(&cjk, None, "codex", || {
+        .create_design_board_with(&cjk, None, "codex", Some("max"), || {
             Ok(directory.to_str().unwrap().into())
         })
         .unwrap();
     assert_eq!(wide.name, cjk);
     let session = require_session(&lock(&state.store).unwrap(), &wide.session_id).unwrap();
     assert_eq!(session.name, "設".repeat(85));
+    assert_eq!(session.args, ["-c", "model_reasoning_effort='max'"]);
     state.delete_design_board(&wide.id).unwrap();
 
     let attached = create_board(&state, Some("project"), &directory);
@@ -318,6 +319,7 @@ fn a_design_agent_gets_the_design_instruction_and_its_frames_are_ingested() {
             "Maquettes",
             Some("project"),
             executable.to_str().unwrap(),
+            None,
             || unreachable!(),
         )
         .unwrap();
@@ -681,6 +683,7 @@ fn the_running_design_agent_sees_every_frame_in_its_mirror() {
             "Maquettes",
             Some("project"),
             executable.to_str().unwrap(),
+            None,
             || unreachable!(),
         )
         .unwrap();

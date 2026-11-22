@@ -860,6 +860,7 @@ export const en = {
   "design.field.name": "Name",
   "design.field.project": "Project",
   "design.field.agent": "Agent",
+  "design.effortDefault": "Agent default",
   "design.create": "Create",
   "design.save": "Save",
   "design.cancel": "Cancel",

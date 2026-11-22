@@ -12,8 +12,14 @@ export const createDesignBoard = (
   name: string,
   projectId: string | null,
   executable: string,
+  effort: string | null,
 ) =>
-  invoke<DesignBoard>("design_create_board", { name, projectId, executable });
+  invoke<DesignBoard>("design_create_board", {
+    name,
+    projectId,
+    executable,
+    effort,
+  });
 export const renameDesignBoard = (boardId: string, name: string) =>
   invoke<DesignBoard>("design_rename_board", { boardId, name });
 export const deleteDesignBoard = (boardId: string) =>

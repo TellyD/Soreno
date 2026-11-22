@@ -10,6 +10,7 @@ import { useAppSettings } from "../../settings";
 import { FormDialog } from "../agents/AgentForms";
 import { AgentProjectIcon } from "../agents/AgentProjectIcon";
 import { AgentProviderIcon } from "../agents/AgentProviderIcon";
+import { useAgentStrings } from "../agents/agentStrings";
 import { kanbanProjectOption } from "../kanban/KanbanIssueFieldControls";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
@@ -19,10 +20,15 @@ const designPresets = agentLaunchPresets.filter(({ executable }) =>
   ["claude", "codex", "omp", "pi"].includes(executable),
 );
 
+// Reasoning levels all four CLIs accept; the backend maps each to its CLI's option.
+const designEfforts = ["low", "medium", "high", "xhigh", "max"];
+
 export type DesignBoardFormValues = {
   name: string;
   projectId: string | null;
   executable: string;
+  /** Null keeps the agent's configured reasoning level. */
+  effort: string | null;
 };
 
 /** New board or rename, portalled above the board's stacked toolbar, drawer and prompt bar. */
@@ -47,6 +53,7 @@ export function DesignBoardForm({
   onSubmit: (values: DesignBoardFormValues) => void;
 }) {
   const { t } = useI18n();
+  const { thinking, thinkingLevels } = useAgentStrings().conversation;
   const { settings } = useAppSettings();
   const id = useId();
   const shown = designPresets.filter(
@@ -57,6 +64,7 @@ export function DesignBoardForm({
   // The picker's choice only: a fixed project is read at submit, as it may change while open.
   const [projectId, setProjectId] = useState("");
   const [executable, setExecutable] = useState<string>(presets[0].executable);
+  const [effort, setEffort] = useState("");
 
   return createPortal(
     <FormDialog
@@ -72,6 +80,7 @@ export function DesignBoardForm({
           name: name.trim(),
           projectId: fixedProject?.id ?? (projectId || null),
           executable,
+          effort: effort || null,
         })
       }
     >
@@ -131,6 +140,19 @@ export function DesignBoardForm({
               ),
             }))}
             onValueChange={setExecutable}
+          />
+          <label htmlFor={`${id}-effort`}>{thinking}</label>
+          <Select
+            id={`${id}-effort`}
+            value={effort}
+            options={[
+              { value: "", label: t("design.effortDefault") },
+              ...designEfforts.map((level) => ({
+                value: level,
+                label: thinkingLevels[level],
+              })),
+            ]}
+            onValueChange={setEffort}
           />
         </>
       )}

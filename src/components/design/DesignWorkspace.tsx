@@ -335,6 +335,7 @@ export function DesignWorkspace({
           values.name,
           values.projectId,
           values.executable,
+          values.effort,
         );
         onSessionsChange();
       } else await design.renameBoard(form.board.id, values.name);

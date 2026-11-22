@@ -166,6 +166,7 @@ export function DesignSessionPanel({
         values.name,
         values.projectId,
         values.executable,
+        values.effort,
       );
       // The board exists: a failed link is reported, the board stays listed to link again.
       setBoards((list) => [created, ...(list ?? [])]);

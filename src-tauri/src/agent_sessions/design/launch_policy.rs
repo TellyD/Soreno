@@ -1,5 +1,28 @@
 use super::super::{codex_overrides, conversations::Provider, Result};
 
+/// Reasoning levels all four design CLIs accept.
+const EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
+
+/// The designer's own launch arguments: `None` keeps the CLI's configured reasoning level.
+pub(in crate::agent_sessions) fn effort_args(
+    provider: Provider,
+    effort: Option<&str>,
+) -> Result<Vec<String>> {
+    let Some(effort) = effort else {
+        return Ok(Vec::new());
+    };
+    if !EFFORTS.contains(&effort) {
+        return Err("Niveau de raisonnement inconnu.".into());
+    }
+    Ok(match provider {
+        Provider::Claude => vec![format!("--effort={effort}")],
+        // A TOML literal string: Windows PowerShell shims cannot pass `"`.
+        Provider::Codex => vec!["-c".into(), format!("model_reasoning_effort='{effort}'")],
+        Provider::Omp => vec![format!("--thinking={effort}")],
+        Provider::Pi => vec!["--thinking".into(), effort.into()],
+    })
+}
+
 const RESTRICTION_FAILED: &str = "Impossible de restreindre l’agent Design à son dossier privé : le chemin de ce dossier contient un caractère non pris en charge.";
 
 /// Confines a design agent: it reads anything, writes only in its private `directory`, runs no

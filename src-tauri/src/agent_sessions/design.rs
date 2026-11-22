@@ -409,8 +409,9 @@ impl AgentSessions {
         name: &str,
         project_id: Option<&str>,
         executable: &str,
+        effort: Option<&str>,
     ) -> Result<DesignBoard> {
-        self.create_design_board_with(name, project_id, executable, design_directory)
+        self.create_design_board_with(name, project_id, executable, effort, design_directory)
     }
 
     /// Saves the board's hidden session through the regular path, without starting it.
@@ -419,12 +420,14 @@ impl AgentSessions {
         name: &str,
         project_id: Option<&str>,
         executable: &str,
+        effort: Option<&str>,
         directory: impl FnOnce() -> Result<String>,
     ) -> Result<DesignBoard> {
         let name = board_name(name)?;
-        if conversations::provider(executable).is_none() {
+        let Some(provider) = conversations::provider(executable) else {
             return Err("Choisissez Claude Code, Codex, OMP ou Pi.".into());
-        }
+        };
+        let args = launch_policy::effort_args(provider, effort)?;
         let project_id = match project_id {
             Some(PROJECT_ID) => return Err("Projet introuvable.".into()),
             Some(project_id) => {
@@ -473,8 +476,9 @@ impl AgentSessions {
             service_id: None,
             working_directory: None,
             executable: executable.into(),
-            // Not the user's default agent arguments: they could undo `restrict_launch` (e.g. bypass permissions).
-            args: Vec::new(),
+            // Only the chosen effort, not the user's default agent arguments: they could undo
+            // `restrict_launch` (e.g. bypass permissions).
+            args,
             created_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
             favorite: false,
             design: true,

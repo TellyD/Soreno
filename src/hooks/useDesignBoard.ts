@@ -197,8 +197,18 @@ export function useDesignBoard(
   }
 
   const createBoard = useCallback(
-    async (name: string, projectId: string | null, executable: string) => {
-      const created = await api.createDesignBoard(name, projectId, executable);
+    async (
+      name: string,
+      projectId: string | null,
+      executable: string,
+      effort: string | null,
+    ) => {
+      const created = await api.createDesignBoard(
+        name,
+        projectId,
+        executable,
+        effort,
+      );
       setBoards((list) => [created, ...list]);
       setSelectedId(created.id);
       return created;

@@ -13,9 +13,10 @@ pub(crate) async fn design_create_board(
     name: String,
     project_id: Option<String>,
     executable: String,
+    effort: Option<String>,
 ) -> Result<DesignBoard, String> {
     blocking(app, move |state| {
-        state.create_design_board(&name, project_id.as_deref(), &executable)
+        state.create_design_board(&name, project_id.as_deref(), &executable, effort.as_deref())
     })
     .await
 }

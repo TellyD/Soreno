@@ -2181,6 +2181,7 @@ it("creates a Design board in the session's project from its side panel, links t
     "Tableau de bord",
     project.id,
     expect.any(String),
+    null,
   );
   expect(designApi.linkDesignSession).toHaveBeenCalledExactlyOnceWith(
     "s1",

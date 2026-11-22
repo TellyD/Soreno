@@ -663,6 +663,25 @@ fn provider_and_arguments_are_classified_per_cli() {
     }
 }
 
+#[test]
+fn design_effort_arguments_pass_launch_validation_on_resume() {
+    use crate::agent_sessions::design::launch_policy::effort_args;
+    for provider in [
+        Provider::Claude,
+        Provider::Codex,
+        Provider::Omp,
+        Provider::Pi,
+    ] {
+        assert!(effort_args(provider, None).unwrap().is_empty());
+        for effort in ["low", "medium", "high", "xhigh", "max"] {
+            let args = effort_args(provider, Some(effort)).unwrap();
+            assert_eq!(validate_args(&args, provider, true), Ok(None), "{args:?}");
+        }
+        assert!(effort_args(provider, Some("ultra")).is_err());
+        assert!(effort_args(provider, Some("high --dangerously-skip-permissions")).is_err());
+    }
+}
+
 fn observe_hook(record: &ConversationRecord, provider: &str, payload: serde_json::Value) {
     std::fs::write(
         record.metadata_path.as_ref().unwrap(),

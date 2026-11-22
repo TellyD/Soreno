@@ -875,6 +875,7 @@ export const fr = {
   "design.field.name": "Nom",
   "design.field.project": "Projet",
   "design.field.agent": "Agent",
+  "design.effortDefault": "Par défaut de l’agent",
   "design.create": "Créer",
   "design.save": "Enregistrer",
   "design.cancel": "Annuler",
