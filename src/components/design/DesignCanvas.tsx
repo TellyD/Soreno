@@ -22,6 +22,7 @@ import type { DesignFrame, DesignTarget } from "../../domain/design";
 import {
   designFrameDocument,
   designFramePick,
+  type DesignFrameMode,
 } from "../../domain/designFrameDocument";
 import {
   DESIGN_ZOOM_STEP,
@@ -46,7 +47,7 @@ import {
   isContextMenuKey,
   openContextMenuFromKeyboard,
 } from "../agents/contextMenuKeyboard";
-// Frames run it alone, under their policy.
+// Frames run it alongside optional inline prototype scripts.
 import pickerUrl from "./framePicker.js?url&no-inline";
 import "./DesignCanvas.css";
 
@@ -80,10 +81,10 @@ type DesignCanvasEditing = {
   onFrameChange: (frame: DesignFrame) => void;
   onDuplicate: (frameId: string) => void;
   onDelete: (frameId: string) => void;
-  /** Clicks inside frames pick an element instead of selecting the frame. */
-  targeting: boolean;
-  onTargetingChange: (targeting: boolean) => void;
-  /** Zoom, fit and targeting keys listen on the whole document while true: the board is on screen. */
+  /** `target`: clicks pick an element; `interact`: clicks drive the frame's UI; `canvas`: pan/drag/resize. */
+  mode: DesignFrameMode;
+  onModeChange: (mode: DesignFrameMode) => void;
+  /** Zoom, fit and mode keys listen on the whole document while true: the board is on screen. */
   shortcuts?: boolean;
   /** Frames the agent is reworking after a targeted prompt. */
   busyFrameIds?: ReadonlySet<string>;
@@ -107,12 +108,13 @@ export function DesignCanvas(
   const { frames, empty, viewKey } = props;
   const editor = props.readOnly ? null : props;
   const target = editor?.target ?? boardTarget;
-  const targeting = editor?.targeting ?? false;
+  const mode: DesignFrameMode = editor?.mode ?? "canvas";
   const onTargetChange = editor?.onTargetChange ?? ignore;
   const onFrameChange = editor?.onFrameChange ?? ignore;
   const onDuplicate = editor?.onDuplicate ?? ignore;
   const onDelete = editor?.onDelete ?? ignore;
-  const setTargeting = editor?.onTargetingChange ?? ignore;
+  const setMode = editor?.onModeChange ?? ignore;
+  const frameInteractive = mode !== "canvas";
   const { t } = useI18n();
   const { theme } = useTheme();
   const hintId = useId();
@@ -242,7 +244,8 @@ export function DesignCanvas(
 
   useEffect(() => {
     function listen(event: MessageEvent) {
-      // Only a frame's picker speaks, and its word is checked: frames are agent-written.
+      // Only a mounted frame's window is accepted, and its payload is checked: frames are agent-written.
+      // shortcut: messages are not authenticated by a private MessagePort; add one if prototype scripts ever interfere with targeting.
       const frameId = [...iframes.current].find(
         ([, iframe]) => iframe.contentWindow === event.source,
       )?.[0];
@@ -259,8 +262,19 @@ export function DesignCanvas(
             frame.top - box.top + pick.y * current.scale,
           ),
         );
+        return;
       }
-      if (pick?.type !== "pick") return;
+      if (pick?.type === "escape") {
+        if (!editor || mode === "canvas") return;
+        frameElements.current.get(frameId)?.focus({ preventScroll: true });
+        if (mode === "interact") setMode("canvas");
+        else {
+          if (target.kind !== "element") setMode("canvas");
+          onTargetChange(designEscapeTarget(target));
+        }
+        return;
+      }
+      if (pick?.type !== "pick" || !editor || mode !== "target") return;
       // Out of the frame first: the keyboard shortcuts listen here. Before the pick, or focusing would select the frame back.
       frameElements.current.get(frameId)?.focus({ preventScroll: true });
       onTargetChange(
@@ -272,6 +286,15 @@ export function DesignCanvas(
     addEventListener("message", listen);
     return () => removeEventListener("message", listen);
   });
+
+  // Syncs the frame script's mode without changing srcDoc so interactive state survives mode switches.
+  useEffect(() => {
+    for (const iframe of iframes.current.values())
+      iframe.contentWindow?.postMessage(
+        { type: "soreno-frame-mode", mode },
+        "*",
+      );
+  }, [mode]);
 
   // The picker outlines the targeted element in its frame; other frames forget theirs.
   const targetFrame = target.kind === "element" ? target.frameId : null;
@@ -329,19 +352,23 @@ export function DesignCanvas(
       else if (event.code === "Digit2" && editor)
         action = () => fit(selected ? [selected] : []);
     } else if (
-      event.key.toLowerCase() === "t" &&
-      // A held T toggles once; zoom keys keep repeating.
+      // Held mode keys toggle once; zoom keys keep repeating.
       !event.repeat &&
       editor &&
       frames.length
-    )
-      action = () => setTargeting(!targeting);
+    ) {
+      const key = event.key.toLowerCase();
+      if (key === "t")
+        action = () => setMode(mode === "target" ? "canvas" : "target");
+      else if (key === "i")
+        action = () => setMode(mode === "interact" ? "canvas" : "interact");
+    }
     if (!action) return;
     event.preventDefault();
     action();
   }
 
-  // shortcut: keys typed while focus is inside a frame's iframe (Tab in targeting mode) never reach this document listener; relay them through framePicker.js if keyboard users hit it.
+  // shortcut: keys other than Escape typed while focus is inside a frame's iframe never reach this document listener; relay more through framePicker.js if keyboard users hit it.
   const shortcuts = !!editor?.shortcuts;
   useEffect(() => {
     if (!shortcuts) return;
@@ -447,9 +474,13 @@ export function DesignCanvas(
     )
       return;
     if (event.key === "Escape") {
-      if (target.kind === "board" && !targeting) return;
+      if (target.kind === "board" && mode === "canvas") return;
       event.preventDefault();
-      if (target.kind !== "element") setTargeting(false);
+      if (mode === "interact") {
+        setMode("canvas");
+        return;
+      }
+      if (target.kind !== "element") setMode("canvas");
       onTargetChange(designEscapeTarget(target));
       return;
     }
@@ -574,7 +605,7 @@ export function DesignCanvas(
                   aria-describedby={hintId}
                   aria-busy={busy || undefined}
                   onPointerDown={(event) => frameDown(event, frame, null)}
-                  onDoubleClick={() => setTargeting(true)}
+                  onDoubleClick={() => setMode("target")}
                   onFocus={() => select(frame)}
                   onKeyDown={(event) => {
                     if (isContextMenuKey(event))
@@ -600,19 +631,26 @@ export function DesignCanvas(
                       else iframes.current.delete(frame.id);
                     }}
                     title={frame.title}
-                    sandbox="allow-scripts"
+                    sandbox={
+                      editor ? "allow-scripts allow-forms" : "allow-scripts"
+                    }
                     srcDoc={designFrameDocument(
                       frame.html,
                       DESIGN_FRAME_PICKER,
                       theme,
+                      Boolean(editor),
                     )}
                     onLoad={(event) => {
                       event.currentTarget.dataset.loaded = "";
+                      event.currentTarget.contentWindow?.postMessage(
+                        { type: "soreno-frame-mode", mode },
+                        "*",
+                      );
                     }}
-                    tabIndex={targeting ? undefined : -1}
+                    tabIndex={frameInteractive ? undefined : -1}
                     style={{
                       pointerEvents:
-                        targeting && !spaceHeld ? undefined : "none",
+                        frameInteractive && !spaceHeld ? undefined : "none",
                     }}
                   />
                   {isSelected

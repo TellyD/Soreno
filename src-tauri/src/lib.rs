@@ -28,6 +28,18 @@ mod vaults;
 use app_state::{init_app_state, sync_attachment_asset_scope};
 use tauri::Manager;
 
+// Stops Design prototypes (inline JS in iframes) from exfiltrating through WebRTC, which CSP does not cover.
+// shortcut: an about:blank frame created synchronously before the init script may slip through depending on the WebView engine; switch to a native WebView setting if ever needed.
+const DISABLE_WEBRTC_SCRIPT: &str = r#"(() => {
+  for (const name of ["RTCPeerConnection", "webkitRTCPeerConnection", "mozRTCPeerConnection"]) {
+    if (name in globalThis && globalThis[name] !== undefined) {
+      try {
+        Object.defineProperty(globalThis, name, { value: undefined, writable: false, configurable: false });
+      } catch {}
+    }
+  }
+})();"#;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -138,6 +150,11 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(
+            tauri::plugin::Builder::<tauri::Wry>::new("soreno-disable-webrtc")
+                .js_init_script_on_all_frames(DISABLE_WEBRTC_SCRIPT)
+                .build(),
+        )
         .plugin(
             tauri_plugin_window_state::Builder::new()
                 .with_state_flags(

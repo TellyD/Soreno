@@ -131,6 +131,7 @@ const shortcutGroups: {
       { label: "settings.shortcuts.design.zoomReset", chords: ["shift+0"] },
       { label: "settings.shortcuts.design.zoomSelection", chords: ["shift+2"] },
       { label: "settings.shortcuts.design.target", chords: ["T"] },
+      { label: "settings.shortcuts.design.interact", chords: ["I"] },
       { label: "settings.shortcuts.design.prompt", chords: ["/"] },
     ],
   },

@@ -63,8 +63,8 @@ it("commits a frame drag once, at its end, in board units", () => {
         viewKey="drag"
         target={{ kind: "frame", frameId: "home" }}
         onTargetChange={vi.fn()}
-        targeting={false}
-        onTargetingChange={vi.fn()}
+        mode="canvas"
+        onModeChange={vi.fn()}
         onFrameChange={onFrameChange}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
@@ -105,8 +105,8 @@ it("commits a nudge when focus leaves, then nudges the newly selected frame", ()
           viewKey="nudge"
           target={{ kind: "frame", frameId }}
           onTargetChange={vi.fn()}
-          targeting={false}
-          onTargetingChange={vi.fn()}
+          mode="canvas"
+          onModeChange={vi.fn()}
           onFrameChange={onFrameChange}
           onDuplicate={vi.fn()}
           onDelete={vi.fn()}
@@ -181,6 +181,11 @@ it("only pans and zooms a read-only preview: a frame drag moves the view, Delete
   expect(world.style.transform).not.toBe(before);
   expect(container.querySelectorAll(".design-canvas-frame")).toHaveLength(1);
   expect(container.querySelector(".design-canvas-handle")).toBeNull();
+  // A read-only preview runs only the picker: no inline prototype scripts, no forms.
+  const iframe = element.querySelector("iframe")!;
+  expect(iframe.getAttribute("sandbox")).toBe("allow-scripts");
+  expect(iframe.srcdoc).toMatch(/script-src [^;]+;/);
+  expect(iframe.srcdoc).not.toMatch(/script-src [^;]*'unsafe-inline'/);
 
   // Zoom keys act only with focus in the preview: a terminal beside it keeps "!".
   const press = (target: Element, init: KeyboardEventInit) =>
@@ -250,7 +255,7 @@ it("fits a board's first frames once, then keeps its view across remounts", () =
   expect(transform()).toBe(zoomed);
 });
 
-it("zooms, fits and toggles targeting from board-wide keys, not while typing", () => {
+it("zooms, fits and toggles target/interact modes from board-wide keys, not while typing", () => {
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1000);
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(800);
   const frame: DesignFrame = {
@@ -265,7 +270,7 @@ it("zooms, fits and toggles targeting from board-wide keys, not while typing", (
     z: 1,
     updatedAt: "",
   };
-  const onTargetingChange = vi.fn();
+  const onModeChange = vi.fn();
   act(() =>
     root.render(
       <DesignCanvas
@@ -273,8 +278,8 @@ it("zooms, fits and toggles targeting from board-wide keys, not while typing", (
         viewKey="shortcuts"
         target={{ kind: "board" }}
         onTargetChange={vi.fn()}
-        targeting={false}
-        onTargetingChange={onTargetingChange}
+        mode="canvas"
+        onModeChange={onModeChange}
         onFrameChange={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
@@ -300,12 +305,106 @@ it("zooms, fits and toggles targeting from board-wide keys, not while typing", (
   const prompt = document.createElement("textarea");
   document.body.append(prompt);
   press({ key: "t", code: "KeyT" }, prompt);
-  expect(onTargetingChange).not.toHaveBeenCalled();
+  press({ key: "i", code: "KeyI" }, prompt);
+  expect(onModeChange).not.toHaveBeenCalled();
   press({ key: "t", code: "KeyT" });
-  expect(onTargetingChange).toHaveBeenCalledWith(true);
+  expect(onModeChange).toHaveBeenCalledWith("target");
   press({ key: "t", code: "KeyT", repeat: true });
-  expect(onTargetingChange).toHaveBeenCalledOnce();
+  expect(onModeChange).toHaveBeenCalledOnce();
+  press({ key: "i", code: "KeyI" });
+  expect(onModeChange).toHaveBeenLastCalledWith("interact");
   prompt.remove();
+});
+
+it("switches between interact and target without reloading srcDoc, ignoring picks in interact mode", () => {
+  const frame: DesignFrame = {
+    boardId: "b",
+    id: "proto",
+    title: "Prototype",
+    html: "<button>Open</button>",
+    x: 0,
+    y: 0,
+    width: 400,
+    height: 300,
+    z: 1,
+    updatedAt: "",
+  };
+  const onTargetChange = vi.fn();
+  const onModeChange = vi.fn();
+  const render = (mode: "canvas" | "target" | "interact") =>
+    act(() =>
+      root.render(
+        <DesignCanvas
+          frames={[frame]}
+          viewKey="modes"
+          target={{ kind: "board" }}
+          onTargetChange={onTargetChange}
+          mode={mode}
+          onModeChange={onModeChange}
+          onFrameChange={vi.fn()}
+          onDuplicate={vi.fn()}
+          onDelete={vi.fn()}
+        />,
+      ),
+    );
+  render("interact");
+  const iframe = container.querySelector("iframe")!;
+  const initialSrcDoc = iframe.srcdoc;
+  expect(iframe.style.pointerEvents).toBe("");
+  expect(iframe.getAttribute("sandbox")).toBe("allow-scripts allow-forms");
+  expect(iframe.srcdoc).toMatch(/script-src [^;]*'unsafe-inline'/);
+  const postMessage = vi.spyOn(iframe.contentWindow!, "postMessage");
+
+  // Prototype scripts cannot forge a pick outside target mode.
+  act(() => {
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: {
+          type: "soreno-frame-pick",
+          path: "body > button",
+          html: "<button>Open</button>",
+        },
+      }),
+    );
+  });
+  expect(onTargetChange).not.toHaveBeenCalled();
+
+  // Escape relayed from inside the frame leaves interact mode.
+  act(() => {
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: { type: "soreno-frame-escape" },
+      }),
+    );
+  });
+  expect(onModeChange).toHaveBeenCalledWith("canvas");
+
+  render("target");
+  expect(iframe.srcdoc).toBe(initialSrcDoc);
+  expect(postMessage).toHaveBeenCalledWith(
+    { type: "soreno-frame-mode", mode: "target" },
+    "*",
+  );
+  act(() => {
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: {
+          type: "soreno-frame-pick",
+          path: "body > button",
+          html: "<button>Open</button>",
+        },
+      }),
+    );
+  });
+  expect(onTargetChange).toHaveBeenCalledWith({
+    kind: "element",
+    frameId: "proto",
+    selector: "body > button",
+    outerHTML: "<button>Open</button>",
+  });
 });
 
 it("marks only the frames the agent is reworking as busy", () => {
@@ -328,8 +427,8 @@ it("marks only the frames the agent is reworking as busy", () => {
         viewKey="busy"
         target={{ kind: "board" }}
         onTargetChange={vi.fn()}
-        targeting={false}
-        onTargetingChange={vi.fn()}
+        mode="canvas"
+        onModeChange={vi.fn()}
         onFrameChange={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}

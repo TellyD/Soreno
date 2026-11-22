@@ -12,6 +12,7 @@ export const en = {
   "design.canvas.zoomLevel": "{percent}%",
   "design.canvas.fit": "Zoom to fit",
   "design.canvas.target": "Target an element in a frame",
+  "design.canvas.interact": "Interact with a frame",
   "design.canvas.frameHint":
     "Arrow keys to move, Delete to delete, Ctrl+D to duplicate, double-click to target an element.",
   "design.canvas.duplicate": "Duplicate",
@@ -641,6 +642,7 @@ export const en = {
   "settings.shortcuts.design.zoomReset": "Zoom to 100%",
   "settings.shortcuts.design.zoomSelection": "Zoom to the selected frame",
   "settings.shortcuts.design.target": "Turn element targeting on or off",
+  "settings.shortcuts.design.interact": "Turn interactive mode on or off",
   "settings.shortcuts.design.prompt": "Go to the prompt bar",
   "settings.shortcuts.toggleSidebar": "Show or hide the sidebar",
   "settings.shortcuts.toggleGitPanel":

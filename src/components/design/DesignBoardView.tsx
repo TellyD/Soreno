@@ -5,6 +5,7 @@ import {
   FileText,
   FileUp,
   LoaderCircle,
+  MousePointerClick,
   Palette,
   Paperclip,
   Play,
@@ -50,6 +51,7 @@ import {
   type DesignFrame,
   type DesignTarget,
 } from "../../domain/design";
+import type { DesignFrameMode } from "../../domain/designFrameDocument";
 import { errorMessage } from "../../domain/errors";
 import { isImeComposing, isTextFieldTarget } from "../../domain/keyboard";
 import { useFileDropTarget } from "../../hooks/useFileDropTarget";
@@ -148,7 +150,7 @@ export function DesignBoardView({
   // Native clipboard reads in flight, before their image reaches the draft.
   const [reading, setReading] = useState(0);
   const [logsOpen, setLogsOpen] = useState(false);
-  const [targeting, setTargeting] = useState(false);
+  const [mode, setMode] = useState<DesignFrameMode>("canvas");
   const logsButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
@@ -429,8 +431,8 @@ export function DesignBoardView({
         viewKey={`board:${board.id}`}
         target={shownTarget}
         onTargetChange={setTarget}
-        targeting={targeting}
-        onTargetingChange={setTargeting}
+        mode={mode}
+        onModeChange={setMode}
         shortcuts={visible}
         onFrameChange={onFrameChange}
         onDuplicate={onDuplicate}
@@ -631,12 +633,24 @@ export function DesignBoardView({
             <IconButton
               aria-label={t("design.canvas.target")}
               title={t("design.canvas.target")}
-              aria-pressed={targeting}
-              selected={targeting}
+              aria-pressed={mode === "target"}
+              selected={mode === "target"}
               disabled={!frames.length}
-              onClick={() => setTargeting(!targeting)}
+              onClick={() => setMode(mode === "target" ? "canvas" : "target")}
             >
               <Crosshair />
+            </IconButton>
+            <IconButton
+              aria-label={t("design.canvas.interact")}
+              title={t("design.canvas.interact")}
+              aria-pressed={mode === "interact"}
+              selected={mode === "interact"}
+              disabled={!frames.length}
+              onClick={() =>
+                setMode(mode === "interact" ? "canvas" : "interact")
+              }
+            >
+              <MousePointerClick />
             </IconButton>
             <IconButton
               aria-label={s.conversation.attach}

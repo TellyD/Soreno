@@ -88,7 +88,7 @@ pub(super) fn instruction(directory: &str, designer: bool) -> String {
         ""
     };
     format!(
-        "Soreno design board. You design UI as standalone HTML documents (inline CSS, no JavaScript, no external resources: no remote fonts, images or scripts; use inline SVG or CSS for visuals; no meta http-equiv). Soreno renders the frames itself: do not render, screenshot or preview them, and do not run scripts or servers. A frame is the file design-frame-<id>.html in {directory} (id: letters, digits, . - _; an existing id replaces that frame, a new id creates one). Soreno keeps the current HTML of every frame in {directory}{MIRROR_SUFFIX}/<id>.html (read only). To change a frame, copy {directory}{MIRROR_SUFFIX}/<id>.html to a draft in {directory} (for example draft-<id>.tmp; without a copy command, read it and write the draft), edit only what is asked with targeted edits and keep everything else identical, then rename the draft to design-frame-<id>.html (without a rename command, write the finished draft to that name in one write). To create a frame, write the whole document into a draft, then rename it the same way. Every frame is a whole document ending with </html>. Put the frame title in <title>; optionally <meta name=soreno-frame content=width=1440,height=900> for the frame size (120 to 4096). When a change no longer fits the frame, set that meta to a new size: Soreno resizes the frame only when its values change.{confined} Soreno replies only on error."
+        "Soreno design board. You design UI as standalone HTML documents (inline CSS; optional lightweight inline JavaScript for interactive prototypes when helpful or asked, keeping the initial state rendered in HTML/CSS; no external resources: no remote fonts, images, scripts, network requests, storage or alert/confirm dialogs; use inline SVG or CSS for visuals; no meta http-equiv). Soreno renders the frames itself: do not render, screenshot or preview them, and do not run scripts or servers. A frame is the file design-frame-<id>.html in {directory} (id: letters, digits, . - _; an existing id replaces that frame, a new id creates one). Soreno keeps the current HTML of every frame in {directory}{MIRROR_SUFFIX}/<id>.html (read only). To change a frame, copy {directory}{MIRROR_SUFFIX}/<id>.html to a draft in {directory} (for example draft-<id>.tmp; without a copy command, read it and write the draft), edit only what is asked with targeted edits and keep everything else identical, then rename the draft to design-frame-<id>.html (without a rename command, write the finished draft to that name in one write). To create a frame, write the whole document into a draft, then rename it the same way. Every frame is a whole document ending with </html>. Put the frame title in <title>; optionally <meta name=soreno-frame content=width=1440,height=900> for the frame size (120 to 4096). When a change no longer fits the frame, set that meta to a new size: Soreno resizes the frame only when its values change.{confined} Soreno replies only on error."
     )
 }
 
@@ -196,7 +196,7 @@ fn board_index(name: &str, screens: &str, instructions: Option<&str>) -> String 
         screens
     };
     let pointer = instructions.map_or(String::new(), |directory| format!("\nTo create or change this board's screens, only when the user asks, read {directory}/{INSTRUCTION_FILENAME} and follow it.\n"));
-    format!("# Design board \"{name}\"\n\nStatic HTML/CSS mockups, one file per screen. Reproduce their layout, styles and content with this project's stack and conventions; do not copy the HTML files into the project.\n\n{screens}{pointer}")
+    format!("# Design board \"{name}\"\n\nSelf-contained HTML/CSS/JS mockups, one file per screen. Reproduce their layout, styles, content and interactions with this project's stack and conventions; do not copy the HTML files or prototype scripts into the project.\n\n{screens}{pointer}")
 }
 
 pub(super) fn valid_frame_id(value: &str) -> bool {
@@ -812,7 +812,7 @@ impl AgentSessions {
                 ""
             };
             format!(
-                "Soreno: this session is now linked to design board \"{}\"; its screens are listed in {index}{how}. These static HTML/CSS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks.",
+                "Soreno: this session is now linked to design board \"{}\"; its screens are listed in {index}{how}. These self-contained HTML/CSS/JS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks.",
                 found.name
             )
         };

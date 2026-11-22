@@ -8,6 +8,7 @@ export const fr = {
   "design.canvas.zoomLevel": "{percent} %",
   "design.canvas.fit": "Tout afficher",
   "design.canvas.target": "Cibler un élément d’un cadre",
+  "design.canvas.interact": "Interagir avec un cadre",
   "design.canvas.frameHint":
     "Flèches pour déplacer, Suppr pour supprimer, Ctrl+D pour dupliquer, double-clic pour cibler un élément.",
   "design.canvas.duplicate": "Dupliquer",
@@ -653,6 +654,8 @@ export const fr = {
   "settings.shortcuts.design.zoomReset": "Zoom à 100 %",
   "settings.shortcuts.design.zoomSelection": "Zoomer sur le cadre sélectionné",
   "settings.shortcuts.design.target": "Activer ou désactiver le ciblage",
+  "settings.shortcuts.design.interact":
+    "Activer ou désactiver le mode interactif",
   "settings.shortcuts.design.prompt": "Aller à la barre de prompt",
   "settings.shortcuts.toggleSidebar": "Afficher ou masquer la barre latérale",
   "settings.shortcuts.toggleGitPanel":

@@ -474,7 +474,7 @@ fn launch_attachments_hold_the_selected_frames_of_the_board_only() {
             ("instructions.md", "Use Tailwind.".into()),
             (
                 "design-board.md",
-                "# Design board \"Maquettes\"\n\nStatic HTML/CSS mockups, one file per screen. Reproduce their layout, styles and content with this project's stack and conventions; do not copy the HTML files into the project.\n\n- [Card](design-card.html) (1280×800)\n- [Home](design-home.html) (1280×800)\n".into()
+                "# Design board \"Maquettes\"\n\nSelf-contained HTML/CSS/JS mockups, one file per screen. Reproduce their layout, styles, content and interactions with this project's stack and conventions; do not copy the HTML files or prototype scripts into the project.\n\n- [Card](design-card.html) (1280×800)\n- [Home](design-home.html) (1280×800)\n".into()
             ),
             ("design-card.html", "<title>Card</title></html>".into()),
             ("design-home.html", "<title>Home</title></html>".into()),
@@ -535,7 +535,7 @@ fn a_running_agent_receives_the_frames_and_a_message_naming_them() {
         .strip_prefix(
             "Soreno: this session is now linked to design board \"Maquettes\"; its screens are listed in ",
         )
-        .and_then(|rest| rest.split_once(". These static HTML/CSS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks."))
+        .and_then(|rest| rest.split_once(". These self-contained HTML/CSS/JS mockups are context for your current work. Reply with one short acknowledgement; do not read the files or start implementing until the user asks."))
         .map(|(path, _)| PathBuf::from(path.trim_matches('\'')))
         .unwrap();
     assert!(index.starts_with(&private) && index.ends_with("design-board.md"));

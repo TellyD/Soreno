@@ -177,5 +177,5 @@ export function designLaunchPrompt(
     boardName.trim().replace(/"/g, "'"),
     BOARD_NAME_COST_LIMIT,
   );
-  return `Design board “${name}” from Soreno: implement its screens in this project.${withInstructions ? INSTRUCTIONS_LINE : ""}\nStart from the attached design-board.md: it lists the screens, links their static HTML/CSS mockups and says how to implement them.`;
+  return `Design board “${name}” from Soreno: implement its screens in this project.${withInstructions ? INSTRUCTIONS_LINE : ""}\nStart from the attached design-board.md: it lists the screens, links their HTML/CSS/JS mockups and says how to implement them.`;
 }
