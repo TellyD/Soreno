@@ -20,7 +20,7 @@ pub(super) fn team_labels(db: &Connection, team_id: &str) -> Result<Vec<KanbanLa
     Ok(labels)
 }
 
-fn label_row(row: &Row<'_>) -> rusqlite::Result<KanbanLabel> {
+pub(super) fn label_row(row: &Row<'_>) -> rusqlite::Result<KanbanLabel> {
     Ok(KanbanLabel {
         id: row.get(0)?,
         name: row.get(1)?,

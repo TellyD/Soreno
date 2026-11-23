@@ -1,7 +1,7 @@
 use super::{
-    branch_name, compare_names, sort_states, sql, team_labels, text_pull_requests, KanbanBoard,
-    KanbanComment, KanbanIssue, KanbanIssueDetail, KanbanLabel, KanbanProjectRef, KanbanSource,
-    KanbanTeam, KanbanWorkflowState, Result, ISSUE_NOT_FOUND, TEAM_NOT_FOUND,
+    branch_name, compare_names, label_row, sort_states, sql, team_labels, text_pull_requests,
+    KanbanBoard, KanbanComment, KanbanIssue, KanbanIssueDetail, KanbanLabel, KanbanProjectRef,
+    KanbanSource, KanbanTeam, KanbanWorkflowState, Result, ISSUE_NOT_FOUND, TEAM_NOT_FOUND,
 };
 use rusqlite::{Connection, OptionalExtension, Row};
 use std::collections::HashMap;
@@ -52,20 +52,16 @@ fn query_issues(db: &Connection, filter: &str, value: &str) -> Result<Vec<Kanban
     let mut labels: HashMap<String, Vec<KanbanLabel>> = HashMap::new();
     let mut statement = db
         .prepare(&format!(
-            "SELECT il.issue_id, l.id, l.name, l.color FROM kanban_issue_labels il
+            "SELECT l.id, l.name, l.color, il.issue_id FROM kanban_issue_labels il
             JOIN kanban_labels l ON l.id=il.label_id JOIN kanban_issues i ON i.id=il.issue_id
             WHERE {filter}"
         ))
         .map_err(sql)?;
     let mut rows = statement.query([value]).map_err(sql)?;
     while let Some(row) = rows.next().map_err(sql)? {
-        let label = KanbanLabel {
-            id: row.get(1).map_err(sql)?,
-            name: row.get(2).map_err(sql)?,
-            color: row.get(3).map_err(sql)?,
-        };
+        let label = label_row(row).map_err(sql)?;
         labels
-            .entry(row.get(0).map_err(sql)?)
+            .entry(row.get(3).map_err(sql)?)
             .or_default()
             .push(label);
     }
