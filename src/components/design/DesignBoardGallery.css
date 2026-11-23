@@ -15,6 +15,16 @@
   margin-bottom: 16px;
 }
 
+.design-gallery-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.design-gallery-sort {
+  width: 150px;
+}
+
 .design-gallery-header h2 {
   margin: 0;
   color: var(--text);
@@ -81,11 +91,20 @@
   pointer-events: none;
 }
 
+.design-gallery-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 6px;
+}
+
 /* The whole card opens the board. */
 .design-gallery-open {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   border: 0;
-  padding: 0 12px;
+  padding: 0 0 0 12px;
   color: var(--text);
   background: none;
   font: inherit;
@@ -94,6 +113,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+}
+
+/* Above the card-wide click target. */
+.design-gallery-menu {
+  position: relative;
+  z-index: 1;
 }
 
 .design-gallery-open::after {

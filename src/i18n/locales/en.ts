@@ -854,6 +854,12 @@ export const en = {
   "design.rename": "Rename",
   "design.renameTitle": "Rename board",
   "design.delete": "Delete board",
+  "design.boardActions": "Actions for “{name}”",
+  "design.sort.label": "Sort boards by",
+  "design.sort.reverse": "Reverse sort order",
+  "design.sort.updated": "Last updated",
+  "design.sort.created": "Created",
+  "design.sort.name": "Name",
   "design.deleteTitle": "Delete “{name}”?",
   "design.deleteDescription":
     "Its frames and agent session are deleted. The agent is stopped if it runs.",

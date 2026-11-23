@@ -869,6 +869,12 @@ export const fr = {
   "design.rename": "Renommer",
   "design.renameTitle": "Renommer le tableau",
   "design.delete": "Supprimer le tableau",
+  "design.boardActions": "Actions pour « {name} »",
+  "design.sort.label": "Trier les tableaux par",
+  "design.sort.reverse": "Inverser l’ordre de tri",
+  "design.sort.updated": "Mise à jour",
+  "design.sort.created": "Création",
+  "design.sort.name": "Nom",
   "design.deleteTitle": "Supprimer « {name} » ?",
   "design.deleteDescription":
     "Ses cadres et sa session d’agent sont supprimés. L’agent est arrêté s’il tourne.",

@@ -6,6 +6,8 @@ import {
   designLaunchPrompt,
   designPrompt,
   DesignPromptTooLargeError,
+  sortDesignBoards,
+  type DesignBoard,
   type DesignFrame,
 } from "./design";
 import {
@@ -179,4 +181,28 @@ it("accepts launch instructions only within the backend's 16 KiB, without NUL", 
   // 6,000 three-byte characters stay under the field's length but exceed 16 KiB.
   expect(designInstructionsAccepted("設".repeat(6000))).toBe(false);
   expect(designInstructionsAccepted("ok\0")).toBe(false);
+});
+
+it("sorts boards newest first or by natural name, reversed on demand", () => {
+  const board = (name: string, createdAt: string, updatedAt: string) =>
+    ({
+      id: name,
+      name,
+      projectId: null,
+      sessionId: name,
+      createdAt,
+      updatedAt,
+    }) satisfies DesignBoard;
+  const boards = [
+    board("Board 10", "2026-01-03T00:00:00Z", "2026-01-04T00:00:00Z"),
+    board("board 2", "2026-01-01T00:00:00Z", "2026-01-05T00:00:00Z"),
+    board("Alpha", "2026-01-02T00:00:00Z", "2026-01-03T00:00:00Z"),
+  ];
+  const names = (field: "updated" | "created" | "name", reversed = false) =>
+    sortDesignBoards(boards, { field, reversed }, "en").map(({ name }) => name);
+
+  expect(names("updated")).toEqual(["board 2", "Board 10", "Alpha"]);
+  expect(names("created")).toEqual(["Board 10", "Alpha", "board 2"]);
+  expect(names("name")).toEqual(["Alpha", "board 2", "Board 10"]);
+  expect(names("name", true)).toEqual(["Board 10", "board 2", "Alpha"]);
 });

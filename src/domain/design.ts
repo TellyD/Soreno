@@ -1,3 +1,4 @@
+import { compareDate } from "./dateTime";
 import { fitTitle } from "./kanbanAgent";
 
 export type DesignBoard = {
@@ -8,6 +9,33 @@ export type DesignBoard = {
   createdAt: string;
   updatedAt: string;
 };
+
+export const designBoardSortFields = ["updated", "created", "name"] as const;
+export type DesignBoardSortField = (typeof designBoardSortFields)[number];
+/** Not reversed: newest first, or A to Z. */
+export type DesignBoardSort = {
+  field: DesignBoardSortField;
+  reversed: boolean;
+};
+
+export function sortDesignBoards(
+  boards: readonly DesignBoard[],
+  { field, reversed }: DesignBoardSort,
+  locale: string,
+): DesignBoard[] {
+  const compare = (left: DesignBoard, right: DesignBoard) =>
+    field === "name"
+      ? left.name.localeCompare(right.name, locale, {
+          numeric: true,
+          sensitivity: "base",
+        })
+      : field === "created"
+        ? compareDate(right.createdAt, left.createdAt)
+        : compareDate(right.updatedAt, left.updatedAt);
+  return [...boards].sort((left, right) =>
+    reversed ? compare(right, left) : compare(left, right),
+  );
+}
 
 export type DesignFrame = {
   boardId: string;

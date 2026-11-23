@@ -8,7 +8,13 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   agentSessionActivity,
@@ -302,6 +308,22 @@ export function DesignWorkspace({
   });
   // The switcher, or the gallery's New board button: dialogs return focus here.
   const returnFocusRef = useRef<HTMLButtonElement>(null);
+  const cardTriggerRef = useRef<HTMLElement | null>(null);
+  // Resolved on dialog close: the view may switch while it is open.
+  const [dialogReturnRef] = useState<RefObject<HTMLElement | null>>(() => ({
+    get current() {
+      const card = cardTriggerRef.current;
+      return card?.isConnected ? card : returnFocusRef.current;
+    },
+  }));
+  const openForm = (next: BoardForm, trigger?: HTMLElement) => {
+    cardTriggerRef.current = trigger ?? null;
+    setForm(next);
+  };
+  const openDelete = (target: DesignBoard, trigger?: HTMLElement) => {
+    cardTriggerRef.current = trigger ?? null;
+    setDeleting(target);
+  };
   const projectName = (id: string | null) =>
     id === null
       ? t("design.noProject")
@@ -365,7 +387,7 @@ export function DesignWorkspace({
     }
   }
 
-  const openCreate = () => setForm({ kind: "create" });
+  const openCreate = () => openForm({ kind: "create" });
 
   return (
     <section className="design-workspace" aria-label={t("views.design")}>
@@ -520,14 +542,14 @@ export function DesignWorkspace({
                     <Menu.Item
                       nativeButton
                       render={<MenuItem leading={<Pencil />} />}
-                      onClick={() => setForm({ kind: "rename", board })}
+                      onClick={() => openForm({ kind: "rename", board })}
                     >
                       {t("design.rename")}
                     </Menu.Item>
                     <Menu.Item
                       nativeButton
                       render={<MenuItem danger leading={<Trash2 />} />}
-                      onClick={() => setDeleting(board)}
+                      onClick={() => openDelete(board)}
                     >
                       {t("design.delete")}
                     </Menu.Item>
@@ -543,6 +565,10 @@ export function DesignWorkspace({
           projectName={projectName}
           onOpen={design.selectBoard}
           onCreate={openCreate}
+          onRename={(item, trigger) =>
+            openForm({ kind: "rename", board: item }, trigger)
+          }
+          onDelete={openDelete}
           createRef={returnFocusRef}
         />
       ) : design.loaded ? (
@@ -564,7 +590,7 @@ export function DesignWorkspace({
           board={form.kind === "rename" ? form.board : undefined}
           projects={launchProjects}
           pending={pending}
-          returnFocusRef={returnFocusRef}
+          returnFocusRef={dialogReturnRef}
           onCancel={() => setForm(null)}
           onSubmit={(values) => void submitForm(values)}
         />
@@ -579,7 +605,7 @@ export function DesignWorkspace({
               confirmLabel={t("design.delete")}
               confirmPending={pending}
               cancelDisabled={pending}
-              returnFocusRef={returnFocusRef}
+              returnFocusRef={dialogReturnRef}
               onCancel={() => setDeleting(null)}
               onConfirm={() => void confirmDelete()}
             />,
