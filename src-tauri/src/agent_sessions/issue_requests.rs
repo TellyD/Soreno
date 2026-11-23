@@ -856,7 +856,7 @@ impl AgentSessions {
             else {
                 return Ok(());
             };
-            design::write_private(local, remote, false, &name, None)?;
+            design::frame_mirror::write_private(local, remote, false, &name, None)?;
         }
         if read_request(&run, &[Requests::DesignFrames], &HashSet::new())?.is_some() {
             return Err(
