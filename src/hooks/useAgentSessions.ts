@@ -9,8 +9,6 @@ import {
   saveAgentSession,
   startAgentSession,
   stopAgentSession,
-  updateAgentProjectAppearance,
-  updateAgentProjectGroupAppearance,
 } from "../data/agentSessionsApi";
 import {
   agentSessionActivity,
@@ -40,6 +38,10 @@ import {
   writeBranchCache,
   writeWorktreeCache,
 } from "./agentWorktreeTopology";
+import {
+  useAgentAppearanceQueue,
+  type AppearanceTarget,
+} from "./useAgentAppearanceQueue";
 
 const emptyWorkspace: AgentWorkspace = {
   projects: [],
@@ -48,7 +50,6 @@ const emptyWorkspace: AgentWorkspace = {
 };
 const emptyWorktreeGroups: AgentProjectWorktreeGroup[] = [];
 const topologyPollDelay = 5000;
-type AppearanceTarget = "projects" | "groups";
 const incompleteTopologyRetryDelay = 500;
 /** Keeps the failing service identifiable so the UI can describe it in the active locale. */
 export class AgentServiceError extends Error {
@@ -412,110 +413,20 @@ export function useAgentSessions(
   // Keeps workspace errors, e.g. a merge conflict's resolve action.
   const refresh = useCallback(() => runReload(false), [runReload]);
 
-  // Appearance only: no global busy state, so the workspace does not flash on each pick.
-  // Picks are merged per project or group and sent as deltas by a single serialized drain, so the latest pick persists last.
-  const pendingAppearance = useRef(
-    new Map<
-      string,
-      {
-        target: AppearanceTarget;
-        id: string;
-        change: AgentProjectAppearance;
-        settle: ((saved: boolean) => void)[];
-      }
-    >(),
-  );
-  const appearanceDraining = useRef(false);
-  const appearanceIdle = useRef<(() => void)[]>([]);
-  const saveAppearance = useCallback(
-    (target: AppearanceTarget, id: string, change: AgentProjectAppearance) => {
-      if (!desktop) return Promise.resolve(false);
-      const key = `${target}:${id}`;
-      const saved = new Promise<boolean>((resolve) => {
-        const batch = pendingAppearance.current.get(key);
-        if (batch) {
-          batch.change = { ...batch.change, ...change };
-          batch.settle.push(resolve);
-        } else
-          pendingAppearance.current.set(key, {
-            target,
-            id,
-            change: { ...change },
-            settle: [resolve],
-          });
-      });
-      if (appearanceDraining.current) return saved;
-      appearanceDraining.current = true;
-      void (async () => {
-        if (mounted.current) setError(null);
-        try {
-          // Entries re-added for a target while its batch is in flight are visited again.
-          for (const [key, batch] of pendingAppearance.current) {
-            pendingAppearance.current.delete(key);
-            let succeeded = false;
-            try {
-              const { icon, color, iconDataUrl } = await (
-                batch.target === "projects"
-                  ? updateAgentProjectAppearance
-                  : updateAgentProjectGroupAppearance
-              )(batch.id, batch.change);
-              const appearance = { icon, color, iconDataUrl };
-              appearanceRevision.current += 1;
-              confirmedAppearance.current.set(key, {
-                appearance,
-                revision: appearanceRevision.current,
-              });
-              // Only appearance: other fields may come from a newer full save.
-              const patch = <T extends { id: string }>(items: T[]) =>
-                items.map((item) =>
-                  item.id === batch.id ? { ...item, ...appearance } : item,
-                );
-              const replace = (current: AgentWorkspace) =>
-                batch.target === "projects"
-                  ? { ...current, projects: patch(current.projects) }
-                  : {
-                      ...current,
-                      groups: current.groups && patch(current.groups),
-                    };
-              workspaceRef.current = replace(workspaceRef.current);
-              if (mounted.current) setWorkspace(replace);
-              succeeded = true;
-            } catch (reason) {
-              if (mounted.current) setError(asError(reason));
-            }
-            for (const settle of batch.settle) settle(succeeded);
-          }
-        } finally {
-          appearanceDraining.current = false;
-          for (const resolve of appearanceIdle.current.splice(0)) resolve();
-        }
-      })();
-      return saved;
-    },
-    [desktop],
-  );
-  const saveProjectAppearance = useCallback(
-    (projectId: string, change: AgentProjectAppearance) =>
-      saveAppearance("projects", projectId, change),
-    [saveAppearance],
-  );
-  const saveGroupAppearance = useCallback(
-    (groupId: string, change: AgentProjectAppearance) =>
-      saveAppearance("groups", groupId, change),
-    [saveAppearance],
-  );
-  // Resolves with the hook's own snapshot: React may not have rendered the last saved appearance yet.
-  const waitForProjectAppearance = useCallback(async () => {
-    while (appearanceDraining.current)
-      await new Promise<void>((resolve) =>
-        appearanceIdle.current.push(resolve),
-      );
-    return workspaceRef.current;
-  }, []);
-  const hasPendingProjectAppearance = useCallback(
-    () => appearanceDraining.current,
-    [],
-  );
+  const {
+    saveProjectAppearance,
+    saveGroupAppearance,
+    waitForProjectAppearance,
+    hasPendingProjectAppearance,
+  } = useAgentAppearanceQueue({
+    desktop,
+    mounted,
+    workspaceRef,
+    setWorkspace,
+    setError,
+    appearanceRevision,
+    confirmedAppearance,
+  });
 
   useEffect(() => {
     mounted.current = true;
