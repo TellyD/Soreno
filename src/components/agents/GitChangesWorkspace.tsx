@@ -21,6 +21,10 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import {
+  readPreference,
+  writePreference,
+} from "../../data/localStoragePreference";
 import type { DiffLineSelection } from "../../domain/diffLineComment";
 import {
   clampGitPanelRatio,
@@ -73,16 +77,12 @@ function readGitFilesRatioPreference(
   minRatio: number,
   maxRatio: number,
 ) {
-  try {
-    return parseGitPanelRatio(
-      localStorage.getItem(gitFilesRatioStorageKey),
-      defaultRatio,
-      minRatio,
-      maxRatio,
-    );
-  } catch {
-    return defaultRatio;
-  }
+  return parseGitPanelRatio(
+    readPreference(gitFilesRatioStorageKey),
+    defaultRatio,
+    minRatio,
+    maxRatio,
+  );
 }
 
 export function useGitFilesRatioPreference(
@@ -121,11 +121,7 @@ export function useGitFilesRatioPreference(
     (nextRatio: number) => {
       const next = clampGitPanelRatio(nextRatio, minRatio, maxRatio);
       setRatio(next);
-      try {
-        localStorage.setItem(gitFilesRatioStorageKey, String(next));
-      } catch {
-        /* Optional preference. */
-      }
+      writePreference(gitFilesRatioStorageKey, String(next));
       window.dispatchEvent(
         new CustomEvent<number>(gitFilesRatioChangeEvent, { detail: next }),
       );

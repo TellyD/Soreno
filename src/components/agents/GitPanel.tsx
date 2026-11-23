@@ -20,6 +20,10 @@ import {
   readCachedForgeKind,
   writeCachedForgeKind,
 } from "../../data/forgeKindCache";
+import {
+  readPreference,
+  writePreference,
+} from "../../data/localStoragePreference";
 import * as api from "../../data/projectGitApi";
 import {
   createGitReadCache,
@@ -93,17 +97,13 @@ const minFilesRatio = 15;
 const maxFilesRatio = 80;
 
 function readPanelView(): ProjectPanelView {
-  try {
-    const value = localStorage.getItem(panelViewStorageKey);
-    return value === "explorer" ||
-      value === "history" ||
-      value === "branches" ||
-      value === "requests"
-      ? value
-      : "changes";
-  } catch {
-    return "changes";
-  }
+  const value = readPreference(panelViewStorageKey);
+  return value === "explorer" ||
+    value === "history" ||
+    value === "branches" ||
+    value === "requests"
+    ? value
+    : "changes";
 }
 
 function panelViewLabel(
@@ -375,11 +375,7 @@ export function GitPanel({
 
   useEffect(() => {
     const view: ProjectPanelView = explorerActive ? "explorer" : git.draft.view;
-    try {
-      localStorage.setItem(panelViewStorageKey, view);
-    } catch {
-      /* Optional preference. */
-    }
+    writePreference(panelViewStorageKey, view);
   }, [explorerActive, git.draft.view]);
 
   const filesShown = visible && explorerActive && !!project;

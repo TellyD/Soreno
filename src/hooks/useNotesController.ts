@@ -9,6 +9,10 @@ import {
   updateNotePinned,
 } from "../data/notesApi";
 import { listNoteTypes } from "../data/noteTypesApi";
+import {
+  readPreference,
+  writePreference,
+} from "../data/localStoragePreference";
 import { isNewer } from "../domain/dateTime";
 import {
   countNotesByView,
@@ -159,18 +163,14 @@ export function useNotesController({
   }, [noteTypes, notes]);
 
   useEffect(() => {
-    writeStoredNoteSortOrder(noteSortOrder);
+    writePreference(NOTE_SORT_STORAGE_KEY, noteSortOrder);
   }, [noteSortOrder]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        WORKSPACE_STORAGE_KEY,
-        activeView === "agents" ? "agents" : "notes",
-      );
-    } catch {
-      /* Workspace persistence is optional. */
-    }
+    writePreference(
+      WORKSPACE_STORAGE_KEY,
+      activeView === "agents" ? "agents" : "notes",
+    );
   }, [activeView]);
 
   useEffect(() => {
@@ -577,31 +577,12 @@ export function useNotesController({
 
 // A first launch has nothing stored and opens on Agents.
 function readStoredWorkspace(): LibraryView {
-  try {
-    return window.localStorage.getItem(WORKSPACE_STORAGE_KEY) === "notes"
-      ? "all"
-      : "agents";
-  } catch {
-    return "agents";
-  }
+  return readPreference(WORKSPACE_STORAGE_KEY) === "notes" ? "all" : "agents";
 }
 
 function readStoredNoteSortOrder(): NoteSortOrder {
-  try {
-    const storedValue = window.localStorage.getItem(NOTE_SORT_STORAGE_KEY);
-
-    return isNoteSortOrder(storedValue) ? storedValue : "updated-desc";
-  } catch {
-    return "updated-desc";
-  }
-}
-
-function writeStoredNoteSortOrder(sortOrder: NoteSortOrder) {
-  try {
-    window.localStorage.setItem(NOTE_SORT_STORAGE_KEY, sortOrder);
-  } catch {
-    return;
-  }
+  const storedValue = readPreference(NOTE_SORT_STORAGE_KEY);
+  return isNoteSortOrder(storedValue) ? storedValue : "updated-desc";
 }
 
 function isNoteSortOrder(value: string | null): value is NoteSortOrder {
