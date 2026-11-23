@@ -1,10 +1,10 @@
 import { History, LoaderCircle, Square, X } from "lucide-react";
 import { useState } from "react";
+import type { AgentConversationState } from "../../domain/agentConversation";
 import {
   agentConversationBtwRunning,
   type AgentConversationBtwTopic,
-  type AgentConversationState,
-} from "../../domain/agentConversation";
+} from "../../domain/agentConversationBtw";
 import { MarkdownContent } from "../MarkdownContent";
 import { IconButton } from "../ui/IconButton";
 import { Input } from "../ui/Input";
