@@ -2,6 +2,7 @@
 //! pipes instead of a terminal; the view renders the conversation natively.
 mod chunks;
 mod history;
+mod launch_scripts;
 mod message;
 mod remote_group;
 mod state;
@@ -18,6 +19,9 @@ use super::{
 use crate::process_owner::ProcessOwner;
 use chunks::{reassemble, Chunks};
 use history::{history_entry, validate_switch};
+#[cfg(windows)]
+use launch_scripts::omp_script;
+use launch_scripts::{detachable_script, launch_script};
 use remote_group::{stop_group_script, GroupScan, GROUP_MARKER};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -226,32 +230,6 @@ pub(super) fn status(
     Ok(status)
 }
 
-/// `cd`, the 209 exit of a missing `omp`, then `omp` itself; no positional parameters, which
-/// fish lacks.
-fn omp_script(directory: &str, resume: Option<&str>, launch_args: &[String]) -> String {
-    let omp: String = launch_args
-        .iter()
-        .fold("exec omp --mode rpc-ui".into(), |omp, arg| {
-            format!("{omp} {}", crate::ssh::quote(arg))
-        });
-    // OMP writes a conversation's file only with its first message: a conversation left
-    // empty has none, and resuming it would fail, so it starts afresh instead.
-    let resume = resume
-        .map(|file| {
-            let file = crate::ssh::quote(file);
-            format!(" test -f {file} && {omp} --resume {file};")
-        })
-        .unwrap_or_default();
-    format!(
-        "cd -- {} || exit 1; command -v omp >/dev/null 2>&1 || exit {MISSING_EXECUTABLE_EXIT_CODE};{resume} {omp}",
-        crate::ssh::quote(directory)
-    )
-}
-
-fn launch_script(directory: &str, resume: Option<&str>, launch_args: &[String]) -> String {
-    crate::ssh::login_shell_script(&omp_script(directory, resume, launch_args))
-}
-
 /// `launch_args` plus an extension telling OMP to request Kanban issues through files in the run's
 /// private directory, and, with `config`, the config overlay that lets a goal run; like terminal
 /// agents, the run starts without them when they cannot be written. With `link` (run token,
@@ -318,35 +296,6 @@ fn with_instruction(
         }
     }
     Ok((args, initial_prompt))
-}
-
-/// `omp_script` in a raw terminal for a dtach run; the config overlay goes into the run's
-/// `session` directory, which, unlike a prompt directory, lives as long as the run: OMP rereads
-/// it after Soreno detaches.
-fn detachable_script(
-    session: Option<&str>,
-    directory: &str,
-    resume: Option<&str>,
-    launch_args: &[String],
-) -> String {
-    let mut launch_args = launch_args.to_vec();
-    let config = session
-        .map(|session| {
-            let path = format!("{session}/{CONFIG_FILENAME}");
-            let write = format!(
-                "printf %s {} > {} || exit 1; ",
-                crate::ssh::quote(CONFIG),
-                crate::ssh::quote(&path)
-            );
-            launch_args.extend(["--config".into(), path]);
-            write
-        })
-        .unwrap_or_default();
-    // Raw, the terminal passes JSON lines untouched: no echo, line limit or CR.
-    format!(
-        "stty raw -echo -iexten; {config}{}",
-        omp_script(directory, resume, &launch_args)
-    )
 }
 
 /// Starts `omp` in the project's environment, resuming `conversation` when it has a history.
