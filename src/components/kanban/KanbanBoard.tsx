@@ -12,6 +12,10 @@ import {
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  readPreference,
+  writePreference,
+} from "../../data/localStoragePreference";
+import {
   allKanbanProjectsFilter,
   defaultCreateSource,
   filterIssuesByProject,
@@ -31,9 +35,7 @@ import {
   type LinearWorkspace,
 } from "../../domain/kanban";
 import {
-  readPreference,
   useKanbanControllerContext,
-  writePreference,
   type KanbanController,
 } from "../../hooks/useKanbanController";
 import { useI18n, type TranslationKey } from "../../i18n";

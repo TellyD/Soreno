@@ -8,6 +8,10 @@ import {
   Trash2,
 } from "lucide-react";
 import { useRef, useState, type Ref } from "react";
+import {
+  readPreference,
+  writePreference,
+} from "../../data/localStoragePreference";
 import { formatCompactDate } from "../../domain/dateTime";
 import {
   designBoardSortFields,
@@ -19,10 +23,6 @@ import {
 import { designFitView } from "../../domain/designCanvas";
 import { designFrameDocument } from "../../domain/designFrameDocument";
 import { useDesignFrames } from "../../hooks/useDesignFrames";
-import {
-  readPreference,
-  writePreference,
-} from "../../hooks/useKanbanController";
 import { useI18n, type TranslationKey } from "../../i18n";
 import { useTheme } from "../../theme/ThemeProvider";
 import { Button } from "../ui/Button";
