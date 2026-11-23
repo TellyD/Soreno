@@ -1,5 +1,5 @@
 use super::{
-    discover_repository, execute, object_hash::snapshot_version, validate_oid,
+    discover_repository, empty_repository, execute, object_hash::snapshot_version, validate_oid,
     validate_relative_path, GitComparison, GitConflictStage, GitContent, GitError, GitFile,
     GitIdentity, GitOperation, GitRepository, GitSide,
 };
@@ -837,16 +837,6 @@ fn join_snapshot_read<T>(result: std::thread::Result<Result<T, GitError>>) -> Re
 
 fn is_actionable(entry: &StatusEntry, limited: bool, path_representable: bool) -> bool {
     !limited && path_representable && entry.representable
-}
-
-fn empty_repository(
-    availability: &str,
-    identity: Option<GitIdentity>,
-    version: String,
-) -> GitRepository {
-    let mut repository = super::empty_repository(availability, version);
-    repository.identity = identity;
-    repository
 }
 
 fn append_identity(token: &mut Vec<u8>, identity: &GitIdentity) {

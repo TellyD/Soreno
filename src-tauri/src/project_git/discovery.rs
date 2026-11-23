@@ -183,10 +183,14 @@ fn canonical_identity_path(project: &AgentProject, value: String) -> Result<Stri
         .map_err(|_| GitError::new("malformed", "Chemin Git non Unicode."))
 }
 
-pub(super) fn empty_repository(availability: &str, version: String) -> GitRepository {
+pub(super) fn empty_repository(
+    availability: &str,
+    identity: Option<GitIdentity>,
+    version: String,
+) -> GitRepository {
     GitRepository {
         availability: availability.into(),
-        identity: None,
+        identity,
         version,
         head: None,
         branch: None,
@@ -253,14 +257,16 @@ fn identified_repository(
             root.ok_or_else(|| GitError::new("malformed", "Racine Git absente."))?,
         )?
     };
-    let mut repository = empty_repository(if bare { "bare" } else { "ready" }, version);
-    repository.identity = Some(GitIdentity {
-        root,
-        git_dir,
-        common_dir,
-        object_format,
-    });
-    Ok(repository)
+    Ok(empty_repository(
+        if bare { "bare" } else { "ready" },
+        Some(GitIdentity {
+            root,
+            git_dir,
+            common_dir,
+            object_format,
+        }),
+        version,
+    ))
 }
 
 fn discover_repository_slow(
@@ -272,7 +278,7 @@ fn discover_repository_slow(
         Ok(value) if value == "false" => false,
         Ok(_) => return Err(GitError::new("malformed", "Type de dépôt Git invalide.")),
         Err(error) if error.code == "notRepo" => {
-            return Ok(empty_repository("notRepository", version));
+            return Ok(empty_repository("notRepository", None, version));
         }
         Err(error) => return Err(error),
     };
@@ -336,7 +342,7 @@ pub(crate) fn discover_repository(project: &AgentProject) -> Result<GitRepositor
             }
         }
         Err(error) if error.code == "notRepo" => {
-            return Ok(empty_repository("notRepository", version));
+            return Ok(empty_repository("notRepository", None, version));
         }
         Err(error) if error.code == "failed" => {}
         Err(error) => return Err(error),
