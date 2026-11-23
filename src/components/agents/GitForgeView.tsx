@@ -72,6 +72,7 @@ import GitDiffView from "./GitDiffView";
 import {
   GitWorktreeDialog,
   worktreeDefaults,
+  worktreePayload,
   type WorktreeRequest,
 } from "./GitWorktreeDialog";
 import { ForgeRequestHeader } from "./GitForgeRequestHeader";
@@ -816,16 +817,7 @@ export function GitForgeView({
     setCreatingWorktree(true);
     try {
       const created = await git.mutate(() =>
-        api.createGitWorktree(project.id, {
-          id: request.id,
-          name: request.name,
-          parentPath: request.parentPath.trim(),
-          folderName: request.folderName.trim(),
-          branch: request.branch.name,
-          remote: request.branch.remote,
-          createBranch: request.createBranch,
-          version: request.version,
-        }),
+        api.createGitWorktree(project.id, worktreePayload(request)),
       );
       if (created) {
         setWorktreeRequest(null);

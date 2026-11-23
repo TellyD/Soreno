@@ -48,6 +48,7 @@ import {
 import {
   GitWorktreeDialog,
   worktreeDefaults,
+  worktreePayload,
   type WorktreeRequest,
 } from "./GitWorktreeDialog";
 import { LoadingState } from "../ui/LoadingState";
@@ -324,16 +325,7 @@ export function GitBranchesView({
     setCreatingWorktree(true);
     try {
       const created = await git.mutate(() =>
-        api.createGitWorktree(projectId, {
-          id: request.id,
-          name: request.name,
-          parentPath: request.parentPath.trim(),
-          folderName: request.folderName.trim(),
-          branch: request.branch.name,
-          remote: request.branch.remote,
-          createBranch: request.createBranch,
-          version: request.version,
-        }),
+        api.createGitWorktree(projectId, worktreePayload(request)),
       );
       if (created) {
         if (request.createBranch) setName("");

@@ -6,6 +6,7 @@ import {
   localBranchName,
   type GitBranch,
   type GitRepository,
+  type GitWorktreeRequest,
 } from "../../domain/projectGit";
 import { useNotification } from "../../notifications";
 import { Button } from "../ui/Button";
@@ -25,6 +26,19 @@ export type WorktreeRequest = {
   projectId: string;
   version: string;
 };
+
+export const worktreePayload = (
+  request: WorktreeRequest,
+): GitWorktreeRequest => ({
+  id: request.id,
+  name: request.name,
+  parentPath: request.parentPath.trim(),
+  folderName: request.folderName.trim(),
+  branch: request.branch.name,
+  remote: request.branch.remote,
+  createBranch: request.createBranch,
+  version: request.version,
+});
 
 function splitRoot(root: string): { parentPath: string; folderName: string } {
   const windows = isWindowsPath(root);
