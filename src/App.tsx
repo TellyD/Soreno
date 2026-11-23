@@ -52,6 +52,7 @@ import {
   takeAgentNotificationActivation,
 } from "./data/agentAttentionApi";
 import { listenOpenSettings } from "./data/appMenuApi";
+import { readPreference, writePreference } from "./data/localStoragePreference";
 import type { KanbanIssueSelection } from "./domain/kanban";
 import type { Note } from "./domain/notes";
 import { selectStatusBarSaveStateText } from "./domain/saveStatus";
@@ -146,13 +147,9 @@ function App() {
   const [hasOpenedAgents, setHasOpenedAgents] = useState(false);
   const [isAgentNavigationPending, startAgentNavigation] = useTransition();
   const agentNavigationIntent = useRef<"notes" | "agents" | null>(null);
-  const [isAgentGitPanelOpen, setIsAgentGitPanelOpen] = useState(() => {
-    try {
-      return localStorage.getItem("soreno:git-panel-open") !== "false";
-    } catch {
-      return true;
-    }
-  });
+  const [isAgentGitPanelOpen, setIsAgentGitPanelOpen] = useState(
+    () => readPreference("soreno:git-panel-open") !== "false",
+  );
   const [isAgentGitPanelExpanded, setIsAgentGitPanelExpanded] = useState(false);
   const [isAgentBoardIssueOpen, setIsAgentBoardIssueOpen] = useState(false);
   // Hidden by the panel shortcut while the Kanban keeps its issue open.
@@ -176,14 +173,7 @@ function App() {
   const [agentSessionRequest, setAgentSessionRequest] =
     useState<AgentSessionRequest>();
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        "soreno:git-panel-open",
-        String(isAgentGitPanelOpen),
-      );
-    } catch {
-      /* Panel persistence is optional. */
-    }
+    writePreference("soreno:git-panel-open", String(isAgentGitPanelOpen));
   }, [isAgentGitPanelOpen]);
   const [agentSidebarContainer, setAgentSidebarContainer] =
     useState<HTMLDivElement | null>(null);

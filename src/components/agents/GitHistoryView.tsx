@@ -20,6 +20,10 @@ import {
   type GitReadCache,
 } from "../../data/gitReadCache";
 import {
+  readPreference,
+  writePreference,
+} from "../../data/localStoragePreference";
+import {
   buildGitGraphRows,
   gitReferenceBadges,
   parseGitPanelRatio,
@@ -135,16 +139,12 @@ function GitCommitGraph({
 }
 
 function readHistoryRailRatio() {
-  try {
-    return parseGitPanelRatio(
-      localStorage.getItem(historyRailStorageKey),
-      historyRailDefault,
-      historyRailMin,
-      historyRailMax,
-    );
-  } catch {
-    return historyRailDefault;
-  }
+  return parseGitPanelRatio(
+    readPreference(historyRailStorageKey),
+    historyRailDefault,
+    historyRailMin,
+    historyRailMax,
+  );
 }
 
 type HistoryReadOperation =
@@ -309,11 +309,7 @@ export function GitHistoryView({
       ? comparison.value
       : (cachedComparison ?? null);
   useEffect(() => {
-    try {
-      localStorage.setItem(historyRailStorageKey, String(railRatio));
-    } catch {
-      /* Optional preference. */
-    }
+    writePreference(historyRailStorageKey, String(railRatio));
   }, [railRatio]);
 
   const relevantError =

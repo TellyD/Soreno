@@ -24,6 +24,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import * as api from "../../data/projectFilesApi";
+import {
+  readPreference,
+  writePreference,
+} from "../../data/localStoragePreference";
 import type { AgentProject } from "../../domain/agentSessions";
 import {
   isProjectFileWithin,
@@ -88,14 +92,10 @@ export type ProjectFileOpenRequest = {
 };
 
 function readRatio(): number {
-  try {
-    const value = Number(localStorage.getItem(ratioStorageKey));
-    return Number.isFinite(value) && value >= minRatio && value <= maxRatio
-      ? value
-      : defaultRatio;
-  } catch {
-    return defaultRatio;
-  }
+  const value = Number(readPreference(ratioStorageKey));
+  return Number.isFinite(value) && value >= minRatio && value <= maxRatio
+    ? value
+    : defaultRatio;
 }
 
 type FileTarget = { path: string; kind: ProjectFileKind; symlink?: boolean };
@@ -230,11 +230,7 @@ export function ProjectExplorer({
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(ratioStorageKey, String(ratio));
-    } catch {
-      /* Optional preference. */
-    }
+    writePreference(ratioStorageKey, String(ratio));
   }, [ratio]);
 
   function reportError(reason: unknown) {

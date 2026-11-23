@@ -6,6 +6,10 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import {
+  readPreference,
+  writePreference,
+} from "../../data/localStoragePreference";
 import { useI18n } from "../../i18n";
 
 const sidebarWidthKey = "soreno.kanban.issueSidebarWidth.v1";
@@ -23,12 +27,8 @@ function clampSidebarWidth(width: number, max: number = sidebarWidth.max) {
 }
 
 function readSidebarWidth() {
-  try {
-    const stored = Number(localStorage.getItem(sidebarWidthKey));
-    return stored ? clampSidebarWidth(stored) : sidebarWidth.initial;
-  } catch {
-    return sidebarWidth.initial;
-  }
+  const stored = Number(readPreference(sidebarWidthKey));
+  return stored ? clampSidebarWidth(stored) : sidebarWidth.initial;
 }
 
 export function KanbanIssueSidebar({ children }: { children: ReactNode }) {
@@ -54,11 +54,7 @@ export function KanbanIssueSidebar({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    try {
-      localStorage.setItem(sidebarWidthKey, String(width));
-    } catch {
-      /* Optional preference. */
-    }
+    writePreference(sidebarWidthKey, String(width));
   }, [width]);
 
   function stopDrag(event: ReactPointerEvent<HTMLElement>) {
