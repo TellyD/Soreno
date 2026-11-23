@@ -12,6 +12,16 @@ pub(super) fn image_mime_type(path: &str) -> Option<&'static str> {
     }
 }
 
+pub(crate) fn attachment_image_type(mime_type: &str) -> Option<(&'static str, &'static str)> {
+    match mime_type {
+        "image/png" => Some(("image/png", "png")),
+        "image/jpeg" | "image/jpg" => Some(("image/jpeg", "jpg")),
+        "image/gif" => Some(("image/gif", "gif")),
+        "image/webp" => Some(("image/webp", "webp")),
+        _ => None,
+    }
+}
+
 pub(crate) fn image_data_url(bytes: &[u8]) -> Option<String> {
     [
         "image/png",

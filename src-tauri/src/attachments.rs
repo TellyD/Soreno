@@ -1,3 +1,4 @@
+use crate::project_files::media::attachment_image_type;
 use base64::Engine;
 use chrono::Utc;
 use serde::Serialize;
@@ -130,13 +131,9 @@ fn decode_base64_payload(data_base64: &str) -> Result<Vec<u8>, String> {
 }
 
 fn extension_for_mime_type(mime_type: &str) -> Result<&'static str, String> {
-    match mime_type.trim().to_ascii_lowercase().as_str() {
-        "image/gif" => Ok("gif"),
-        "image/jpeg" | "image/jpg" => Ok("jpg"),
-        "image/png" => Ok("png"),
-        "image/webp" => Ok("webp"),
-        _ => Err("Unsupported image type".to_string()),
-    }
+    attachment_image_type(&mime_type.trim().to_ascii_lowercase())
+        .map(|(_, extension)| extension)
+        .ok_or_else(|| "Unsupported image type".to_string())
 }
 
 fn build_attachment_stem(note_id: &str, original_filename: &str) -> String {

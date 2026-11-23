@@ -3,7 +3,7 @@ use super::resolve_wsl_host_path;
 use super::{
     lock, remote_host, AgentEnvironment, PromptAttachment, Result, Runtime, AGENT_ATTACHMENT_LIMIT,
 };
-use crate::project_files::media::valid_image_signature;
+use crate::project_files::media::{attachment_image_type, valid_image_signature};
 use crate::ssh::SshConnection;
 use std::{
     io::Write,
@@ -19,13 +19,8 @@ const INVALID_CLIPBOARD_IMAGE: &str =
     "Le presse-papiers ne contient pas une image PNG, JPEG, GIF ou WebP valide.";
 
 pub(super) fn clipboard_image_extension(mime_type: &str, bytes: &[u8]) -> Result<&'static str> {
-    let (media_type, extension) = match mime_type {
-        "image/png" => ("image/png", "png"),
-        "image/jpeg" | "image/jpg" => ("image/jpeg", "jpg"),
-        "image/gif" => ("image/gif", "gif"),
-        "image/webp" => ("image/webp", "webp"),
-        _ => return Err(INVALID_CLIPBOARD_IMAGE.into()),
-    };
+    let (media_type, extension) =
+        attachment_image_type(mime_type).ok_or(INVALID_CLIPBOARD_IMAGE)?;
     if valid_image_signature(media_type, bytes) {
         Ok(extension)
     } else {
