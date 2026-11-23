@@ -34,8 +34,8 @@ export const blockActions = [
   "rule",
   "table",
 ] as const;
-export type BlockAction = (typeof blockActions)[number];
-export type InlineAction = "bold" | "italic" | "strike" | "code" | "link";
+type BlockAction = (typeof blockActions)[number];
+type InlineAction = "bold" | "italic" | "strike" | "code" | "link";
 export type EditorAction =
   BlockAction | InlineAction | "indent" | "outdent" | "toggleTask";
 export const commandLabel = (action: EditorAction | "image"): TranslationKey =>

@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { hasTauriRuntime } from "./tauriRuntime";
 
-export type CodexRateLimitWindow = {
+type CodexRateLimitWindow = {
   usedPercent: number;
   windowDurationMins: number | null;
   resetsAt: number | null;
@@ -12,13 +12,13 @@ export type CodexRateLimits = {
   secondary: CodexRateLimitWindow | null;
 };
 
-export type ClaudeRateLimitWindow = {
+type ClaudeRateLimitWindow = {
   usedPercent: number;
   windowDurationMins: number;
   resetsAt: number | null;
 };
 
-export type ClaudeModelRateLimit = {
+type ClaudeModelRateLimit = {
   model: string;
   window: ClaudeRateLimitWindow;
 };

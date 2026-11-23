@@ -20,7 +20,7 @@ export type ProjectService = {
 export const projectServiceKey = (projectId: string, serviceId: string) =>
   `${projectId}\n${serviceId}`;
 
-export type ProjectServiceProfile = {
+type ProjectServiceProfile = {
   id: string;
   label: string;
   services: string[];

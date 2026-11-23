@@ -22,7 +22,7 @@ export type AgentConversationFormChoice = {
   required: boolean;
 };
 
-export type AgentConversationFormText = {
+type AgentConversationFormText = {
   kind: "text";
   name: string;
   question: string;
@@ -471,7 +471,7 @@ export function parseAgentConversationForm(
 }
 
 /** Whether a choice answers with an array rather than one value. */
-export function agentConversationFormArray(field: AgentConversationFormChoice) {
+function agentConversationFormArray(field: AgentConversationFormChoice) {
   return field.multi && field.options.length > 1;
 }
 

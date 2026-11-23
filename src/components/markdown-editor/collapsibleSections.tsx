@@ -29,7 +29,7 @@ const closing = /^\+\+\+[ \t]*$/u;
 
 // shortcut: `+++` lines inside fenced code still form sections; check the syntax tree if notes hit it.
 // shortcut: a table right above the closing `+++` (no blank line) swallows it as a row and renders past the fold; split tables at section bounds if agents write that.
-export function findSections(doc: Text): Section[] {
+function findSections(doc: Text): Section[] {
   const sections: Section[] = [];
   let open: Pick<Section, "from" | "titleFrom" | "to"> | null = null;
   let from = 0;
