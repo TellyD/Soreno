@@ -392,38 +392,21 @@ fn comparison_from_snapshot_with_cache(
             None => return Ok(None),
         }
     } else {
-        let before = match side {
-            GitSide::Staged => unreachable!("comparaison staged déjà traitée"),
-            GitSide::Unstaged if entry.conflict => index_content(
-                &snapshot.project,
-                &snapshot.cache_key,
-                &snapshot.index,
-                before_path,
-                2,
-                cached,
-                content_cache,
-            )?,
-            GitSide::Unstaged => index_content(
-                &snapshot.project,
-                &snapshot.cache_key,
-                &snapshot.index,
-                before_path,
-                0,
-                cached,
-                content_cache,
-            )?,
-        };
-        let after = match side {
-            GitSide::Staged => unreachable!("comparaison staged déjà traitée"),
-            GitSide::Unstaged if entry.submodule => {
-                unreadable_content(None, 0, "160000".into(), "submodule")
-            }
-            GitSide::Unstaged => {
-                match disk_content_checked(&snapshot.project, identity, path, expected_fingerprint)?
-                {
-                    Some(content) => content,
-                    None => return Ok(None),
-                }
+        let before = index_content(
+            &snapshot.project,
+            &snapshot.cache_key,
+            &snapshot.index,
+            before_path,
+            if entry.conflict { 2 } else { 0 },
+            cached,
+            content_cache,
+        )?;
+        let after = if entry.submodule {
+            unreadable_content(None, 0, "160000".into(), "submodule")
+        } else {
+            match disk_content_checked(&snapshot.project, identity, path, expected_fingerprint)? {
+                Some(content) => content,
+                None => return Ok(None),
             }
         };
         (before, after)
