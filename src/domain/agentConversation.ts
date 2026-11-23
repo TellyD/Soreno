@@ -5,6 +5,10 @@ import {
   type AgentConversationCommand,
 } from "./agentConversationCommands";
 import { agentConversationDialog } from "./agentConversationDialogs";
+import type {
+  AgentConversationForm,
+  AgentConversationFormValue,
+} from "./agentConversationForm";
 import { count, isObject, text, type Json } from "./agentConversationRecords";
 import { withSubagent } from "./agentConversationSubagents";
 import { todoPhases } from "./agentConversationTodos";
@@ -125,7 +129,8 @@ export type AgentConversationDialog =
       context: string;
       prefill: string;
     }
-  | { kind: "ask"; id: string; questions: AgentConversationAskQuestion[] };
+  | { kind: "ask"; id: string; questions: AgentConversationAskQuestion[] }
+  | { kind: "form"; id: string; form: AgentConversationForm };
 
 /** The `extension_ui_response` fields answering a dialog, besides its type and id. */
 export type AgentConversationDialogAnswer =
@@ -138,7 +143,8 @@ export type AgentConversationDialogAnswer =
         selectedOptions: string[];
         customInput?: string;
       }[];
-    };
+    }
+  | { data: Record<string, AgentConversationFormValue> };
 
 export type AgentConversationModel = {
   provider: string;
@@ -202,8 +208,11 @@ export type AgentConversationState = {
   models: AgentConversationModel[];
   /** OMP's slash commands in its order, builtins limited to those that fit the chat. */
   commands: AgentConversationCommand[];
+  /** The level chosen, `auto` included, rather than the effort it resolved to. */
   thinkingLevel: string | null;
   thinkingLevels: string[];
+  /** OMP 19.1.0 offers per-turn `auto` effort on top of the model's levels. */
+  thinkingAuto: boolean;
   exit: { exitCode: number | null; stderr: string } | null;
   /** The user stopped the run: OMP reports the interrupted request as an error. */
   aborting: boolean;
@@ -275,6 +284,7 @@ export const initialAgentConversationState: AgentConversationState = {
   commands: [],
   thinkingLevel: null,
   thinkingLevels: [],
+  thinkingAuto: false,
   exit: null,
   aborting: false,
   historyLoaded: false,
@@ -740,7 +750,13 @@ function response(
       return {
         ...state,
         model: model(data.model),
-        thinkingLevel: text(data.thinkingLevel) || null,
+        thinkingLevel:
+          text(data.configuredThinkingLevel) ||
+          text(data.thinkingLevel) ||
+          null,
+        thinkingAuto:
+          Array.isArray(data.thinkingLevels) &&
+          data.thinkingLevels.includes("auto"),
         busy: data.isSettled === false || data.isStreaming === true,
         background:
           data.isSettled === false &&
@@ -979,7 +995,11 @@ export function applyAgentConversationRecord(
       };
     }
     case "thinking_level_changed":
-      return { ...state, thinkingLevel: text(record.thinkingLevel) || null };
+      return {
+        ...state,
+        thinkingLevel:
+          text(record.configured) || text(record.thinkingLevel) || null,
+      };
     case "config_update":
       return { ...state, model: model(record.model) ?? state.model };
     case "auto_retry_start":

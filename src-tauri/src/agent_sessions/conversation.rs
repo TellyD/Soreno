@@ -97,7 +97,7 @@ const COMMANDS: &[&str] = &[
     "get_btw_history",
 ];
 /// Extension UI requests that block OMP until answered: replayed to a late subscriber.
-const DIALOGS: &[&str] = &["select", "confirm", "input", "editor", "ask"];
+const DIALOGS: &[&str] = &["select", "confirm", "input", "editor", "ask", "form"];
 /// Presentation requests the view has no surface for.
 const HIDDEN_UI: &[&str] = &["setStatus", "setWidget", "setTitle", "set_editor_text"];
 

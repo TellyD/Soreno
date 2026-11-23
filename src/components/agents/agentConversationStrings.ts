@@ -1,4 +1,5 @@
 import type { AgentConversationAttachmentRefusal } from "../../domain/agentConversationAttachments";
+import type { AgentConversationFormError } from "../../domain/agentConversationForm";
 
 // OMP names a tool `__proto__` as easily as `bash`: only the table's own keys count.
 export const label = (table: Record<string, string>, key: string) =>
@@ -179,6 +180,30 @@ export const agentConversationStringsEn = {
   askCustom: (question: string) => `Other answer to: ${question}`,
   askCustomPlaceholder: "Other answer…",
   askRecommended: "Recommended",
+  formError: (error: AgentConversationFormError) => {
+    switch (error.kind) {
+      case "required":
+        return "Required";
+      case "selectOne":
+        return "Select at least one";
+      case "number":
+        return "Enter a number";
+      case "min":
+        return `Must be at least ${error.limit}`;
+      case "max":
+        return `Must be at most ${error.limit}`;
+      case "minLength":
+        return `Needs at least ${error.limit} characters`;
+      case "maxLength":
+        return `At most ${error.limit} characters`;
+      case "email":
+        return "Enter an email address";
+      case "url":
+        return "Enter a full URL";
+      case "pattern":
+        return "Doesn't match the expected format";
+    }
+  },
   attach: "Attach files",
   attachments: "Attachments",
   previewAttachment: (name: string) => `Preview ${name}`,
@@ -202,6 +227,7 @@ export const agentConversationStringsEn = {
   thinking: "Reasoning",
   thinkingLevels: {
     off: "Off",
+    auto: "Auto",
     minimal: "Minimal",
     low: "Low",
     medium: "Medium",
@@ -408,6 +434,30 @@ export const agentConversationStringsFr: typeof agentConversationStringsEn = {
   askCustom: (question: string) => `Autre réponse à : ${question}`,
   askCustomPlaceholder: "Autre réponse…",
   askRecommended: "Recommandé",
+  formError: (error: AgentConversationFormError) => {
+    switch (error.kind) {
+      case "required":
+        return "Obligatoire";
+      case "selectOne":
+        return "Choisissez au moins une option";
+      case "number":
+        return "Saisissez un nombre";
+      case "min":
+        return `Au moins ${error.limit.toLocaleString("fr-FR")}`;
+      case "max":
+        return `Au plus ${error.limit.toLocaleString("fr-FR")}`;
+      case "minLength":
+        return `Au moins ${error.limit} caractères`;
+      case "maxLength":
+        return `Au plus ${error.limit} caractères`;
+      case "email":
+        return "Saisissez une adresse e-mail";
+      case "url":
+        return "Saisissez une URL complète";
+      case "pattern":
+        return "Ne correspond pas au format attendu";
+    }
+  },
   attach: "Joindre des fichiers",
   attachments: "Pièces jointes",
   previewAttachment: (name: string) => `Aperçu de ${name}`,
@@ -432,6 +482,7 @@ export const agentConversationStringsFr: typeof agentConversationStringsEn = {
   thinking: "Raisonnement",
   thinkingLevels: {
     off: "Désactivé",
+    auto: "Auto",
     minimal: "Minimal",
     low: "Faible",
     medium: "Moyen",

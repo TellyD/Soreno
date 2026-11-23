@@ -727,7 +727,7 @@ it("asks a side question during a turn, streams it apart, stops it and follows i
   expect(topics).not.toContain("Pourquoi ?");
 });
 
-it("answers an ask round and an ask form field in the dock", async () => {
+it("answers an ask round, an ask form field and a whole form in the dock", async () => {
   let emit = (_record: AgentConversationRecord) => {};
   vi.mocked(api.subscribeAgentConversation).mockImplementation(
     async (_sessionId, onRecord) => {
@@ -881,6 +881,38 @@ it("answers an ask round and an ask form field in the dock", async () => {
     type: "extension_ui_response",
     id: "ui-field-2",
     value: "Apple",
+  });
+
+  // OMP 19.1.0 sends the whole form and fails the call on an answer it refuses: none leaves until valid.
+  await act(async () =>
+    emit({
+      type: "extension_ui_request",
+      id: "ui-form",
+      method: "form",
+      html: `<form><fieldset><legend>Couleur</legend>
+        <label><input type="radio" name="color" value="red" checked> Rouge</label>
+        <label><input type="radio" name="color" value="blue"> Bleu</label>
+        </fieldset><label>Note <input name="note" required></label></form>`,
+    }),
+  );
+  const form = container.querySelector(".agent-conversation-dock")!;
+  const button = (text: string) =>
+    [...form.querySelectorAll("button")].find(
+      (candidate) => candidate.textContent === text,
+    )!;
+  const pending = sent().length;
+  await act(async () => button(s.askSubmit).click());
+  expect(sent()).toHaveLength(pending);
+  const note = form.querySelector<HTMLInputElement>('[aria-invalid="true"]')!;
+  expect(document.activeElement).toBe(note);
+  expect(form.textContent).toContain(s.formError({ kind: "required" }));
+  await act(async () => button("Bleu").click());
+  await act(async () => setInputValue(note, "salut"));
+  await act(async () => button(s.askSubmit).click());
+  expect(sent().pop()).toEqual({
+    type: "extension_ui_response",
+    id: "ui-form",
+    data: { color: "blue", note: "salut" },
   });
 });
 

@@ -5,6 +5,7 @@ import type {
   AgentConversationState,
   AgentConversationTool,
 } from "./agentConversation";
+import { parseAgentConversationForm } from "./agentConversationForm";
 import { count, isObject, text } from "./agentConversationRecords";
 
 /** The latest running call of `tool` no dialog waits on yet. */
@@ -145,6 +146,13 @@ export function agentConversationDialog(
         kind: "ask",
         id,
         questions: agentConversationAskQuestions(record.questions),
+      };
+    // OMP 19.1.0: the `ask` tool and extension `ui.formDialog` send one whole HTML form.
+    case "form":
+      return {
+        kind: "form",
+        id,
+        form: parseAgentConversationForm(text(record.html)),
       };
     default:
       return null;

@@ -496,6 +496,35 @@ describe("OMP conversation transcript", () => {
       images: true,
     });
     expect(state.thinkingLevel).toBe("high");
+
+    // OMP 19.1.0 resolves `auto` per turn: the chosen level is the one to show and offer.
+    const auto = apply(
+      [
+        {
+          type: "thinking_level_changed",
+          thinkingLevel: "high",
+          configured: "auto",
+        },
+      ],
+      state,
+    );
+    expect(auto.thinkingLevel).toBe("auto");
+    const reloaded = apply([
+      {
+        type: "response",
+        command: "get_state",
+        success: true,
+        data: {
+          thinkingLevel: "high",
+          configuredThinkingLevel: "auto",
+          thinkingLevels: ["off", "auto", "low", "high"],
+        },
+      },
+    ]);
+    expect(reloaded).toMatchObject({
+      thinkingLevel: "auto",
+      thinkingAuto: true,
+    });
   });
   it("shows OMP's changelog as Markdown, apart from other command output", () => {
     const changelog = "## [18.12.1] - 2026-10-17\n\n### Fixed\n\n- Fixed `x`";

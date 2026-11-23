@@ -97,6 +97,7 @@ type AgentConversationComposerProps = {
     | "commands"
     | "thinkingLevel"
     | "thinkingLevels"
+    | "thinkingAuto"
     | "stats"
     | "goal"
   >;
@@ -677,7 +678,14 @@ export function AgentConversationComposer({
                 s.thinkingLevels,
                 conversation.thinkingLevel,
               )}`}
-              options={conversation.thinkingLevels.map((level) => ({
+              options={(conversation.thinkingAuto
+                ? [
+                    ...conversation.thinkingLevels.slice(0, 1),
+                    "auto",
+                    ...conversation.thinkingLevels.slice(1),
+                  ]
+                : conversation.thinkingLevels
+              ).map((level) => ({
                 value: level,
                 label: label(s.thinkingLevels, level),
               }))}

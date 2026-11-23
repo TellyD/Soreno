@@ -133,17 +133,22 @@ fn a_replay_restores_what_still_holds_and_nothing_else() {
 fn dialogs_await_until_answered_cancelled_or_settled() {
     let dialog = |id: &str, method: &str| json!({ "type": "extension_ui_request", "id": id, "method": method, "title": "?" });
     let mut state = State::default();
-    for (id, method) in [("1", "select"), ("2", "ask"), ("3", "confirm")] {
+    for (id, method) in [
+        ("1", "select"),
+        ("2", "ask"),
+        ("3", "confirm"),
+        ("5", "form"),
+    ] {
         assert_eq!(handle(&mut state, dialog(id, method)), FORWARD);
     }
     handle(&mut state, dialog("4", "notify"));
-    assert_eq!(state.dialogs.len(), 3);
+    assert_eq!(state.dialogs.len(), 4);
     handle(
         &mut state,
         json!({ "type": "extension_ui_request", "id": "c", "method": "cancel", "targetId": "2" }),
     );
     let ids: Vec<&str> = state.dialogs.iter().map(|(id, _)| id.as_str()).collect();
-    assert_eq!(ids, ["1", "3"]);
+    assert_eq!(ids, ["1", "3", "5"]);
     handle(&mut state, json!({ "type": "session_settled" }));
     assert!(state.dialogs.is_empty());
 }
