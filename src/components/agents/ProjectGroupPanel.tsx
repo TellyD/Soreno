@@ -1106,7 +1106,8 @@ export function ProjectGroupPanel({
                 readScope={connectedKey}
                 loginRevision={forgeLoginRevision}
                 commentTargets={commentTargets?.filter(
-                  (target) => !disconnectedProjectIds.includes(target.projectId),
+                  (target) =>
+                    !disconnectedProjectIds.includes(target.projectId),
                 )}
                 commentGitRoots={Object.fromEntries(
                   connected.map((member) => [
