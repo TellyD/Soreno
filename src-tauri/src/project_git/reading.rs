@@ -91,8 +91,7 @@ mod posix_metadata;
 #[cfg(all(test, unix))]
 use posix_metadata::posix_metadata_script;
 #[cfg(test)]
-use posix_metadata::{parse_remote_metadata, remote_path_record, remote_size_line};
-use posix_metadata::{posix_metadata, RemoteMetadata};
+use posix_metadata::{parse_remote_metadata, remote_path_record, remote_size_line, RemoteMetadata};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum NumstatRead {
@@ -856,99 +855,13 @@ pub(super) use archive::{commit_comparison, commit_detail, range_comparison, ran
 mod fingerprints;
 #[cfg(all(test, unix))]
 use fingerprints::worktree_fingerprints_with_lanes;
-use fingerprints::{
-    reusable_worktree_fingerprint, worktree_entry_needs_fingerprint, worktree_fingerprints,
-    FingerprintScan, WorktreeFingerprint,
-};
+use fingerprints::{reusable_worktree_fingerprint, worktree_fingerprints, WorktreeFingerprint};
 
 #[path = "reading/transport.rs"]
 mod transport;
 use transport::{posix_read, remote_read};
 #[cfg(test)]
 use transport::{remote_read_error, remote_read_timeout};
-
-fn posix_worktree_fingerprints(
-    project: &AgentProject,
-    identity: &GitIdentity,
-    entries: &mut [StatusEntry],
-    previous: &FingerprintMemo,
-    next: &mut FingerprintMemo,
-) -> Result<FingerprintScan, GitError> {
-    let mut scan = FingerprintScan {
-        fingerprints: vec![WorktreeFingerprint::Skipped; entries.len()],
-        hashed: 0,
-        reused: 0,
-    };
-    let selected = entries
-        .iter()
-        .enumerate()
-        .filter(|(_, entry)| worktree_entry_needs_fingerprint(entry) && entry.representable)
-        .map(|(index, entry)| (index, entry.path.clone()))
-        .collect::<Vec<_>>();
-    let paths = selected
-        .iter()
-        .map(|(_, path)| path.as_slice())
-        .collect::<Vec<_>>();
-    let known = paths
-        .iter()
-        .map(|path| previous.stamp(path))
-        .collect::<Vec<_>>();
-    let metadata = posix_metadata(project, &identity.root, &paths, &known)?;
-    for ((index, path), metadata) in selected.into_iter().zip(metadata) {
-        let fingerprint = &mut scan.fingerprints[index];
-        match metadata {
-            RemoteMetadata::Missing => *fingerprint = WorktreeFingerprint::Missing,
-            RemoteMetadata::Symlink(target) => {
-                if entries[index].index_status == b'?' {
-                    entries[index].mode = "120000".into();
-                }
-                *fingerprint = WorktreeFingerprint::Present {
-                    mode: "120000".into(),
-                    kind: "sha256",
-                    hash: snapshot_version(&target),
-                };
-            }
-            RemoteMetadata::Regular {
-                mode,
-                size,
-                oid,
-                stamp,
-            } => {
-                if entries[index].index_status == b'?' {
-                    entries[index].mode.clone_from(&mode);
-                }
-                let reused = stamp
-                    .as_ref()
-                    .and_then(|stamp| previous.get(&path, &stamp.key, &mode))
-                    .filter(|_| oid.is_none());
-                *fingerprint = match (oid, reused) {
-                    (Some(oid), _) => {
-                        scan.hashed += 1;
-                        WorktreeFingerprint::Present {
-                            mode,
-                            kind: "gitOid",
-                            hash: oid,
-                        }
-                    }
-                    (None, Some(known)) => {
-                        scan.reused += 1;
-                        known.clone()
-                    }
-                    // shortcut: large SSH files use size only; the stamp could replace it if same-size rewrites must invalidate previews.
-                    (None, None) => WorktreeFingerprint::Present {
-                        mode,
-                        kind: "size",
-                        hash: size.to_string(),
-                    },
-                };
-                if let Some(stamp) = &stamp {
-                    next.remember(&path, stamp, fingerprint);
-                }
-            }
-        }
-    }
-    Ok(scan)
-}
 
 #[path = "reading/content.rs"]
 mod content;

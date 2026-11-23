@@ -1,8 +1,9 @@
 use super::super::{object_hash::snapshot_version, GitError, GitIdentity};
+use super::posix_metadata::{posix_metadata, RemoteMetadata};
 use super::{
-    display_path, hash_file_bounded, hash_regular_paths, posix_worktree_fingerprints,
-    read_link_bytes, requires_posix_file_reads, DiskEntry, DiskRoot, FileStamp, FingerprintMemo,
-    StatusEntry, FILE_LIMIT,
+    display_path, hash_file_bounded, hash_regular_paths, read_link_bytes,
+    requires_posix_file_reads, DiskEntry, DiskRoot, FileStamp, FingerprintMemo, StatusEntry,
+    FILE_LIMIT,
 };
 use crate::agent_sessions::AgentProject;
 
@@ -40,6 +41,89 @@ pub(super) fn worktree_fingerprints(
         1
     };
     worktree_fingerprints_with_lanes(project, identity, entries, lanes, previous, next)
+}
+
+fn posix_worktree_fingerprints(
+    project: &AgentProject,
+    identity: &GitIdentity,
+    entries: &mut [StatusEntry],
+    previous: &FingerprintMemo,
+    next: &mut FingerprintMemo,
+) -> Result<FingerprintScan, GitError> {
+    let mut scan = FingerprintScan {
+        fingerprints: vec![WorktreeFingerprint::Skipped; entries.len()],
+        hashed: 0,
+        reused: 0,
+    };
+    let selected = entries
+        .iter()
+        .enumerate()
+        .filter(|(_, entry)| worktree_entry_needs_fingerprint(entry) && entry.representable)
+        .map(|(index, entry)| (index, entry.path.clone()))
+        .collect::<Vec<_>>();
+    let paths = selected
+        .iter()
+        .map(|(_, path)| path.as_slice())
+        .collect::<Vec<_>>();
+    let known = paths
+        .iter()
+        .map(|path| previous.stamp(path))
+        .collect::<Vec<_>>();
+    let metadata = posix_metadata(project, &identity.root, &paths, &known)?;
+    for ((index, path), metadata) in selected.into_iter().zip(metadata) {
+        let fingerprint = &mut scan.fingerprints[index];
+        match metadata {
+            RemoteMetadata::Missing => *fingerprint = WorktreeFingerprint::Missing,
+            RemoteMetadata::Symlink(target) => {
+                if entries[index].index_status == b'?' {
+                    entries[index].mode = "120000".into();
+                }
+                *fingerprint = WorktreeFingerprint::Present {
+                    mode: "120000".into(),
+                    kind: "sha256",
+                    hash: snapshot_version(&target),
+                };
+            }
+            RemoteMetadata::Regular {
+                mode,
+                size,
+                oid,
+                stamp,
+            } => {
+                if entries[index].index_status == b'?' {
+                    entries[index].mode.clone_from(&mode);
+                }
+                let reused = stamp
+                    .as_ref()
+                    .and_then(|stamp| previous.get(&path, &stamp.key, &mode))
+                    .filter(|_| oid.is_none());
+                *fingerprint = match (oid, reused) {
+                    (Some(oid), _) => {
+                        scan.hashed += 1;
+                        WorktreeFingerprint::Present {
+                            mode,
+                            kind: "gitOid",
+                            hash: oid,
+                        }
+                    }
+                    (None, Some(known)) => {
+                        scan.reused += 1;
+                        known.clone()
+                    }
+                    // shortcut: large SSH files use size only; the stamp could replace it if same-size rewrites must invalidate previews.
+                    (None, None) => WorktreeFingerprint::Present {
+                        mode,
+                        kind: "size",
+                        hash: size.to_string(),
+                    },
+                };
+                if let Some(stamp) = &stamp {
+                    next.remember(&path, stamp, fingerprint);
+                }
+            }
+        }
+    }
+    Ok(scan)
 }
 
 enum WorktreeFingerprintScan {
@@ -155,7 +239,7 @@ pub(super) fn worktree_fingerprints_with_lanes(
     Ok(scan)
 }
 
-pub(super) fn worktree_entry_needs_fingerprint(entry: &StatusEntry) -> bool {
+fn worktree_entry_needs_fingerprint(entry: &StatusEntry) -> bool {
     !entry.submodule
         && (entry.worktree_status != b'.' || entry.index_status == b'?')
         && entry.worktree_status != b'D'
