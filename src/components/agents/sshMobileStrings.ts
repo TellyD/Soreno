@@ -1,3 +1,5 @@
+import { mediumDateTimeFormat } from "../../domain/dateTime";
+
 export const sshMobileStringsEn = {
   sshMobile: "Mobile",
   sshMobileTitle: "Mobile access",
@@ -32,10 +34,7 @@ export const sshMobileStringsEn = {
   sshMobileDevicesUnknown:
     "Paired devices cannot be read right now; Soreno will try again.",
   sshMobileDeviceDates: (pairedAt: number, lastSeenAt: number | null) => {
-    const date = new Intl.DateTimeFormat("en", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    const date = mediumDateTimeFormat("en");
     return `Paired ${date.format(pairedAt)} · ${lastSeenAt === null ? "never used" : `last seen ${date.format(lastSeenAt)}`}`;
   },
   sshMobileRevoke: "Revoke",
@@ -108,10 +107,7 @@ export const sshMobileStringsFr: typeof sshMobileStringsEn = {
   sshMobileDevicesUnknown:
     "Les appareils appairés sont illisibles pour l’instant ; Soreno réessaie.",
   sshMobileDeviceDates: (pairedAt: number, lastSeenAt: number | null) => {
-    const date = new Intl.DateTimeFormat("fr", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    const date = mediumDateTimeFormat("fr");
     return `Appairé le ${date.format(pairedAt)} · ${lastSeenAt === null ? "jamais utilisé" : `vu le ${date.format(lastSeenAt)}`}`;
   },
   sshMobileRevoke: "Révoquer",

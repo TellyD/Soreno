@@ -1,4 +1,5 @@
 import { forgeStringsEn, forgeStringsFr } from "./forgeStrings";
+import { mediumDateTimeFormat } from "../../domain/dateTime";
 import { useI18n } from "../../i18n";
 
 const en = {
@@ -298,10 +299,7 @@ const en = {
   historyParents: (parents: string) => `Parents: ${parents}`,
   rootCommit: "Root commit",
   historyDate: (value: string) =>
-    new Intl.DateTimeFormat("en", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value)),
+    mediumDateTimeFormat("en").format(new Date(value)),
   refreshBranches: "Refresh branches",
   branchesLoading: "Reading branches…",
   localBranches: "Local",
@@ -686,10 +684,7 @@ const fr: typeof en = {
   historyParents: (parents: string) => `Parents : ${parents}`,
   rootCommit: "Commit racine",
   historyDate: (value: string) =>
-    new Intl.DateTimeFormat("fr", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value)),
+    mediumDateTimeFormat("fr").format(new Date(value)),
   refreshBranches: "Actualiser les branches",
   branchesLoading: "Lecture des branches…",
   localBranches: "Locales",

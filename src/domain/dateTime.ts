@@ -110,6 +110,9 @@ function parseDate(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+export const mediumDateTimeFormat = (locale: string) =>
+  new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
+
 export function compareDate(left: string, right: string): number {
   return normalizeTimestamp(left) - normalizeTimestamp(right);
 }
