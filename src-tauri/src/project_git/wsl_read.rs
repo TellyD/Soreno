@@ -5,7 +5,7 @@ use super::{
 use crate::agent_sessions::AgentProject;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use std::{
-    cell::{Cell, RefCell},
+    cell::Cell,
     collections::HashMap,
     io::Write,
     process::{Child, Command, Stdio},
@@ -20,6 +20,9 @@ use std::{
 #[path = "wsl_read/admission.rs"]
 mod admission;
 
+#[path = "wsl_read/display_scope.rs"]
+mod display_scope;
+
 #[path = "wsl_read/protocol.rs"]
 mod protocol;
 
@@ -27,6 +30,7 @@ mod protocol;
 mod relay_spec;
 
 use admission::{Admission, AdmissionPermit};
+use display_scope::{with_display_scope, PoolPolicy, ScopeKey, DISPLAY_SCOPE, POOL_POLICY};
 use protocol::{decode_capture, forward_responses, WireRequest, WireResponse};
 #[cfg(test)]
 use protocol::{read_response_frame, RESPONSE_FRAME_LIMIT};
@@ -44,43 +48,6 @@ const STDOUT_LIMIT: usize = 8 * 1024 * 1024;
 const STDERR_LIMIT: usize = 256 * 1024;
 const REQUEST_FRAME_LIMIT: usize = 12 * 1024 * 1024;
 const RELAY_SOURCE: &[u8] = include_bytes!("wsl_read.py");
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum PoolPolicy {
-    Foreground,
-    Background,
-}
-
-thread_local! {
-    static DISPLAY_SCOPE: RefCell<Option<ScopeKey>> = const { RefCell::new(None) };
-    static POOL_POLICY: Cell<PoolPolicy> = const { Cell::new(PoolPolicy::Foreground) };
-}
-
-struct DisplayGuard {
-    scope: Option<ScopeKey>,
-    policy: PoolPolicy,
-}
-
-impl Drop for DisplayGuard {
-    fn drop(&mut self) {
-        DISPLAY_SCOPE.with(|scope| *scope.borrow_mut() = self.scope.take());
-        POOL_POLICY.with(|policy| policy.set(self.policy));
-    }
-}
-
-fn with_display_scope<T>(
-    project: &AgentProject,
-    policy: PoolPolicy,
-    read: impl FnOnce() -> Result<T, GitError>,
-) -> Result<T, GitError> {
-    let previous_scope = DISPLAY_SCOPE.with(|scope| scope.replace(Some(ScopeKey::from(project))));
-    let previous_policy = POOL_POLICY.with(|current| current.replace(policy));
-    let _guard = DisplayGuard {
-        scope: previous_scope,
-        policy: previous_policy,
-    };
-    read()
-}
 
 pub(super) fn with_display_reads<T>(
     project: &AgentProject,
@@ -103,25 +70,6 @@ pub(super) fn with_background_display_reads<T>(
     read: impl FnOnce() -> Result<T, GitError>,
 ) -> Result<T, GitError> {
     with_display_scope(project, PoolPolicy::Background, read)
-}
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-struct ScopeKey {
-    id: String,
-    path: String,
-    environment: String,
-    distribution: Option<String>,
-}
-
-impl From<&AgentProject> for ScopeKey {
-    fn from(project: &AgentProject) -> Self {
-        Self {
-            id: project.id.clone(),
-            path: project.path.clone(),
-            environment: project.environment.kind.clone(),
-            distribution: project.environment.distribution.clone(),
-        }
-    }
 }
 
 struct PoolEntry {
