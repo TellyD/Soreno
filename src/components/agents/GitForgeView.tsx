@@ -52,7 +52,6 @@ import { useFoldWhenTight } from "../../hooks/useFoldWhenTight";
 import type { useProjectGit } from "../../hooks/useProjectGit";
 import { useI18n } from "../../i18n";
 import { notifyError } from "../../notifications";
-import { MarkdownContent } from "../MarkdownContent";
 import { Button } from "../ui/Button";
 import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { EmptyState } from "../ui/EmptyState";
@@ -76,7 +75,8 @@ import {
   type WorktreeRequest,
 } from "./GitWorktreeDialog";
 import { ForgeRequestHeader } from "./GitForgeRequestHeader";
-import { ForgeRequestRow, ForgeStatusIcon } from "./GitForgeRequestRow";
+import { ForgeRequestOverview } from "./GitForgeRequestOverview";
+import { ForgeRequestRow } from "./GitForgeRequestRow";
 import { useGitStrings } from "./gitStrings";
 import { formatOperationError } from "./operationError";
 import { RailResizer } from "./RailResizer";
@@ -1343,67 +1343,12 @@ export function GitForgeView({
                   </div>
                 </div>
                 <div className="git-forge-tab" data-tab={tab}>
-                  {tab === "description" ? (
-                    shownDetail.body.trim() ? (
-                      <MarkdownContent
-                        className="project-file-markdown git-forge-body"
-                        content={shownDetail.body}
-                      />
-                    ) : (
-                      <EmptyState
-                        size="compact"
-                        description={s.forgeNoDescription}
-                      />
-                    )
-                  ) : tab === "checks" ? (
-                    shownDetail.checkRuns.length ? (
-                      <ul className="git-forge-items">
-                        {shownDetail.checkRuns.map((check, index) => (
-                          <li key={`${index}:${check.name}`}>
-                            <ForgeStatusIcon status={check.status} />
-                            {check.url ? (
-                              <button
-                                type="button"
-                                className="git-forge-link"
-                                onClick={() => openInBrowser(check.url!)}
-                              >
-                                {check.name}
-                              </button>
-                            ) : (
-                              <span>{check.name}</span>
-                            )}
-                            <small>{s.forgeCheckStatus[check.status]}</small>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <EmptyState
-                        size="compact"
-                        description={s.forgeNoChecks}
-                      />
-                    )
-                  ) : tab === "commits" ? (
-                    shownDetail.commits.length ? (
-                      <ul className="git-forge-items">
-                        {shownDetail.commits.map((commit) => (
-                          <li key={commit.oid}>
-                            <code title={commit.oid}>
-                              {commit.oid.slice(0, 8)}
-                            </code>
-                            <span>{commit.title}</span>
-                            <small>{commit.author}</small>
-                            <time dateTime={commit.date}>
-                              {formatCompactDate(commit.date, locale)?.value}
-                            </time>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <EmptyState
-                        size="compact"
-                        description={s.forgeNoCommits}
-                      />
-                    )
+                  {tab !== "files" ? (
+                    <ForgeRequestOverview
+                      detail={shownDetail}
+                      tab={tab}
+                      onOpenUrl={openInBrowser}
+                    />
                   ) : !shownChanges ? (
                     changesLoading ? (
                       <LoadingState className="git-panel-centered-status">
