@@ -106,6 +106,96 @@ describe("diffLineCommentRequest", () => {
     );
     expect(text).not.toContain("git -C");
   });
+
+  it("formats a pull request diff with its branch and base..head git diff", () => {
+    const text = diffLineCommentRequest(
+      {
+        path: "src/value.ts",
+        version: "after",
+        fromLine: 2,
+        toLine: 3,
+        text: "return average;",
+        forgeRequest: {
+          kind: "github",
+          number: 42,
+          title: "Fix average",
+          sourceBranch: "fix/avg",
+          targetBranch: "main",
+          base: "abc123",
+          head: "def456",
+        },
+      },
+      "Gère le cas vide.",
+    );
+    expect(text.split("\n")[0]).toBe(
+      "Soreno comment on src/value.ts lines 2-3 (PR #42): Gère le cas vide.",
+    );
+    expect(text).toContain("PR #42: Fix average (fix/avg -> main)\n");
+    expect(text).toContain("Selected code (head version, PR #42):\n");
+    expect(text).toContain(
+      "Act on this comment (branch fix/avg); if you disagree, explain why. See the change with `git diff abc123 def456 -- src/value.ts`.",
+    );
+  });
+
+  it("formats a merge request diff in a group repository and supports base version", () => {
+    const text = diffLineCommentRequest(
+      {
+        path: "src/value.ts",
+        version: "before",
+        fromLine: 5,
+        toLine: 5,
+        text: "return 0;",
+        gitRoot: "/srv/my repo",
+        repository: { name: "API", path: "/srv/my repo" },
+        forgeRequest: {
+          kind: "gitlab",
+          number: 7,
+          title: "Refactor API",
+          sourceBranch: "feat/api",
+          targetBranch: "main",
+          base: "base1",
+          head: "head1",
+        },
+      },
+      "Pourquoi supprimer ?",
+    );
+    expect(text.split("\n")[0]).toBe(
+      "Soreno comment on src/value.ts line 5 in API (MR !7): Pourquoi supprimer ?",
+    );
+    expect(text).toContain(
+      "Repository: API at /srv/my repo\nMR !7: Refactor API (feat/api -> main)\n",
+    );
+    expect(text).toContain("Selected code (base version, MR !7):\n");
+    expect(text).toContain(
+      "Act on this comment in API (branch feat/api); if you disagree, explain why. See the change with `git -C '/srv/my repo' diff base1 head1 -- src/value.ts`.",
+    );
+  });
+
+  it("falls back to a generic request label when the forge kind is unknown", () => {
+    const text = diffLineCommentRequest(
+      {
+        path: "src/value.ts",
+        version: "after",
+        fromLine: 1,
+        toLine: 1,
+        text: "return 1;",
+        forgeRequest: {
+          kind: null,
+          number: 9,
+          title: "Patch",
+          sourceBranch: "patch",
+          targetBranch: "main",
+          base: "b1",
+          head: "h1",
+        },
+      },
+      "Clarifie.",
+    );
+    expect(text.split("\n")[0]).toBe(
+      "Soreno comment on src/value.ts line 1 (request #9): Clarifie.",
+    );
+    expect(text).toContain("request #9: Patch (patch -> main)\n");
+  });
 });
 
 describe("diffLineRangeLabel", () => {

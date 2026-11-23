@@ -71,9 +71,9 @@ type GitDiffViewProps = {
   comparison: GitComparison;
   showMinimap?: boolean;
   toolbarActions?: ReactNode;
-  /** Offers "Comment" on selected lines; `side` is the Git side this comparison shows. */
+  /** Offers "Comment" on selected lines; `side` is the Git side when comparing working-tree changes. */
   lineComments?: {
-    side: GitSide;
+    side?: GitSide;
     onComment: (selection: DiffLineSelection) => void;
   };
   footer?: ReactNode;

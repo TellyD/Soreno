@@ -26,6 +26,7 @@ import * as forgeApi from "../../data/forgeApi";
 import * as api from "../../data/projectGitApi";
 import type { AgentProject } from "../../domain/agentSessions";
 import { formatCompactDate } from "../../domain/dateTime";
+import type { DiffLineSelection } from "../../domain/diffLineComment";
 import {
   currentBranchRequestFirst,
   forgeErrorCode,
@@ -63,6 +64,10 @@ import { SegmentedControl, SegmentedControlItem } from "../ui/SegmentedControl";
 import { Select } from "../ui/Select";
 import { useAgentStrings } from "./agentStrings";
 import { GitFileSummary } from "./GitChangeList";
+import {
+  GitDiffLineComment,
+  type GitDiffCommentTarget,
+} from "./GitDiffLineComment";
 import GitDiffView from "./GitDiffView";
 import {
   GitWorktreeDialog,
@@ -113,6 +118,22 @@ function mainFailure(results: readonly PromiseSettledResult<unknown>[]) {
   return reasons.find((reason) => !withoutForge(reason)) ?? reasons[0];
 }
 
+type ForgeCommentTarget = {
+  scope: string;
+  projectId: string;
+  number: number;
+  path: string;
+};
+
+function sameForgeComment(a: ForgeCommentTarget, b: ForgeCommentTarget) {
+  return (
+    a.scope === b.scope &&
+    a.projectId === b.projectId &&
+    a.number === b.number &&
+    a.path === b.path
+  );
+}
+
 type GitForgeViewProps = {
   active: boolean;
   /** One repository, or a group overview's members listed together. */
@@ -122,6 +143,10 @@ type GitForgeViewProps = {
   readScope?: string;
   /** Bumped when a forge sign-in terminal exits successfully. */
   loginRevision?: number;
+  /** Running agents that may receive diff line comments (group agents + member agents in overview). */
+  commentTargets?: readonly GitDiffCommentTarget[];
+  /** Git root per project id when `git` is absent (group overview). */
+  commentGitRoots?: Readonly<Record<string, string>>;
   onKind?: (kind: ForgeKind) => void;
   onLogin?: (kind: ForgeKind) => void;
   onWorktreeCreated?: (
@@ -136,6 +161,8 @@ export function GitForgeView({
   git,
   readScope,
   loginRevision,
+  commentTargets,
+  commentGitRoots,
   onKind,
   onLogin,
   onWorktreeCreated,
@@ -172,7 +199,8 @@ export function GitForgeView({
   const [refreshToken, setRefreshToken] = useState(0);
   const [remote, setRemote] = useState<{
     scope: string;
-    kind: ForgeKind;
+    kind: ForgeKind | null;
+    byProject: Record<string, ForgeKind>;
   } | null>(null);
   const [list, setList] = useState<{
     scope: string;
@@ -221,6 +249,12 @@ export function GitForgeView({
     value: GitComparison;
   } | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
+  const [commented, setCommented] = useState<{
+    target: ForgeCommentTarget;
+    selection: DiffLineSelection;
+    comparisonKey: string;
+    draft: string;
+  } | null>(null);
   const [acting, setActing] = useState(false);
   const [mergeRequest, setMergeRequest] = useState<{
     scope: string;
@@ -310,6 +344,51 @@ export function GitForgeView({
   const shownComparison = comparisonShown
     ? comparison.value
     : (comparisonCache.current.get(comparisonCacheKey)?.value ?? null);
+  const selectedProject = projects.find(
+    (item) => item.id === selectedProjectId,
+  );
+  const activeCommentTargets =
+    commentTargets && selectedProject
+      ? git
+        ? commentTargets
+        : commentTargets.filter(
+            (target) =>
+              target.projectId === selectedProject.id ||
+              !projects.some((item) => item.id === target.projectId),
+          )
+      : undefined;
+  const commentGitRoot = git
+    ? git.repo?.identity?.root
+    : selectedProject
+      ? (commentGitRoots?.[selectedProject.id] ?? selectedProject.path)
+      : undefined;
+  const commentRepository =
+    !git && selectedProject && commentGitRoot
+      ? { name: selectedProject.name, path: commentGitRoot }
+      : undefined;
+  const selectedKind =
+    selectedProjectId && remote?.scope === scope
+      ? (remote.byProject[selectedProjectId] ?? null)
+      : null;
+  const currentCommentTarget =
+    selectedProjectId !== null && selectedNumber !== null && shownComparison
+      ? {
+          scope,
+          projectId: selectedProjectId,
+          number: selectedNumber,
+          path: shownComparison.path,
+        }
+      : null;
+  const comparisonKey =
+    shownComparison && diffBase !== undefined && diffHead !== undefined
+      ? `${diffBase}:${diffHead}:${shownComparison.version}`
+      : null;
+  const activeComment =
+    commented &&
+    currentCommentTarget &&
+    sameForgeComment(commented.target, currentCommentTarget)
+      ? commented
+      : null;
 
   function errorText(reason: unknown) {
     const state = forgeStateError(reason);
@@ -362,26 +441,26 @@ export function GitForgeView({
   useEffect(() => {
     if (!active) return;
     const request = ++remoteGeneration.current;
+    const sources = projectsRef.current;
     void Promise.allSettled(
-      projectsRef.current.map((project) =>
-        forgeApi.readForgeRemote(project.id),
-      ),
+      sources.map((project) => forgeApi.readForgeRemote(project.id)),
     ).then((results) => {
       if (request !== remoteGeneration.current) return;
-      const kinds = new Set(
-        results.flatMap((result) =>
-          result.status === "fulfilled" ? [result.value.kind] : [],
-        ),
-      );
+      const byProject: Record<string, ForgeKind> = {};
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled")
+          byProject[sources[index].id] = result.value.kind;
+      });
+      const kinds = new Set(Object.values(byProject));
       // Mixed forges keep the generic labels.
       // shortcut: in a mixed GitHub/GitLab group, errors name gh and hide the sign-in button; keep each member's kind with its failure if such groups appear.
-      if (kinds.size === 1) {
-        const [value] = kinds;
-        setRemote({ scope, kind: value });
-        onKindRef.current?.(value);
+      if (kinds.size >= 1) {
+        const value = kinds.size === 1 ? [...kinds][0] : null;
+        setRemote({ scope, kind: value, byProject });
+        if (value) onKindRef.current?.(value);
         return;
       }
-      const reason = kinds.size ? null : mainFailure(results);
+      const reason = mainFailure(results);
       // Other failures recur in the list read, which re-detects the remote and reports them.
       if (reason && forgeStateError(reason)) reportRef.current(reason, true);
     });
@@ -1347,6 +1426,74 @@ export function GitForgeView({
                           <GitDiffView
                             comparison={shownComparison}
                             showMinimap
+                            lineComments={
+                              activeCommentTargets &&
+                              shownDetail &&
+                              shownChanges &&
+                              currentCommentTarget &&
+                              comparisonKey
+                                ? {
+                                    onComment: (selection) =>
+                                      setCommented((previous) => ({
+                                        target: currentCommentTarget,
+                                        selection: {
+                                          ...selection,
+                                          forgeRequest: {
+                                            kind: selectedKind,
+                                            number: shownDetail.number,
+                                            title: shownDetail.title,
+                                            sourceBranch:
+                                              shownDetail.sourceBranch,
+                                            targetBranch:
+                                              shownDetail.targetBranch,
+                                            base: shownChanges.base,
+                                            head: shownChanges.head,
+                                          },
+                                          gitRoot: commentGitRoot,
+                                          repository: commentRepository,
+                                        },
+                                        comparisonKey,
+                                        draft:
+                                          previous &&
+                                          sameForgeComment(
+                                            previous.target,
+                                            currentCommentTarget,
+                                          )
+                                            ? previous.draft
+                                            : "",
+                                      })),
+                                  }
+                                : undefined
+                            }
+                            footer={
+                              activeComment && activeCommentTargets ? (
+                                <GitDiffLineComment
+                                  selection={activeComment.selection}
+                                  draft={activeComment.draft}
+                                  stale={
+                                    activeComment.comparisonKey !==
+                                    comparisonKey
+                                  }
+                                  targets={activeCommentTargets}
+                                  onDraftChange={(draft) =>
+                                    setCommented(
+                                      (previous) =>
+                                        previous && { ...previous, draft },
+                                    )
+                                  }
+                                  onSent={(sent) =>
+                                    setCommented((previous) =>
+                                      previous &&
+                                      previous.draft === sent.draft &&
+                                      previous.selection === sent.selection
+                                        ? { ...previous, draft: "" }
+                                        : previous,
+                                    )
+                                  }
+                                  onClose={() => setCommented(null)}
+                                />
+                              ) : null
+                            }
                           />
                         ) : diffLoading ? (
                           <LoadingState className="git-panel-centered-status">
