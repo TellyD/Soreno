@@ -30,6 +30,7 @@ import {
   type GitHistory,
 } from "../../domain/projectGit";
 import { isProjectFileWithin } from "../../domain/projectFiles";
+import { sameItems } from "../../domain/sameItems";
 import { useNotification } from "../../notifications";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
@@ -323,8 +324,9 @@ export function GitHistoryView({
         : scope) &&
     ((error.operation.kind === "refresh" && error.operation.head === head) ||
       (error.operation.kind === "loadMore" &&
-        JSON.stringify(page?.roots) === JSON.stringify(error.operation.roots) &&
-        page?.commits.length === error.operation.offset) ||
+        page !== null &&
+        sameItems(page.roots, error.operation.roots) &&
+        page.commits.length === error.operation.offset) ||
       (error.operation.kind === "detail" &&
         selected?.oid === error.operation.oid) ||
       (error.operation.kind === "diff" &&
@@ -629,7 +631,7 @@ export function GitHistoryView({
     } else if (
       operation.kind === "loadMore" &&
       page &&
-      JSON.stringify(page.roots) === JSON.stringify(operation.roots) &&
+      sameItems(page.roots, operation.roots) &&
       page.commits.length === operation.offset
     )
       void loadMore(true);

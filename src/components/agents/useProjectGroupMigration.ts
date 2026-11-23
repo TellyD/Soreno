@@ -6,6 +6,7 @@ import {
   type AgentProjectWorktreeGroup,
   type AgentWorkspace,
 } from "../../domain/agentSessions";
+import { sameItems } from "../../domain/sameItems";
 import { notifyWarning } from "../../notifications";
 import type { AgentProjectGroup } from "./AgentForms";
 import { useAgentStrings } from "./agentStrings";
@@ -101,7 +102,7 @@ export function useProjectGroupMigration({
         assigned.add(representative);
         return [representative];
       });
-      return JSON.stringify(projectIds) === JSON.stringify(group.projectIds)
+      return sameItems(projectIds, group.projectIds)
         ? []
         : [{ id: group.id, name: group.name, projectIds }];
     });

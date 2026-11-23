@@ -22,6 +22,7 @@ import {
   type AgentWorkspace,
 } from "../domain/agentSessions";
 import { asError, errorMessage } from "../domain/errors";
+import { sameItems } from "../domain/sameItems";
 import {
   projectServiceKey,
   type ProjectService,
@@ -721,7 +722,7 @@ export function useAgentSessions(
         if (!responseIsCurrent()) return;
         setWorktreeError(null);
         setMissingProjectIds((current) =>
-          JSON.stringify(current) === JSON.stringify(snapshot.missingProjectIds)
+          sameItems(current, snapshot.missingProjectIds)
             ? current
             : snapshot.missingProjectIds,
         );

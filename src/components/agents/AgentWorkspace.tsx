@@ -64,6 +64,7 @@ import {
   type GitCloneRequest,
 } from "../../domain/projectGit";
 import { projectServiceKey } from "../../domain/projectServices";
+import { sameItems } from "../../domain/sameItems";
 import {
   AgentServiceError,
   useAgentSessions,
@@ -1325,9 +1326,7 @@ export function AgentWorkspace({
       const next = orderAgentItems(workspace.projects, previous).map(
         (project) => project.id,
       );
-      return JSON.stringify(next) === JSON.stringify(previous)
-        ? previous
-        : next;
+      return sameItems(next, previous) ? previous : next;
     });
   }, [desktop, workspace.projects, hasLoaded, loading, loadError]);
 
@@ -1387,7 +1386,7 @@ export function AgentWorkspace({
         current,
         derivedProjectSectionIds,
       );
-      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+      return sameItems(next, current) ? current : next;
     });
   }, [
     desktop,
