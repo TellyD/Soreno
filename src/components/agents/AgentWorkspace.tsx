@@ -8,7 +8,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as api from "../../data/agentSessionsApi";
-import { listenCloseTab } from "../../data/appMenuApi";
 import * as gitApi from "../../data/projectGitApi";
 import {
   agentEnvironmentKey,
@@ -134,6 +133,7 @@ import { useLinkedAgentLaunch } from "./useLinkedAgentLaunch";
 import { useRecoveryAgentLaunch } from "./useRecoveryAgentLaunch";
 import { useWorkspaceServices } from "./useWorkspaceServices";
 import { useToolsPanelMode } from "./useToolsPanelMode";
+import { useCloseTabShortcut } from "./useCloseTabShortcut";
 import {
   collapsedProjectsKey,
   projectOrderKey,
@@ -164,8 +164,6 @@ import "./GitPanel.css";
 import "./GitControls.css";
 import "./AgentTerminalWorkspace.css";
 import "./AgentForms.css";
-
-const isMacOS = import.meta.env.TAURI_ENV_PLATFORM === "darwin";
 
 export type AgentTransitionGuard = {
   prepare: () => Promise<boolean>;
@@ -1046,32 +1044,7 @@ export function AgentWorkspace({
     void performAction({ kind: "close", session: activePaneSession });
     return true;
   };
-  useEffect(() => {
-    if (isMacOS) {
-      const unlisten = listenCloseTab(() => closeActiveTab.current()).catch(
-        () => undefined,
-      );
-      return () => void unlisten.then((stop) => stop?.());
-    }
-    // Capture phase, before the terminal; plain Ctrl+W stays the shell's delete-word.
-    function handleCloseShortcut(event: KeyboardEvent) {
-      if (
-        event.isComposing ||
-        event.altKey ||
-        event.metaKey ||
-        !event.ctrlKey ||
-        !event.shiftKey ||
-        event.key.toLowerCase() !== "w" ||
-        !closeActiveTab.current()
-      )
-        return;
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    document.addEventListener("keydown", handleCloseShortcut, true);
-    return () =>
-      document.removeEventListener("keydown", handleCloseShortcut, true);
-  }, []);
+  useCloseTabShortcut(closeActiveTab);
   const activeIssueLink = activePaneId
     ? kanbanIssueSessions.find((link) => link.sessionId === activePaneId)
     : undefined;
