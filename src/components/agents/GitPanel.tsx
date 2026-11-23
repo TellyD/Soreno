@@ -869,6 +869,7 @@ export function GitPanel({
               projects={[project]}
               readScope={readScope}
               loginRevision={forgeLoginRevision}
+              commentTargets={commentTargets}
               onKind={(kind) => {
                 if (readScope === undefined) return;
                 writeCachedForgeKind(project.id, kind);

@@ -13,8 +13,11 @@ import type {
   GitRepository,
   GitWorktree,
 } from "../../domain/projectGit";
+import * as agentApi from "../../data/agentSessionsApi";
 import { writeClipboardText } from "../../data/clipboard";
 import * as forgeApi from "../../data/forgeApi";
+import type { AgentSessionMessage } from "../../domain/agentSessions";
+import type { DiffLineSelection } from "../../domain/diffLineComment";
 import type { ForgeRequestDetail } from "../../domain/forge";
 import * as api from "../../data/projectGitApi";
 import { useProjectGit } from "../../hooks/useProjectGit";
@@ -80,6 +83,11 @@ vi.mock("@base-ui/react/menu", async () => {
   };
 });
 vi.mock("../../hooks/useProjectGit", () => ({ useProjectGit: vi.fn() }));
+vi.mock("../../data/agentSessionsApi", () => ({
+  sendAgentSessionMessage: vi.fn(),
+  listAgentSessionMessages: vi.fn(async () => []),
+  listenAgentSessionMessages: vi.fn(async () => () => {}),
+}));
 vi.mock("../../data/forgeApi", () => ({
   readForgeRemote: vi.fn(),
   readForgeRequests: vi.fn(),
@@ -132,10 +140,38 @@ vi.mock("./GitDiffView", () => ({
   default: ({
     comparison,
     toolbarActions,
+    lineComments,
+    footer,
   }: {
     comparison: GitComparison;
     toolbarActions?: ReactNode;
-  }) => <div data-diff={comparison.path}>{toolbarActions}</div>,
+    lineComments?: {
+      side?: DiffLineSelection["side"];
+      onComment: (selection: DiffLineSelection) => void;
+    };
+    footer?: ReactNode;
+  }) => (
+    <div data-diff={comparison.path}>
+      {toolbarActions}
+      {lineComments ? (
+        <button
+          onClick={() =>
+            lineComments.onComment({
+              path: comparison.path,
+              side: lineComments.side,
+              version: "after",
+              fromLine: 1,
+              toLine: 1,
+              text: "changed();",
+            })
+          }
+        >
+          Select line 1
+        </button>
+      ) : null}
+      {footer}
+    </div>
+  ),
 }));
 vi.mock("./ProjectExplorer", () => ({
   ProjectExplorer: (props: {
@@ -3175,4 +3211,173 @@ it("drops the file history filter when opening a commit warning SHA", async () =
     "src",
   );
   expect(container.querySelector(".git-history-filter")).toBeNull();
+});
+
+it("comments a pull request diff line and sends it to the running agent", async () => {
+  const pull: ForgeRequestDetail = {
+    number: 12,
+    title: "Fix auth",
+    author: "ada",
+    sourceBranch: "fix/auth",
+    targetBranch: "main",
+    crossRepository: false,
+    draft: false,
+    state: "open",
+    checks: "success",
+    review: "approved",
+    conflicts: false,
+    createdAt: "2026-01-01T00:00:00Z",
+    url: "https://github.com/o/r/pull/12",
+    body: "",
+    headOid: "head-12",
+    baseOid: "base-12",
+    reviewers: [],
+    labels: [],
+    checkRuns: [],
+    commits: [],
+    mergeBlockers: [],
+    mergeMethods: ["merge"],
+    deleteSourceBranch: false,
+    changedFiles: 1,
+    repository: "github.com/o/r",
+  };
+  vi.mocked(forgeApi.readForgeRemote).mockResolvedValue({
+    kind: "github",
+    host: "github.com",
+    path: "o/r",
+    remote: "origin",
+    webUrl: "https://github.com/o/r",
+  });
+  vi.mocked(forgeApi.readForgeRequests).mockResolvedValue([pull]);
+  vi.mocked(forgeApi.readForgeRequest).mockResolvedValue(pull);
+  vi.mocked(forgeApi.readForgeChanges).mockResolvedValue({
+    base: "base-sha",
+    head: "head-sha",
+    files: [
+      {
+        path: "src/auth.ts",
+        oldPath: null,
+        indexStatus: ".",
+        worktreeStatus: "M",
+        conflict: false,
+        submodule: false,
+        actionable: false,
+        mode: "100644",
+        added: 1,
+        deleted: 0,
+      },
+    ],
+  });
+  vi.mocked(forgeApi.readForgeComparison).mockResolvedValue({
+    path: "src/auth.ts",
+    oldPath: null,
+    version: "base-sha..head-sha",
+    before: {} as never,
+    after: {} as never,
+  });
+  vi.mocked(agentApi.sendAgentSessionMessage).mockResolvedValue({
+    id: "m1",
+    sessionId: "agent-1",
+    body: "",
+    status: "queued",
+    error: null,
+    createdAt: "2026-09-29T10:12:00Z",
+    deliveredAt: null,
+  } satisfies AgentSessionMessage);
+  hook = { ...hook, draft: { ...hook.draft, view: "requests" } };
+  await render({
+    commentTargets: [
+      {
+        sessionId: "agent-1",
+        projectId: project.id,
+        name: "Claude",
+        executable: "claude",
+      },
+    ],
+  });
+
+  await vi.waitFor(() =>
+    expect(
+      [...container.querySelectorAll(".git-forge-tab-button")].find((item) =>
+        item.textContent?.startsWith("Fichiers"),
+      ),
+    ).toBeDefined(),
+  );
+  await act(async () =>
+    [...container.querySelectorAll<HTMLButtonElement>(".git-forge-tab-button")]
+      .find((item) => item.textContent?.startsWith("Fichiers"))!
+      .click(),
+  );
+  await vi.waitFor(() =>
+    expect(container.querySelector('[data-diff="src/auth.ts"]')).not.toBeNull(),
+  );
+  await act(async () => button("Select line 1", container).click());
+  const textarea = container.querySelector<HTMLTextAreaElement>(
+    ".git-diff-comment textarea",
+  )!;
+  await act(async () => setInputValue(textarea, "Vérifie le cas null."));
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>(
+        '.git-diff-comment button[type="submit"]',
+      )!
+      .click(),
+  );
+  expect(agentApi.sendAgentSessionMessage).toHaveBeenCalledTimes(1);
+  const [sessionId, , body] = vi.mocked(agentApi.sendAgentSessionMessage).mock
+    .calls[0];
+  expect(sessionId).toBe("agent-1");
+  expect(body.split("\n")[0]).toBe(
+    "Soreno comment on src/auth.ts line 1 (PR #12): Vérifie le cas null.",
+  );
+  expect(body).toContain("PR #12: Fix auth (fix/auth -> main)");
+  expect(body).toContain(
+    "`git -C /projects/soreno diff base-sha head-sha -- src/auth.ts`",
+  );
+
+  // Refreshing onto a new head marks an open draft stale until lines are selected again.
+  await act(async () => setInputValue(textarea, "Autre remarque."));
+  const submit = () =>
+    container.querySelector<HTMLButtonElement>(
+      '.git-diff-comment button[type="submit"]',
+    )!;
+  expect(submit().disabled).toBe(false);
+  const updatedPull: ForgeRequestDetail = { ...pull, headOid: "head-12-v2" };
+  vi.mocked(forgeApi.readForgeRequests).mockResolvedValue([updatedPull]);
+  vi.mocked(forgeApi.readForgeRequest).mockResolvedValue(updatedPull);
+  vi.mocked(forgeApi.readForgeChanges).mockResolvedValue({
+    base: "base-sha",
+    head: "head-sha-2",
+    files: [
+      {
+        path: "src/auth.ts",
+        oldPath: null,
+        indexStatus: ".",
+        worktreeStatus: "M",
+        conflict: false,
+        submodule: false,
+        actionable: false,
+        mode: "100644",
+        added: 2,
+        deleted: 0,
+      },
+    ],
+  });
+  vi.mocked(forgeApi.readForgeComparison).mockResolvedValue({
+    path: "src/auth.ts",
+    oldPath: null,
+    version: "base-sha..head-sha-2",
+    before: {} as never,
+    after: {} as never,
+  });
+  await act(async () => button("Actualiser", container).click());
+  await vi.waitFor(() => expect(submit().disabled).toBe(true));
+  expect(
+    container.querySelector('.git-diff-comment [role="status"]'),
+  ).not.toBeNull();
+  await act(async () => button("Select line 1", container).click());
+  expect(submit().disabled).toBe(false);
+  expect(
+    container.querySelector('.git-diff-comment [role="status"]'),
+  ).toBeNull();
 });

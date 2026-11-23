@@ -1105,6 +1105,15 @@ export function ProjectGroupPanel({
                 projects={connected}
                 readScope={connectedKey}
                 loginRevision={forgeLoginRevision}
+                commentTargets={commentTargets?.filter(
+                  (target) => !disconnectedProjectIds.includes(target.projectId),
+                )}
+                commentGitRoots={Object.fromEntries(
+                  connected.map((member) => [
+                    member.id,
+                    reads[member.id]?.repo?.identity?.root ?? member.path,
+                  ]),
+                )}
                 onKind={setForgeKind}
                 onLogin={onForgeLogin}
               />

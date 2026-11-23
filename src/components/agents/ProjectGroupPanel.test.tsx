@@ -65,7 +65,7 @@ vi.mock("./GitDiffView", () => ({
     comparison: { path: string };
     toolbarActions?: ReactNode;
     lineComments?: {
-      side: DiffLineSelection["side"];
+      side?: DiffLineSelection["side"];
       onComment: (selection: DiffLineSelection) => void;
     };
     footer?: ReactNode;
@@ -1618,4 +1618,161 @@ it("runs git from the member's Git root when the member is a subdirectory", asyn
   const [, , body] = await commentFirstLine("api/src/a.ts");
   expect(body).toContain("Repository: API at /srv/mono repo\n");
   expect(body).toContain("`git -C '/srv/mono repo' diff -- api/src/a.ts`");
+});
+
+it("comments a member's merge request diff from the group overview for the group agent", async () => {
+  const mr: ForgeRequestDetail = {
+    number: 7,
+    title: "Fix API",
+    author: "ada",
+    sourceBranch: "feat/api",
+    targetBranch: "main",
+    crossRepository: false,
+    draft: false,
+    state: "open",
+    checks: null,
+    review: null,
+    conflicts: false,
+    createdAt: "2026-11-10T00:00:00Z",
+    url: "https://gitlab.com/jinka/api/-/merge_requests/7",
+    body: "",
+    headOid: "head-api",
+    baseOid: "base-api",
+    reviewers: [],
+    labels: [],
+    checkRuns: [],
+    commits: [],
+    mergeBlockers: [],
+    mergeMethods: ["merge"],
+    deleteSourceBranch: false,
+    changedFiles: 1,
+    repository: "gitlab.com/jinka/api",
+  };
+  vi.mocked(api.readGitRepository).mockImplementation(async (projectId) =>
+    projectId === "api"
+      ? repository({
+          identity: {
+            root: "/srv/mono repo",
+            gitDir: "/srv/mono repo/.git",
+            commonDir: "/srv/mono repo/.git",
+          },
+          files: [],
+        })
+      : repository({ availability: "notRepository" }),
+  );
+  vi.mocked(forgeApi.readForgeRemote).mockResolvedValue({
+    kind: "gitlab",
+    host: "gitlab.com",
+    path: "jinka/api",
+    remote: "origin",
+    webUrl: "https://gitlab.com/jinka/api",
+  });
+  vi.mocked(forgeApi.readForgeRequests).mockImplementation(async (projectId) =>
+    projectId === "api" ? [mr] : [],
+  );
+  vi.mocked(forgeApi.readForgeRequest).mockResolvedValue(mr);
+  vi.mocked(forgeApi.readForgeChanges).mockResolvedValue({
+    base: "base-api",
+    head: "head-api",
+    files: [file("api/src/a.ts", ".", "M")],
+  });
+  vi.mocked(forgeApi.readForgeComparison).mockResolvedValue({
+    path: "api/src/a.ts",
+    oldPath: null,
+    version: "base-api..head-api",
+    before: {} as never,
+    after: {} as never,
+  });
+  vi.mocked(agentApi.sendAgentSessionMessage).mockResolvedValue({
+    id: "m1",
+    sessionId: "group-agent",
+    body: "",
+    status: "queued",
+    error: null,
+    createdAt: "2026-09-29T10:12:00Z",
+    deliveredAt: null,
+  } satisfies AgentSessionMessage);
+
+  await act(async () => {
+    root.render(
+      <ProjectGroupPanel
+        groupName="Jinka"
+        members={[member("api", "API"), member("docs", "Docs")]}
+        disconnectedProjectIds={[]}
+        workingSessions={[]}
+        visible
+        onClose={onClose}
+        onSelectProject={onSelectProject}
+        commentTargets={[
+          {
+            sessionId: "docs-agent",
+            projectId: "docs",
+            name: "Docs agent",
+            executable: "pi",
+          },
+          {
+            sessionId: "group-agent",
+            projectId: "group",
+            name: "Jinka",
+            executable: "claude",
+          },
+          {
+            sessionId: "api-agent",
+            projectId: "api",
+            name: "API agent",
+            executable: "omp",
+          },
+        ]}
+      />,
+    );
+  });
+
+  const requestsTab = await vi.waitFor(() => {
+    const found = [
+      ...host.querySelectorAll<HTMLButtonElement>(".git-panel-view-tab"),
+    ].find((item) => item.textContent === "Merge requests");
+    expect(found).toBeDefined();
+    return found!;
+  });
+  await act(async () => requestsTab.click());
+  const filesTab = await vi.waitFor(() => {
+    const found = [
+      ...host.querySelectorAll<HTMLButtonElement>(".git-forge-tab-button"),
+    ].find((item) => item.textContent?.startsWith("Fichiers"));
+    expect(found).toBeDefined();
+    return found!;
+  });
+  await act(async () => filesTab.click());
+  await vi.waitFor(() =>
+    expect(host.querySelector("[data-diff]")?.textContent).toBe("api/src/a.ts"),
+  );
+  await act(async () =>
+    [...host.querySelectorAll("button")]
+      .find((button) => button.textContent === "Select line 1")!
+      .click(),
+  );
+  const textarea = host.querySelector<HTMLTextAreaElement>(
+    ".git-diff-comment textarea",
+  )!;
+  await act(async () => setInputValue(textarea, "Renomme cet appel."));
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>(
+        '.git-diff-comment button[type="submit"]',
+      )!
+      .click(),
+  );
+
+  const [sessionId, , body] = vi.mocked(agentApi.sendAgentSessionMessage).mock
+    .calls[0];
+  expect(sessionId).toBe("group-agent");
+  expect(body.split("\n")[0]).toBe(
+    "Soreno comment on api/src/a.ts line 1 in API (MR !7): Renomme cet appel.",
+  );
+  expect(body).toContain(
+    "Repository: API at /srv/mono repo\nMR !7: Fix API (feat/api -> main)\n",
+  );
+  expect(body).toContain(
+    "`git -C '/srv/mono repo' diff base-api head-api -- api/src/a.ts`",
+  );
 });
