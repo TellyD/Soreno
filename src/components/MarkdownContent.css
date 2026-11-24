@@ -15,6 +15,44 @@
   overflow-x: auto;
 }
 
+/* Carries the margin so `> :last-child` rules of each prose context still apply. */
+.markdown-table-frame {
+  position: relative;
+  margin: 0 0 10px;
+}
+
+.markdown-table-frame > .markdown-table {
+  margin: 0;
+}
+
+/* Shown on hover or keyboard focus, like message actions. */
+.markdown-table-frame .markdown-table-expand {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: var(--surface-control);
+  opacity: 0;
+}
+
+.markdown-table-frame:hover .markdown-table-expand,
+.markdown-table-frame:focus-within .markdown-table-expand {
+  opacity: 1;
+}
+
+/* One scroll container for both axes: the surface. */
+.app-dialog-surface.markdown-table-dialog {
+  max-width: calc(100vw - 58px);
+  max-height: calc(100dvh - 58px);
+  overflow: auto;
+  padding: 12px;
+}
+
+.markdown-table-dialog .markdown-table {
+  max-width: none;
+  margin: 0;
+  overflow: visible;
+}
+
 .markdown-table:focus-visible,
 .markdown-diagram:focus-visible {
   outline: 2px solid var(--focus-ring);

@@ -71,6 +71,7 @@ export const fr = {
   "editor.tableCell": "Cellule du tableau, ligne et colonne",
   "editor.tableAddRow": "Ajouter une ligne",
   "editor.tableAddColumn": "Ajouter une colonne",
+  "editor.tableExpand": "Agrandir le tableau",
   "editor.title.favorite": "Ajouter aux favoris",
   "editor.title.unfavorite": "Retirer des favoris",
   "editor.title.archive": "Archiver",

@@ -75,6 +75,7 @@ export const en = {
   "editor.tableCell": "Table cell, row and column",
   "editor.tableAddRow": "Add row",
   "editor.tableAddColumn": "Add column",
+  "editor.tableExpand": "Expand table",
   "editor.title.favorite": "Add to favorites",
   "editor.title.unfavorite": "Remove from favorites",
   "editor.title.archive": "Archive",

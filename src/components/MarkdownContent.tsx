@@ -2,23 +2,30 @@ import { ensureSyntaxTree, type LanguageSupport } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { highlightTree } from "@lezer/highlight";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { Maximize2 } from "lucide-react";
 import {
   Fragment,
   memo,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   parseInlineMarkdown,
   parseMarkdownContent,
   type MarkdownContentBlock,
   type MarkdownContentInline,
 } from "../domain/markdownContent";
+import { useI18n } from "../i18n";
 import { codeLanguage } from "./markdown-editor/codeLanguages";
 import { markdownHighlightStyle } from "./markdown-editor/highlighting";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { DialogOverlay, DialogSurface } from "./ui/Dialog";
+import { IconButton } from "./ui/IconButton";
+import { useDismissibleLayer } from "./ui/useDismissibleLayer";
 import "./MarkdownContent.css";
 
 /** Local link targets a consumer renders and opens itself, e.g. stored images. */
@@ -51,7 +58,7 @@ export const MarkdownContent = memo(function MarkdownContent({
   return (
     <div className={`markdown-content ${className}`}>
       {blocks.map((block, index) =>
-        renderBlock(block, index, scrollableTables, localLinks),
+        renderBlock(block, index, className, scrollableTables, localLinks),
       )}
     </div>
   );
@@ -81,6 +88,7 @@ function withoutLinks(
 function renderBlock(
   block: MarkdownContentBlock,
   index: number,
+  className: string,
   scrollableTables: boolean,
   localLinks: MarkdownLocalLinks | undefined,
 ) {
@@ -118,7 +126,13 @@ function renderBlock(
               localLinks,
             )}
             {item.children?.map((child, childIndex) =>
-              renderBlock(child, childIndex, scrollableTables, localLinks),
+              renderBlock(
+                child,
+                childIndex,
+                className,
+                scrollableTables,
+                localLinks,
+              ),
             )}
           </li>
         ))}
@@ -137,7 +151,13 @@ function renderBlock(
               localLinks,
             )}
             {item.children?.map((child, childIndex) =>
-              renderBlock(child, childIndex, scrollableTables, localLinks),
+              renderBlock(
+                child,
+                childIndex,
+                className,
+                scrollableTables,
+                localLinks,
+              ),
             )}
           </li>
         ))}
@@ -153,11 +173,10 @@ function renderBlock(
     const cellStyle = (column: number) =>
       block.align[column] ? { textAlign: block.align[column] } : undefined;
     return (
-      // Wide tables scroll inside the message instead of widening it; focusable so the keyboard can scroll them.
-      <div
+      <MarkdownTable
         key={index}
-        className="markdown-table"
-        tabIndex={scrollableTables ? 0 : undefined}
+        className={className}
+        scrollable={scrollableTables}
       >
         <table>
           <thead>
@@ -185,7 +204,7 @@ function renderBlock(
             ))}
           </tbody>
         </table>
-      </div>
+      </MarkdownTable>
     );
   }
 
@@ -193,6 +212,106 @@ function renderBlock(
     return <MermaidDiagram key={index} code={block.text} />;
 
   return <CodeBlock key={index} code={block.text} info={block.language} />;
+}
+
+// Wide tables scroll inside the message instead of widening it; focusable so the keyboard can scroll them.
+function MarkdownTable({
+  children,
+  className,
+  scrollable,
+}: {
+  children: ReactNode;
+  className: string;
+  scrollable: boolean;
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const table = scroller?.firstElementChild;
+    if (!scroller || !table || typeof ResizeObserver === "undefined") return;
+    // The table follows the scroller through `min-width: 100%`, and streamed cells widen it.
+    const observer = new ResizeObserver(() =>
+      setOverflowing(scroller.scrollWidth > scroller.clientWidth),
+    );
+    observer.observe(table);
+    return () => observer.disconnect();
+  }, [scrollable]);
+
+  if (!scrollable) return <div className="markdown-table">{children}</div>;
+  return (
+    <div className="markdown-table-frame">
+      <div ref={scrollerRef} className="markdown-table" tabIndex={0}>
+        {children}
+      </div>
+      {overflowing ? (
+        <MarkdownTableExpand className={className}>
+          {children}
+        </MarkdownTableExpand>
+      ) : null}
+    </div>
+  );
+}
+
+function MarkdownTableExpand({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className: string;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const label = t("editor.tableExpand");
+  return (
+    <>
+      <IconButton
+        className="markdown-table-expand"
+        size="small"
+        aria-label={label}
+        title={label}
+        onClick={() => setOpen(true)}
+      >
+        <Maximize2 />
+      </IconButton>
+      {open ? (
+        <MarkdownTableDialog
+          className={className}
+          label={t("editor.command.table")}
+          onClose={() => setOpen(false)}
+        >
+          {children}
+        </MarkdownTableDialog>
+      ) : null}
+    </>
+  );
+}
+
+function MarkdownTableDialog({
+  children,
+  className,
+  label,
+  onClose,
+}: {
+  children: ReactNode;
+  className: string;
+  label: string;
+  onClose: () => void;
+}) {
+  const surfaceRef = useDismissibleLayer<HTMLElement>(true, onClose);
+  return createPortal(
+    <DialogOverlay>
+      {/* The message's classes keep its prose styles (code, links, text size) in the portal. */}
+      <DialogSurface
+        ref={surfaceRef}
+        className={`markdown-table-dialog markdown-content ${className}`}
+        aria-label={label}
+      >
+        <div className="markdown-table">{children}</div>
+      </DialogSurface>
+    </DialogOverlay>,
+    document.body,
+  );
 }
 
 function CodeBlock({ code, info }: { code: string; info: string | null }) {
