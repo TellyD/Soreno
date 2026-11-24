@@ -399,6 +399,58 @@ export function kanbanPriorityName(priority: number): KanbanPriorityName {
   return kanbanPriorities[priority] ?? "none";
 }
 
+// Most advanced first: what an agent most likely picks up.
+const attachColumnRank: Record<KanbanColumn, number> = {
+  inReview: 0,
+  inProgress: 1,
+  todo: 2,
+  backlog: 3,
+  done: 4,
+  canceled: 5,
+};
+
+export type KanbanIssueProjectGroup = {
+  project: KanbanProjectRef | null;
+  issues: KanbanIssue[];
+};
+
+/** Issues by project, `firstProjectId`'s first, others by name, without project last; each by state from the most advanced, then most recently updated. */
+export function groupIssuesByProject(
+  issues: readonly KanbanIssue[],
+  states: ReadonlyMap<string, KanbanWorkflowState>,
+  firstProjectId: string | undefined,
+): KanbanIssueProjectGroup[] {
+  const rank = (issue: KanbanIssue) => {
+    const state = states.get(issue.stateId);
+    return state
+      ? attachColumnRank[kanbanColumn(state)]
+      : attachColumnRank.done;
+  };
+  const groups = new Map<string | null, KanbanIssueProjectGroup>();
+  for (const issue of issues) {
+    const key = issue.project?.id ?? null;
+    const group = groups.get(key) ?? { project: issue.project, issues: [] };
+    group.issues.push(issue);
+    groups.set(key, group);
+  }
+  for (const { issues: group } of groups.values()) {
+    group.sort(
+      (left, right) =>
+        rank(left) - rank(right) ||
+        compareDate(right.updatedAt, left.updatedAt),
+    );
+  }
+  const order = (project: KanbanProjectRef | null) =>
+    !project ? 2 : project.id === firstProjectId ? 0 : 1;
+  return [...groups.values()].sort(
+    (left, right) =>
+      order(left.project) - order(right.project) ||
+      (left.project && right.project
+        ? compareByName(left.project, right.project)
+        : 0),
+  );
+}
+
 export function applyIssueUpdate<B extends KanbanBoard>(
   board: B,
   update: KanbanIssueUpdate,

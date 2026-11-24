@@ -6,6 +6,7 @@ import {
   droppedIssueStateId,
   filterIssuesByProject,
   filterIssuesBySource,
+  groupIssuesByProject,
   groupIssuesByState,
   kanbanColumn,
   kanbanIssueInput,
@@ -151,6 +152,54 @@ describe("groupIssuesByState", () => {
       expect(groups.get("todo")?.map(({ id }) => id)).toEqual(expected);
     },
   );
+});
+
+describe("groupIssuesByProject", () => {
+  it("puts the session project first, then by name, no project last; most advanced state then newest first", () => {
+    const alpha = { id: "p-alpha", name: "alpha" };
+    const beta = { id: "p-beta", name: "Beta" };
+    const session = { id: "p-session", name: "zeta" };
+    const groups = groupIssuesByProject(
+      [
+        issue("none", "todo", "2026-08-01T10:00:00.000Z"),
+        { ...issue("beta", "todo", "2026-08-01T10:00:00.000Z"), project: beta },
+        {
+          ...issue("backlog", "backlog", "2026-08-09T10:00:00.000Z"),
+          project: session,
+        },
+        {
+          ...issue("todo-old", "todo", "2026-08-01T10:00:00.000Z"),
+          project: session,
+        },
+        {
+          ...issue("doing", "doing", "2026-08-01T10:00:00.000Z"),
+          project: session,
+        },
+        {
+          ...issue("todo-new", "todo", "2026-08-05T10:00:00.000Z"),
+          project: session,
+        },
+        {
+          ...issue("alpha", "todo", "2026-08-01T10:00:00.000Z"),
+          project: alpha,
+        },
+      ],
+      new Map(states.map((state) => [state.id, state])),
+      session.id,
+    );
+
+    expect(
+      groups.map(({ project, issues }) => [
+        project?.id ?? null,
+        issues.map(({ id }) => id),
+      ]),
+    ).toEqual([
+      [session.id, ["doing", "todo-new", "todo-old", "backlog"]],
+      [alpha.id, ["alpha"]],
+      [beta.id, ["beta"]],
+      [null, ["none"]],
+    ]);
+  });
 });
 
 describe("Linear issues on the local columns", () => {

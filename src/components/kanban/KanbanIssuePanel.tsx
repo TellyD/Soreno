@@ -2,6 +2,7 @@ import { Search, SquareKanban, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   defaultCreateSource,
+  groupIssuesByProject,
   type KanbanIssue,
   type KanbanIssueSelection,
 } from "../../domain/kanban";
@@ -184,7 +185,7 @@ function KanbanIssueAttach({
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [attaching, setAttaching] = useState(false);
-  const { board, issueAgents, issues, linear } = kanban;
+  const { board, issueAgents, issues, knownProjects, linear } = kanban;
   const states = useMemo(
     () =>
       new Map(
@@ -195,30 +196,36 @@ function KanbanIssueAttach({
       ),
     [board, linear],
   );
-  // Open issues without an agent, those of the session's project first.
-  const available = useMemo(() => {
-    const free = issues.filter((issue) => {
-      const state = states.get(issue.stateId);
-      return (
-        !issueAgents.live.has(issue.id) &&
-        !(state && closedStateTypes[state.type])
-      );
-    });
-    return [
-      ...free.filter((issue) => issue.project?.id === projectId),
-      ...free.filter((issue) => issue.project?.id !== projectId),
-    ];
-  }, [issueAgents, issues, projectId, states]);
-  const candidates = useMemo(() => {
+  // Open issues without an agent.
+  const available = useMemo(
+    () =>
+      issues.filter((issue) => {
+        const state = states.get(issue.stateId);
+        return (
+          !issueAgents.live.has(issue.id) &&
+          !(state && closedStateTypes[state.type])
+        );
+      }),
+    [issueAgents, issues, states],
+  );
+  const groups = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
-    return needle
+    const matching = needle
       ? available.filter((issue) =>
           `${issue.identifier} ${issue.title}`
             .toLocaleLowerCase()
             .includes(needle),
         )
       : available;
-  }, [available, query]);
+    // Issue projects come from the last board load; known projects carry renames.
+    const current = matching.map((issue) => {
+      const known = issue.project && knownProjects.get(issue.project.id);
+      return known && known.name !== issue.project?.name
+        ? { ...issue, project: { id: known.id, name: known.name } }
+        : issue;
+    });
+    return groupIssuesByProject(current, states, projectId);
+  }, [available, knownProjects, projectId, query, states]);
 
   async function choose(issue: KanbanIssue) {
     setAttaching(true);
@@ -286,32 +293,47 @@ function KanbanIssueAttach({
                 type="search"
                 value={query}
               />
-              {candidates.length > 0 ? (
-                <ul className="kanban-issue-children">
-                  {candidates.map((issue) => {
-                    const state = states.get(issue.stateId);
+              {groups.length > 0 ? (
+                <div className="kanban-issue-attach-groups">
+                  {groups.map(({ project, issues: group }) => {
+                    const name = project?.name ?? t("kanban.project.none");
                     return (
-                      <li key={`${issue.source}:${issue.id}`}>
-                        <button
-                          className="kanban-issue-child"
-                          disabled={attaching}
-                          onClick={() => void choose(issue)}
-                          type="button"
-                        >
-                          {state ? (
-                            <KanbanStateIcon size={14} state={state} />
-                          ) : null}
-                          <span className="kanban-card-identifier">
-                            {issue.identifier}
+                      <section key={project?.id ?? ""}>
+                        <h3 className="kanban-issue-attach-group-heading">
+                          <span>{name}</span>
+                          <span className="kanban-issue-attach-group-count">
+                            {group.length}
                           </span>
-                          <span className="kanban-issue-child-title">
-                            {issue.title}
-                          </span>
-                        </button>
-                      </li>
+                        </h3>
+                        <ul className="kanban-issue-children">
+                          {group.map((issue) => {
+                            const state = states.get(issue.stateId);
+                            return (
+                              <li key={`${issue.source}:${issue.id}`}>
+                                <button
+                                  className="kanban-issue-child"
+                                  disabled={attaching}
+                                  onClick={() => void choose(issue)}
+                                  type="button"
+                                >
+                                  {state ? (
+                                    <KanbanStateIcon size={14} state={state} />
+                                  ) : null}
+                                  <span className="kanban-card-identifier">
+                                    {issue.identifier}
+                                  </span>
+                                  <span className="kanban-issue-child-title">
+                                    {issue.title}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </section>
                     );
                   })}
-                </ul>
+                </div>
               ) : (
                 <p className="kanban-issue-muted">
                   {t("kanban.attach.noMatch")}

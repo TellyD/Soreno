@@ -59,6 +59,39 @@
   overflow-y: auto;
 }
 
+.kanban-issue-attach-groups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-self: stretch;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.kanban-issue-attach-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.kanban-issue-attach-group-heading > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-issue-attach-group-count {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 .kanban-issue-child:focus-visible,
 .kanban-issue-property-button:focus-visible,
 .kanban-issue-title-button:focus-visible {
