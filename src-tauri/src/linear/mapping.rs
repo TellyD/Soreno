@@ -93,6 +93,7 @@ pub(super) fn map_issue_detail(
         updated_at: raw.updated_at,
         labels: sorted_labels(raw.labels.nodes),
         comments,
+        creator: raw.creator,
         linear: Some(KanbanLinearFields {
             url: raw.url,
             assignee: raw.assignee,

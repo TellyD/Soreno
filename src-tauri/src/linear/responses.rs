@@ -177,6 +177,7 @@ pub(super) struct RawIssueDetail {
     pub(super) updated_at: String,
     pub(super) state: RawIdRef,
     pub(super) team: RawIdRef,
+    pub(super) creator: Option<KanbanUserRef>,
     pub(super) assignee: Option<KanbanUserRef>,
     pub(super) project: Option<KanbanLinearProjectRef>,
     pub(super) label_ids: Vec<String>,

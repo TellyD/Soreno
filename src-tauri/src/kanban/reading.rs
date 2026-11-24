@@ -201,6 +201,7 @@ pub(crate) fn load_issue(db: &Connection, issue_id: &str) -> Result<KanbanIssueD
         comments: issue_comments(db, issue_id)?,
         pull_requests: issue.pull_requests,
         team_id: None,
+        creator: None,
         linear: None,
     })
 }

@@ -175,6 +175,7 @@ export type KanbanIssueDetail = {
   // Linear only.
   url?: string;
   teamId?: string;
+  creator?: KanbanUserRef;
   assignee?: KanbanUserRef | null;
   linearProject?: KanbanLinearProjectRef | null;
 };

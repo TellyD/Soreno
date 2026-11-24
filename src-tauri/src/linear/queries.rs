@@ -186,6 +186,7 @@ query LinearIssueDetail($id: String!) {
     id identifier title url description branchName priority createdAt updatedAt
     state { id }
     team { id }
+    creator { id name avatarUrl }
     assignee { id name avatarUrl }
     project { id name color }
     labelIds

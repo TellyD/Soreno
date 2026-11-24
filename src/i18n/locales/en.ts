@@ -282,6 +282,7 @@ export const en = {
   "kanban.issue.comment.agentFailedReason":
     "Not delivered to “{name}”: {reason}",
   "kanban.issue.created": "Created",
+  "kanban.issue.creator": "Created by",
   "kanban.issue.delete": "Delete issue",
   "kanban.issue.deleteDialog.cancel": "Cancel",
   "kanban.issue.deleteDialog.confirm": "Delete",

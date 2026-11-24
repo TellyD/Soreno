@@ -266,6 +266,9 @@ pub struct KanbanIssueDetail {
     /// Linear only: a local issue's team is the single default one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub team_id: Option<String>,
+    /// Linear only; absent when Linear shows no creator.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub creator: Option<KanbanUserRef>,
     #[serde(flatten)]
     pub linear: Option<KanbanLinearFields>,
 }

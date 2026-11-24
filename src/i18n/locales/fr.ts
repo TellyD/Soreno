@@ -287,6 +287,7 @@ export const fr = {
   "kanban.issue.comment.agentFailed": "Non livré à « {name} »",
   "kanban.issue.comment.agentFailedReason": "Non livré à « {name} » : {reason}",
   "kanban.issue.created": "Créée",
+  "kanban.issue.creator": "Créée par",
   "kanban.issue.delete": "Supprimer l’issue",
   "kanban.issue.deleteDialog.cancel": "Annuler",
   "kanban.issue.deleteDialog.confirm": "Supprimer",

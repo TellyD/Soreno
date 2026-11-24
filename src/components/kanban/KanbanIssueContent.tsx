@@ -339,6 +339,18 @@ export function KanbanIssueContent({
           )}
         </section>
 
+        {detail.creator ? (
+          <section className="kanban-issue-sidebar-section">
+            <h2 className="kanban-issue-sidebar-label">
+              {t("kanban.issue.creator")}
+            </h2>
+            <span className="kanban-issue-property">
+              <KanbanUserAvatar size={14} url={detail.creator.avatarUrl} />
+              {detail.creator.name}
+            </span>
+          </section>
+        ) : null}
+
         {boardIssue || issue.labels.length > 0 ? (
           <section className="kanban-issue-sidebar-section">
             <h2 className="kanban-issue-sidebar-label">
