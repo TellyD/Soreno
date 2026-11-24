@@ -1854,12 +1854,17 @@ impl AgentSessions {
                 .and_then(|runtime| runtime.remote_sidecar_generation.clone());
             conversations::prepare_attach(&store.db, &session, &project, generation)?
         } else {
+            let group_directories: Vec<String> = group_launch
+                .as_ref()
+                .map(|(_, _, members)| members.iter().map(|(_, path)| path.clone()).collect())
+                .unwrap_or_default();
             let mut prepared = conversations::prepare_launch(
                 &store.db,
                 &store.links_dir,
                 &session,
                 &project,
                 private_directory.as_deref(),
+                &group_directories,
             )?;
             let windows_local = cfg!(windows) && project.environment.kind == "local";
             if let Some((provider, group, members)) = &group_launch {

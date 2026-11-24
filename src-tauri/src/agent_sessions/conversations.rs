@@ -789,12 +789,14 @@ pub(super) fn prepare_attach(
 }
 
 /// `private_directory` receives Kanban requests and message files; the agent is told about it.
+/// Claude may also read and edit `group_directories`, the repositories of an overview.
 pub(super) fn prepare_launch(
     db: &Connection,
     links_dir: &Path,
     session: &AgentSession,
     project: &AgentProject,
     private_directory: Option<&str>,
+    group_directories: &[String],
 ) -> Result<PreparedLaunch> {
     if session.kind == "service" {
         return Ok(PreparedLaunch::unchanged(session));
@@ -879,9 +881,13 @@ pub(super) fn prepare_launch(
     }
     let claude_settings = if provider == Provider::Claude {
         let mut settings = hook_settings(hook_commands.as_ref().unwrap());
-        if let Some(directory) = private_directory {
-            // Since Claude Code 2.1.326, `--add-dir` asks to trust each new folder; this setting does not.
-            settings["permissions"] = serde_json::json!({"additionalDirectories": [directory]});
+        // Since Claude Code 2.1.326, `--add-dir` asks to trust each new folder; this setting does not.
+        let directories = private_directory
+            .into_iter()
+            .chain(group_directories.iter().map(String::as_str))
+            .collect::<Vec<_>>();
+        if !directories.is_empty() {
+            settings["permissions"] = serde_json::json!({ "additionalDirectories": directories });
         }
         if windows_local {
             let path = run_dir.join("claude-settings.json");

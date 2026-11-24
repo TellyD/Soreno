@@ -527,15 +527,17 @@ fn launch_args_follow_each_agent() {
     }
     assert_eq!(
         claude,
+        vec!["--append-system-prompt", prompt, "--model", "opus"]
+    );
+    assert_eq!(
+        launch(conversations::Provider::Omp, &[], false),
         vec![
             "--append-system-prompt",
             prompt,
             "--add-dir",
             "/a",
             "--add-dir",
-            "/b",
-            "--model",
-            "opus"
+            "/b"
         ]
     );
     assert_eq!(
@@ -595,11 +597,11 @@ fn oversized_group_launch_is_refused_before_windows_spawns_it() {
     };
     let command = |count: usize| {
         let mut session = session();
-        session.executable = "claude".into();
+        session.executable = "omp".into();
         session.args = Vec::new();
         groups::add_launch_args(
             &mut session.args,
-            conversations::Provider::Claude,
+            conversations::Provider::Omp,
             "Jinka",
             &members(count),
             true,

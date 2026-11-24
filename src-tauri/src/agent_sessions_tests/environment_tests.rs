@@ -35,6 +35,7 @@ fn conversation_workspace_reopens_and_reconciles_without_launching() {
             &saved_session,
             &saved_project,
             None,
+            &[],
         )
         .unwrap();
         let data = stored_conversation_json(&store.db, &saved_session.id);
@@ -233,6 +234,7 @@ fn failed_pre_spawn_restores_linked_conversation_for_a_repaired_folder() {
             &saved_session,
             &saved_project,
             None,
+            &[],
         )
         .unwrap();
         let data = stored_conversation_json(&store.db, &saved_session.id);
@@ -283,6 +285,7 @@ fn failed_pre_spawn_restores_linked_conversation_for_a_repaired_folder() {
         &saved_session,
         &saved_project,
         None,
+        &[],
     )
     .unwrap();
     assert_eq!(retry.args[..2], ["--session", history.to_str().unwrap()]);

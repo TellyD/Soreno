@@ -218,7 +218,12 @@ fn a_group_overview_agent_is_scheduled_with_the_group_repositories() {
 
     let launch = scheduled_session(db, &overview, &agent).unwrap().unwrap();
     let command = launch_command(&overview, &launch, "/revue").unwrap();
-    assert!(command.contains("'--add-dir' '/srv/api'"), "{command}");
+    assert!(
+        command
+            .contains(r#"'--settings' '{"permissions":{"additionalDirectories":["/srv/api"]}}'"#),
+        "{command}"
+    );
+    assert!(!command.contains("--add-dir"), "{command}");
     assert!(command.contains("'--model' 'opus'"), "{command}");
     assert!(scheduled_session(db, &member, &agent).unwrap().is_none());
 }

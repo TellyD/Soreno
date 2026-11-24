@@ -269,7 +269,7 @@ fn cached_ssh_reconcile_links_valid_sidecar_without_verifying_history() {
     let root = root("cached-ssh-link");
     let links = root.join("links");
     let (db, mut project, session) = fixture(&root, "pi");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     observe(
@@ -343,7 +343,7 @@ fn remote_sidecar_sync_replaces_a_stale_working_state() {
     let root = root("remote-working-refresh");
     let links = root.join("links");
     let (db, mut project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let mut record = get(&db, &session.id).unwrap().unwrap();
     record.remote_metadata_path = Some("/home/me/metadata.json".into());
     project.environment = AgentEnvironment {
@@ -400,7 +400,7 @@ fn remote_sidecar_sync_does_not_replace_a_new_osc_generation() {
     let root = root("remote-working-race");
     let links = root.join("links");
     let (db, mut project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let mut record = get(&db, &session.id).unwrap().unwrap();
     record.remote_metadata_path = Some("/home/me/metadata.json".into());
     project.environment = AgentEnvironment {
@@ -460,7 +460,7 @@ fn remote_sidecar_refresh_with_identical_bytes_is_not_a_new_report() {
     let root = root("remote-identical-refresh");
     let links = root.join("links");
     let (db, mut project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let mut record = get(&db, &session.id).unwrap().unwrap();
     record.remote_metadata_path = Some("/home/me/metadata.json".into());
     project.environment = AgentEnvironment {
@@ -520,7 +520,7 @@ fn attach_reuses_generation_and_rejects_the_previous_sync_response() {
     let root = root("remote-attach-race");
     let links = root.join("links");
     let (db, mut project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let mut record = get(&db, &session.id).unwrap().unwrap();
     record.remote_metadata_path = Some("/home/me/metadata.json".into());
     project.environment = AgentEnvironment {
@@ -860,7 +860,7 @@ fn claude_and_codex_hooks_report_live_turn_activity() {
         let case_root = root.join(provider);
         std::fs::create_dir(&case_root).unwrap();
         let (db, project, session) = fixture(&case_root, provider);
-        prepare_launch(&db, &links, &session, &project, None).unwrap();
+        prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         let record = get(&db, &session.id).unwrap().unwrap();
         let payload = |event: &str| {
             serde_json::json!({
@@ -1037,7 +1037,7 @@ fn unwritable_hook_outputs_never_block_the_agent() {
     let root = root("hook-unwritable");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let missing = root.join("missing");
     let missing_metadata = missing.join("metadata.json");
@@ -1114,7 +1114,7 @@ fn compact_session_start_preserves_active_turn_and_updates_identity() {
     let root = root("hook-activity");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     let payload = |event: &str, source: Option<&str>| {
@@ -1201,7 +1201,7 @@ fn hooks_publish_bounded_turns_and_awaited_replies() {
     let root = root("hook-summary");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "codex");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let osc_path = root.join("hook.osc");
     let payload = |event: &str, message: Option<&str>| {
@@ -1320,7 +1320,7 @@ fn session_end_preserves_a_start_transition_until_reconcile() {
     let root = root("hook-transition");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let first = get(&db, &session.id).unwrap().unwrap();
     let first_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     let second_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -1347,7 +1347,7 @@ fn session_end_preserves_a_start_transition_until_reconcile() {
     );
     reconcile(&db, &session, &project, false).unwrap();
 
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let transition = get(&db, &session.id).unwrap().unwrap();
     let osc_path = root.join("hook.osc");
     run_posix_hook(
@@ -1376,7 +1376,7 @@ fn session_end_preserves_a_start_transition_until_reconcile() {
     let first_end_root = root.join("first-end");
     std::fs::create_dir(&first_end_root).unwrap();
     let (end_db, end_project, end_session) = fixture(&first_end_root, "codex");
-    prepare_launch(&end_db, &links, &end_session, &end_project, None).unwrap();
+    prepare_launch(&end_db, &links, &end_session, &end_project, None, &[]).unwrap();
     let first_end = get(&end_db, &end_session.id).unwrap().unwrap();
     run_posix_hook(
         &commands[1],
@@ -1409,7 +1409,7 @@ fn child_agent_hooks_do_not_replace_root_metadata() {
     let root = root("child-hooks");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let command = &hook_commands(false)[0];
     let payload = |id: &str| {
@@ -1482,7 +1482,7 @@ fn service_sessions_never_prepare_or_resume_conversations() {
         reconcile(&db, &session, &project, false).unwrap().working,
         None
     );
-    let launch = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let launch = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     assert_eq!(launch.args, session.args);
     assert!(!links.exists());
     assert!(get(&db, &session.id).unwrap().is_none());
@@ -1499,7 +1499,8 @@ fn claude_and_codex_hooks_link_ids_and_prepare_exact_resume_commands() {
         let case_root = root.join(executable);
         std::fs::create_dir(&case_root).unwrap();
         let (db, project, session) = fixture(&case_root, executable);
-        let first = prepare_launch(&db, &links, &session, &project, None).unwrap();
+        let group = ["/srv/api".to_owned()];
+        let first = prepare_launch(&db, &links, &session, &project, None, &group).unwrap();
         assert!(first
             .environment
             .iter()
@@ -1532,6 +1533,11 @@ fn claude_and_codex_hooks_link_ids_and_prepare_exact_resume_commands() {
                 settings["hooks"]["SessionStart"][0]["hooks"][0]["command"],
                 hook_commands(cfg!(windows))[0]
             );
+            // Overview repositories without Claude's per-folder trust prompt.
+            assert_eq!(
+                settings["permissions"]["additionalDirectories"],
+                serde_json::json!(["/srv/api"])
+            );
         } else {
             assert_eq!(&first.args[..2], ["-c", "features.hooks=true"]);
             for event in ["SessionStart", "SessionEnd", "UserPromptSubmit", "Stop"] {
@@ -1559,7 +1565,7 @@ fn claude_and_codex_hooks_link_ids_and_prepare_exact_resume_commands() {
         assert_eq!(conversation.session_id, id);
         assert_eq!(conversation.session_file, None);
 
-        let resumed = prepare_launch(&db, &links, &session, &project, None).unwrap();
+        let resumed = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         if provider == "claude" {
             assert_eq!(&resumed.args[2..4], ["--resume", id]);
         } else {
@@ -1585,7 +1591,7 @@ fn initial_prompt_is_appended_only_to_a_launch_starting_a_new_conversation() {
         let case_root = root.join(provider);
         std::fs::create_dir(&case_root).unwrap();
         let (db, project, session) = fixture(&case_root, provider);
-        let mut fresh = prepare_launch(&db, &links, &session, &project, None).unwrap();
+        let mut fresh = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         fresh.append_initial_prompt(prompt).unwrap();
         assert_eq!(
             fresh.args[fresh.args.len() - 3..],
@@ -1603,6 +1609,7 @@ fn initial_prompt_is_appended_only_to_a_launch_starting_a_new_conversation() {
             &separated_session,
             &separated_project,
             None,
+            &[],
         )
         .unwrap();
         separated.append_initial_prompt(prompt).unwrap();
@@ -1621,7 +1628,7 @@ fn initial_prompt_is_appended_only_to_a_launch_starting_a_new_conversation() {
             }),
         );
         reconcile(&db, &session, &project, false).unwrap();
-        let mut resumed = prepare_launch(&db, &links, &session, &project, None).unwrap();
+        let mut resumed = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         assert_eq!(
             resumed.append_initial_prompt(prompt).unwrap_err(),
             INITIAL_PROMPT_MESSAGE
@@ -1673,7 +1680,7 @@ fn initial_prompt_of_a_full_kanban_issue_fits_the_native_windows_codex_launch() 
         std::fs::create_dir(&case_root).unwrap();
         let (db, project, mut session) = fixture(&case_root, "codex");
         session.args.clear();
-        let mut fresh = prepare_launch(&db, &links, &session, &project, None).unwrap();
+        let mut fresh = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         if cfg!(windows) {
             assert_eq!(fresh.args[..windows_hooks.len()], windows_hooks);
         } else {
@@ -1717,7 +1724,7 @@ fn a_design_agent_fits_the_native_windows_codex_launch() {
     let (db, project, mut session) = fixture(&root, "codex");
     session.args.clear();
     session.design = true;
-    let mut fresh = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let mut fresh = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     if !cfg!(windows) {
         fresh
             .session
@@ -1756,7 +1763,7 @@ fn interrupted_exact_hook_resume_without_sidecar_preserves_link() {
         let root = root(&format!("{provider}-interrupted-resume"));
         let links = root.join("links");
         let (db, project, session) = fixture(&root, provider);
-        prepare_launch(&db, &links, &session, &project, None).unwrap();
+        prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         let first = get(&db, &session.id).unwrap().unwrap();
         observe_hook(
             &first,
@@ -1771,7 +1778,7 @@ fn interrupted_exact_hook_resume_without_sidecar_preserves_link() {
         );
         reconcile(&db, &session, &project, false).unwrap();
 
-        prepare_launch(&db, &links, &session, &project, None).unwrap();
+        prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         let interrupted = get(&db, &session.id).unwrap().unwrap();
         assert_eq!(interrupted.requested_session_id.as_deref(), Some(id));
         assert!(interrupted.history_verified);
@@ -1789,7 +1796,7 @@ fn interrupted_exact_hook_resume_without_sidecar_preserves_link() {
         assert!(preserved.requested_session_id.is_none());
         assert!(preserved.conversation_error.is_none());
 
-        let relaunched = prepare_launch(&db, &links, &session, &project, None).unwrap();
+        let relaunched = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         assert!(relaunched.args.windows(2).any(|pair| {
             pair == [
                 if provider == "codex" {
@@ -1809,7 +1816,7 @@ fn hook_payload_rejects_a_relative_working_directory() {
     let root = root("hook-cwd");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     observe_hook(
         &record,
@@ -1837,7 +1844,7 @@ fn interrupted_first_claude_launch_without_sidecar_retries_as_new() {
     let root = root("claude-interrupted-first-launch");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "claude");
-    let first = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let first = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     assert!(!first.args.iter().any(|arg| arg == "--resume"));
 
     reconcile(&db, &session, &project, false).unwrap();
@@ -1852,7 +1859,7 @@ fn interrupted_first_claude_launch_without_sidecar_retries_as_new() {
     assert!(record.metadata_path.is_none());
     assert!(record.conversation_error.is_none());
 
-    let retry = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let retry = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     assert!(!retry.args.iter().any(|arg| arg == "--resume"));
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -1862,7 +1869,7 @@ fn codex_missing_hook_requests_approval_and_retries_with_the_native_selector() {
     let root = root("codex-approval");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "codex");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     reconcile(&db, &session, &project, false).unwrap();
 
     let fields = fields(&db, &session).unwrap();
@@ -1870,7 +1877,7 @@ fn codex_missing_hook_requests_approval_and_retries_with_the_native_selector() {
     assert_eq!(fields.error.as_deref(), Some(MISSING_LINK));
     assert!(fields.conversation.is_none());
 
-    let retry = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let retry = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     assert_eq!(&retry.args[retry.args.len() - 2..], ["resume", "--version"]);
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -1888,7 +1895,7 @@ fn codex_self_update_exit_retries_as_new_without_missing_link() {
     let root = root("codex-self-update");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "codex");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     forget_codex_update_run(&db, &session, || false).unwrap();
     assert!(get(&db, &session.id).unwrap().unwrap().pending);
 
@@ -1899,7 +1906,7 @@ fn codex_self_update_exit_retries_as_new_without_missing_link() {
     assert_eq!(fields.resume, "new");
     assert!(fields.error.is_none());
     assert!(!fields.pending);
-    let retry = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let retry = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     assert!(!retry.args.iter().any(|arg| arg == "resume"));
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -1910,7 +1917,7 @@ fn unrequested_resume_replaces_startup_identity_but_exact_resume_does_not() {
         let root = root(&format!("{provider}-resume-transition"));
         let links = root.join("links");
         let (db, project, session) = fixture(&root, provider);
-        prepare_launch(&db, &links, &session, &project, None).unwrap();
+        prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         let first_run = get(&db, &session.id).unwrap().unwrap();
         assert!(first_run.requested_session_id.is_none());
         let write = |record: &ConversationRecord, id: &str, source: &str| {
@@ -1932,7 +1939,7 @@ fn unrequested_resume_replaces_startup_identity_but_exact_resume_does_not() {
         reconcile(&db, &session, &project, false).unwrap();
         write(&first_run, resumed, "resume");
 
-        let reopened = prepare_launch(&db, &links, &session, &project, None).unwrap();
+        let reopened = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         let linked = fields(&db, &session).unwrap();
         assert_eq!(linked.conversation.unwrap().session_id, resumed);
         assert!(linked.error.is_none());
@@ -1963,7 +1970,7 @@ fn hook_identity_changes_require_clear_or_fork() {
     let root = root("hook-identity");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "claude");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let write = |record: &ConversationRecord, id: &str, source: &str| {
         observe_hook(
@@ -1981,7 +1988,7 @@ fn hook_identity_changes_require_clear_or_fork() {
     let first = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
     write(&record, first, "startup");
     reconcile(&db, &session, &project, false).unwrap();
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let resumed = get(&db, &session.id).unwrap().unwrap();
     write(&resumed, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", "resume");
     reconcile(&db, &session, &project, false).unwrap();
@@ -2005,7 +2012,7 @@ fn hook_identity_changes_require_clear_or_fork() {
         "ffffffff-ffff-4fff-8fff-ffffffffffff"
     );
 
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let ended = get(&db, &session.id).unwrap().unwrap();
     let ended_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     observe_hook(
@@ -2054,7 +2061,7 @@ fn hook_identity_changes_require_clear_or_fork() {
         ended_id
     );
 
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let compacted = get(&db, &session.id).unwrap().unwrap();
     write(
         &compacted,
@@ -2072,7 +2079,7 @@ fn hook_identity_changes_require_clear_or_fork() {
     let first_end_root = root.join("first-session-end");
     std::fs::create_dir(&first_end_root).unwrap();
     let (end_db, end_project, end_session) = fixture(&first_end_root, "codex");
-    prepare_launch(&end_db, &links, &end_session, &end_project, None).unwrap();
+    prepare_launch(&end_db, &links, &end_session, &end_project, None, &[]).unwrap();
     let first_end = get(&end_db, &end_session.id).unwrap().unwrap();
     observe_hook(
         &first_end,
@@ -2143,7 +2150,7 @@ fn omp_new_launch_appends_the_last_config_overlay_before_separator() {
         "--".into(),
         "--literal-prompt".into(),
     ];
-    let launch = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let launch = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let separator = launch.args.iter().position(|arg| arg == "--").unwrap();
     assert_eq!(&launch.args[separator - 2], "--config");
     assert_eq!(
@@ -2166,7 +2173,7 @@ fn rollback_restores_the_post_reconcile_record_exactly() {
     let root = root("rollback");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "pi");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let id = "88888888-8888-4888-8888-888888888888";
     let file = root.join("history.jsonl");
@@ -2175,7 +2182,7 @@ fn rollback_restores_the_post_reconcile_record_exactly() {
     reconcile(&db, &session, &project, false).unwrap();
     observe(&record, "pi", id, &file, "Newest");
 
-    let launch = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let launch = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     assert!(get(&db, &session.id).unwrap().unwrap().pending);
     assert_eq!(
         launch.rollback::<()>(&db, "pre-spawn".into()).unwrap_err(),
@@ -2191,7 +2198,7 @@ fn rollback_restores_the_post_reconcile_record_exactly() {
             .as_deref(),
         Some("Newest")
     );
-    let retry = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let retry = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     retry
         .rollback::<()>(&db, "retry fixture".into())
         .unwrap_err();
@@ -2203,7 +2210,7 @@ fn rollback_failure_keeps_the_launch_error_explicit() {
     let root = root("rollback-failure");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "pi");
-    let launch = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let launch = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     db.execute_batch(
         "CREATE TRIGGER reject_conversation_restore
          BEFORE UPDATE ON agent_conversations
@@ -2224,7 +2231,7 @@ fn active_pending_run_defers_missing_link_and_identical_reconcile_is_noop() {
     let root = root("reconcile");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "pi");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     reconcile(&db, &session, &project, true).unwrap();
     let active = fields(&db, &session).unwrap();
     assert!(active.pending);
@@ -2252,7 +2259,7 @@ fn empty_history_is_not_linked_and_restarts_as_a_new_conversation() {
     let root = root("empty-history");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "pi");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     observe(
         &record,
@@ -2268,7 +2275,7 @@ fn empty_history_is_not_linked_and_restarts_as_a_new_conversation() {
     assert!(empty.conversation.is_none());
     assert!(empty.error.is_none());
 
-    let restarted = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let restarted = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     assert_eq!(restarted.args[0], "-e");
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -2278,7 +2285,7 @@ fn missing_verified_history_remains_an_explicit_error() {
     let root = root("deleted-history");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "pi");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let file = root.join("history.jsonl");
     let id = "77777777-7777-4777-8777-777777777777";
@@ -2288,7 +2295,7 @@ fn missing_verified_history_remains_an_explicit_error() {
     std::fs::remove_file(file).unwrap();
 
     assert_eq!(
-        prepare_launch(&db, &links, &session, &project, None).unwrap_err(),
+        prepare_launch(&db, &links, &session, &project, None, &[]).unwrap_err(),
         MISSING_HISTORY
     );
     std::fs::remove_dir_all(root).unwrap();
@@ -2299,7 +2306,7 @@ fn reconcile_reports_only_valid_live_working_state() {
     let root = root("working");
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "pi");
-    prepare_launch(&db, &links, &session, &project, None).unwrap();
+    prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     let record = get(&db, &session.id).unwrap().unwrap();
     let id = "99999999-9999-4999-8999-999999999999";
     let file = root.join("history.jsonl");
@@ -2345,7 +2352,7 @@ fn lifecycle_preserves_links_and_blocks_invalid_sidecars_and_headers() {
     let links = root.join("links");
     let (db, project, session) = fixture(&root, "pi");
     assert_eq!(fields(&db, &session).unwrap().resume, "new");
-    let first = prepare_launch(&db, &links, &session, &project, None).unwrap();
+    let first = prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
     assert_eq!(first.args[0], "-e");
     assert_eq!(first.args[2], "--version");
     assert!(std::fs::read_to_string(&first.args[1])
@@ -2403,7 +2410,7 @@ fn lifecycle_preserves_links_and_blocks_invalid_sidecars_and_headers() {
     assert_eq!(invalid.conversation.as_ref().unwrap().session_id, second_id);
     assert!(invalid.error.as_deref().unwrap().contains("incompatibles"));
     let run_count = std::fs::read_dir(&links).unwrap().count();
-    assert!(prepare_launch(&db, &links, &renamed, &project, None)
+    assert!(prepare_launch(&db, &links, &renamed, &project, None, &[])
         .unwrap_err()
         .contains("ne peut pas être reprise"));
     assert_eq!(std::fs::read_dir(&links).unwrap().count(), run_count);
@@ -2423,11 +2430,11 @@ fn lifecycle_preserves_links_and_blocks_invalid_sidecars_and_headers() {
     observe(&first_record, "pi", second_id, &second_file, "Second");
     reconcile(&db, &renamed, &project, false).unwrap();
     history(&second_file, "pi", first_id);
-    assert!(prepare_launch(&db, &links, &renamed, &project, None)
+    assert!(prepare_launch(&db, &links, &renamed, &project, None, &[])
         .unwrap_err()
         .contains("ne correspond pas"));
     std::fs::write(&second_file, "{}\n").unwrap();
-    assert!(prepare_launch(&db, &links, &renamed, &project, None)
+    assert!(prepare_launch(&db, &links, &renamed, &project, None, &[])
         .unwrap_err()
         .contains("type incorrect"));
     assert_eq!(std::fs::read_dir(&links).unwrap().count(), run_count);
@@ -2439,7 +2446,7 @@ fn omp_existing_and_parallel_agents_get_exact_resume_arguments_and_unique_runs()
     let root = root("argv");
     let links = root.join("links");
     let (db, project, omp) = fixture(&root, "omp");
-    prepare_launch(&db, &links, &omp, &project, None).unwrap();
+    prepare_launch(&db, &links, &omp, &project, None, &[]).unwrap();
     let record = get(&db, &omp.id).unwrap().unwrap();
     let id = "33333333-3333-4333-8333-333333333333";
     let file = root.join("omp.jsonl");
@@ -2458,7 +2465,7 @@ fn omp_existing_and_parallel_agents_get_exact_resume_arguments_and_unique_runs()
         ),
     )
     .unwrap();
-    assert!(prepare_launch(&db, &links, &omp, &project, None)
+    assert!(prepare_launch(&db, &links, &omp, &project, None, &[])
         .unwrap_err()
         .contains("Titre initial"));
     assert_eq!(get_data(&db, &omp.id).unwrap().unwrap(), linked_data);
@@ -2472,14 +2479,14 @@ fn omp_existing_and_parallel_agents_get_exact_resume_arguments_and_unique_runs()
     )
     .unwrap();
     verify_history(&project, &conversation).unwrap();
-    let resumed = prepare_launch(&db, &links, &omp, &project, None).unwrap();
+    let resumed = prepare_launch(&db, &links, &omp, &project, None, &[]).unwrap();
     assert_eq!(resumed.args[..2], ["--resume", file.to_str().unwrap()]);
     assert_eq!(resumed.args[2], "-e");
     reconcile(&db, &omp, &project, false).unwrap();
     let unconfirmed = fields(&db, &omp).unwrap();
     assert_eq!(unconfirmed.conversation.as_ref().unwrap().session_id, id);
     assert_eq!(unconfirmed.error.as_deref(), Some(MISSING_LINK));
-    assert!(prepare_launch(&db, &links, &omp, &project, None)
+    assert!(prepare_launch(&db, &links, &omp, &project, None, &[])
         .unwrap_err()
         .contains("aucune liaison"));
 
@@ -2492,14 +2499,14 @@ fn omp_existing_and_parallel_agents_get_exact_resume_arguments_and_unique_runs()
     )
     .unwrap();
     assert_eq!(fields(&db, &existing).unwrap().resume, "select");
-    let selected = prepare_launch(&db, &links, &existing, &project, None).unwrap();
+    let selected = prepare_launch(&db, &links, &existing, &project, None, &[]).unwrap();
     assert_eq!(selected.args[..2], ["--resume", "-e"]);
     reconcile(&db, &existing, &project, false).unwrap();
     assert_eq!(
         fields(&db, &existing).unwrap().error.as_deref(),
         Some(MISSING_LINK)
     );
-    let selected_again = prepare_launch(&db, &links, &existing, &project, None).unwrap();
+    let selected_again = prepare_launch(&db, &links, &existing, &project, None, &[]).unwrap();
     assert_eq!(selected_again.args[..2], ["--resume", "-e"]);
     assert_ne!(
         get(&db, &omp.id).unwrap().unwrap().metadata_path,
@@ -2552,7 +2559,7 @@ fn conversation_reference_and_name_survive_reopen() {
         )
         .unwrap();
         session_saved(&db, None, &session).unwrap();
-        prepare_launch(&db, &links, &session, &project, None).unwrap();
+        prepare_launch(&db, &links, &session, &project, None, &[]).unwrap();
         let record = get(&db, &session.id).unwrap().unwrap();
         let id = "44444444-4444-4444-8444-444444444444";
         let file = root.join("pi.jsonl");

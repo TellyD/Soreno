@@ -185,14 +185,21 @@ fn scheduled_session(
         return Ok(None);
     };
     conversations::validate_group_args(&session.args)?;
+    let members = groups::group_members(db, &group)?;
     let mut launch = session.clone();
-    groups::add_launch_args(
-        &mut launch.args,
-        provider,
-        &group.name,
-        &groups::group_members(db, &group)?,
-        false,
-    );
+    groups::add_launch_args(&mut launch.args, provider, &group.name, &members, false);
+    // shortcut: Claude keeps only the last `--settings`, so one in the session's args drops these directories; merge or refuse it if overview automations set their own.
+    if provider == conversations::Provider::Claude {
+        let directories = members
+            .into_iter()
+            .map(|(_, path)| path)
+            .collect::<Vec<_>>();
+        let settings =
+            serde_json::json!({ "permissions": { "additionalDirectories": directories } });
+        launch
+            .args
+            .splice(0..0, ["--settings".to_owned(), settings.to_string()]);
+    }
     Ok(Some(launch))
 }
 

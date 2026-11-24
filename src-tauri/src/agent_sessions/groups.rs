@@ -230,12 +230,14 @@ pub(super) fn add_launch_args(
     .collect::<Vec<_>>()
     .join(separator);
     match provider {
-        Provider::Claude | Provider::Omp => {
+        Provider::Omp => {
             let directories = directories.flat_map(|path| ["--add-dir".to_owned(), path]);
             let prompt_args = ["--append-system-prompt".to_owned(), prompt];
             args.splice(0..0, prompt_args.into_iter().chain(directories));
         }
-        Provider::Pi => {
+        // Claude gets the directories through `permissions.additionalDirectories`: `--add-dir` asks to trust each one.
+        // shortcut: unlike `--add-dir`, that setting loads no member `.claude/` skills, commands or subagents; pass `--add-dir` again if overview users need them and accept the trust prompt.
+        Provider::Claude | Provider::Pi => {
             args.splice(0..0, ["--append-system-prompt".to_owned(), prompt]);
         }
         Provider::Codex => {
