@@ -639,7 +639,8 @@
     /* The body scrolls: rows keep their content's height instead of sharing the visible one. */
     grid-auto-rows: max-content;
     gap: 18px;
-    padding: 24px 20px 32px;
+    /* No top padding: the description toolbar would stick below it, over visible text. */
+    padding: 0 20px 32px;
   }
 
   .kanban-issue-main {
@@ -648,6 +649,7 @@
 
   .kanban-issue-title {
     order: -2;
+    margin-top: 24px;
   }
 
   .kanban-issue-sidebar {
