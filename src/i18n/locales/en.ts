@@ -263,6 +263,7 @@ export const en = {
     "“{session}” could not update its issue: {error}",
   "kanban.issue.activity": "Activity",
   "kanban.issue.assignee": "Assignee",
+  "kanban.issue.branchCopied": "Branch name copied: {branch}",
   "kanban.issue.comment.label": "Add a comment",
   "kanban.issue.comment.placeholder": "Leave a comment…",
   "kanban.issue.comment.submit": "Comment",
@@ -281,6 +282,7 @@ export const en = {
   "kanban.issue.comment.agentFailed": "Not delivered to “{name}”",
   "kanban.issue.comment.agentFailedReason":
     "Not delivered to “{name}”: {reason}",
+  "kanban.issue.copyBranch": "Copy git branch name ({branch})",
   "kanban.issue.created": "Created",
   "kanban.issue.creator": "Created by",
   "kanban.issue.delete": "Delete issue",

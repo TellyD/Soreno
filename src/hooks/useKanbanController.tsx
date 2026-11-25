@@ -232,21 +232,31 @@ export function useKanbanController({
     [t],
   );
 
+  // Bumped when an issue's saved content changes, so the views showing it reload their detail.
+  const revisionRef = useRef(0);
+  const [issueRevisions, setIssueRevisions] = useState<
+    ReadonlyMap<string, number>
+  >(() => new Map());
+  const bumpIssueRevision = useCallback((issueId: string) => {
+    const revision = ++revisionRef.current;
+    setIssueRevisions((current) => new Map(current).set(issueId, revision));
+    return revision;
+  }, []);
+
   const updateBoardIssue = useCallback(
     (issue: KanbanIssue, patch: KanbanIssuePatch) => {
       void updateIssue(issue, patch).then(
         () => {
-          if (
-            patch.title !== undefined &&
-            issue.source === "local" &&
-            issueAgentsRef.current.live.has(issue.id)
-          )
+          if (patch.title === undefined || issue.source !== "local") return;
+          // Local branch names follow the title.
+          bumpIssueRevision(issue.id);
+          if (issueAgentsRef.current.live.has(issue.id))
             onLinkedIssueRenamed?.();
         },
         (error: unknown) => notifyError(formatError(error)),
       );
     },
-    [formatError, onLinkedIssueRenamed, updateIssue],
+    [bumpIssueRevision, formatError, onLinkedIssueRenamed, updateIssue],
   );
 
   // Deleted issues map to null, transferred ones to their Linear issue, so every open view follows.
@@ -641,20 +651,13 @@ export function useKanbanController({
     [formatError, onUnlinkSessionIssue, t],
   );
 
-  // Bumped when a view saves an issue's description or comments, so the other views reload it.
-  const revisionRef = useRef(0);
-  const [issueRevisions, setIssueRevisions] = useState<
-    ReadonlyMap<string, number>
-  >(() => new Map());
   const issueContentSaved = useCallback(
     (issue: KanbanIssueSelection) => {
       // Linear cards take pull requests from attachments, not from the text.
       if (issue.source === "local") reloadBoard("local");
-      const revision = ++revisionRef.current;
-      setIssueRevisions((current) => new Map(current).set(issue.id, revision));
-      return revision;
+      return bumpIssueRevision(issue.id);
     },
-    [reloadBoard],
+    [bumpIssueRevision, reloadBoard],
   );
 
   // The agent edits the description from its own copy: it gets the user's text once they pause.
