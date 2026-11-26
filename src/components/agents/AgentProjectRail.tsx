@@ -1028,6 +1028,30 @@ export function AgentProjectRail({
       ? null
       : branches[session.projectId];
     const showProject = !hiddenDetails.has("project");
+    const context = [
+      overviewGroup && !hiddenDetails.has("groupSummary")
+        ? s.groupOverview
+        : null,
+      project && !hiddenDetails.has("host")
+        ? project.environment.kind === "ssh"
+          ? s.ssh
+          : agentEnvironmentLabel(project.environment, s.local)
+        : null,
+      overviewGroup && !hiddenDetails.has("groupSummary")
+        ? s.groupProjectCount(
+            railLayout.groupedRailProjects.find(
+              (item) => item.group.id === overviewGroup.id,
+            )?.projects.length ?? 0,
+          )
+        : null,
+      branch ? "" : null,
+    ]
+      .filter((part) => part != null)
+      // Each part follows the project name, so the first one drops its separator without it.
+      .map((part, index) =>
+        showProject || index > 0 ? `· ${part}`.trim() : part,
+      )
+      .join(" ");
     return (
       <li key={session.id}>
         <button
@@ -1072,32 +1096,7 @@ export function AgentProjectRail({
           </span>
           <span className="agent-priority-context">
             {showProject ? <span>{project?.name}</span> : null}
-            <span>
-              {[
-                overviewGroup && !hiddenDetails.has("groupSummary")
-                  ? s.groupOverview
-                  : null,
-                project && !hiddenDetails.has("host")
-                  ? project.environment.kind === "ssh"
-                    ? s.ssh
-                    : agentEnvironmentLabel(project.environment, s.local)
-                  : null,
-                overviewGroup && !hiddenDetails.has("groupSummary")
-                  ? s.groupProjectCount(
-                      railLayout.groupedRailProjects.find(
-                        (item) => item.group.id === overviewGroup.id,
-                      )?.projects.length ?? 0,
-                    )
-                  : null,
-                branch ? "" : null,
-              ]
-                .filter((part) => part != null)
-                // Each part follows the project name, so the first one drops its separator without it.
-                .map((part, index) =>
-                  showProject || index > 0 ? `· ${part}`.trim() : part,
-                )
-                .join(" ")}
-            </span>
+            {context ? <span>{context}</span> : null}
             {branch ? (
               <>
                 <GitBranch size={10} aria-hidden="true" />
