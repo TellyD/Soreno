@@ -20,7 +20,7 @@ import { MenuItem } from "../ui/Menu";
 import type { AgentProjectGroup } from "./AgentForms";
 import { useAgentStrings } from "./agentStrings";
 
-type ProjectRailSection = {
+export type ProjectRailSection = {
   id: string;
   group: AgentProjectGroup | null;
   projects: AgentProject[];

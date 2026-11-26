@@ -1172,7 +1172,14 @@ export function AgentProjectRail({
           )}
           <NewProjectMenu
             disabled={disabled || loading}
-            projects={railProjects}
+            sections={
+              agentRailLayout({
+                projects: railProjects,
+                groups: projectGroups,
+                worktreeGroups,
+                sectionOrder,
+              }).railSections
+            }
             sessionDisabled={(project) =>
               sessionLaunchBlocked(workspace, project.id)
             }
