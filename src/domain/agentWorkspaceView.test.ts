@@ -125,7 +125,7 @@ it("orders tabs per project with pins first and hides split children", () => {
   ).toEqual(["b1", "a2", "a3"]);
 });
 
-it("ranks waits before unread turns, then live sessions, and leaves the rest out", () => {
+it("ranks waits before unread turns, then live sessions, then the rest", () => {
   const marks: Record<string, "awaiting" | "unread"> = {
     unread: "unread",
     awaiting: "awaiting",
@@ -149,6 +149,7 @@ it("ranks waits before unread turns, then live sessions, and leaves the rest out
     "unread",
   ]);
   expect(sections.live.map(({ id }) => id)).toEqual(["live"]);
+  expect(sections.idle.map(({ id }) => id)).toEqual(["stopped"]);
 });
 
 it("keeps Design boards' sessions and project out of the agents space", () => {

@@ -2,15 +2,20 @@ import { ContextMenu } from "@base-ui/react/context-menu";
 import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
 import {
+  Check,
+  CircleDashed,
   ChevronRight,
   ChevronsDownUp,
   ChevronsUpDown,
   Folder,
+  Folders,
   FolderPlus,
   GitBranch,
   ListFilter,
   Pencil,
   Plus,
+  Server,
+  SlidersHorizontal,
   SquareSplitHorizontal,
   SquareTerminal,
   Star,
@@ -105,49 +110,193 @@ export function RowContextMenu({
   );
 }
 
+// `grouping` limits an option to the rail view where it has an effect.
+const railDetails = [
+  { id: "host", icon: <Server />, label: "railHost" },
+  { id: "branch", icon: <GitBranch />, label: "railBranch" },
+  { id: "project", icon: <Folder />, label: "railProject", grouping: "status" },
+  { id: "groupSummary", icon: <Folders />, label: "railGroupSummary" },
+] as const;
+
+const railGroupings = [
+  { id: "project", icon: <Folder />, label: "groupByProject" },
+  { id: "status", icon: <CircleDashed />, label: "groupByStatus" },
+] as const;
+
+function ViewSubmenu({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <Menu.SubmenuRoot>
+      <Menu.SubmenuTrigger
+        nativeButton
+        render={<MenuItem trailing={<ChevronRight />} />}
+      >
+        {label}
+      </Menu.SubmenuTrigger>
+      <Menu.Portal>
+        <Menu.Positioner
+          className="agent-menu-positioner"
+          alignOffset={-4}
+          collisionPadding={8}
+        >
+          <Menu.Popup render={<MenuSurface className="agent-launcher-menu" />}>
+            {children}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.SubmenuRoot>
+  );
+}
+
 export function ProjectViewControls({
   filterDisabled,
   collapseDisabled,
   allCollapsed,
+  statusGrouping,
+  onStatusGroupingChange,
   onlyWithAgents,
   onOnlyWithAgentsChange,
+  hiddenDetails,
+  onHiddenDetailsChange,
   onToggleCollapseAll,
 }: {
   filterDisabled: boolean;
   collapseDisabled: boolean;
   allCollapsed: boolean;
+  statusGrouping: boolean;
+  onStatusGroupingChange: (value: boolean) => void;
   onlyWithAgents: boolean;
   onOnlyWithAgentsChange: (value: boolean) => void;
+  hiddenDetails: ReadonlySet<string>;
+  onHiddenDetailsChange: (value: Set<string>) => void;
   onToggleCollapseAll: () => void;
 }) {
   const s = useAgentStrings();
   const collapseLabel = allCollapsed
     ? s.expandAllProjects
     : s.collapseAllProjects;
+  const grouping = statusGrouping ? "status" : "project";
+  const filterLabel = statusGrouping
+    ? s.onlyActiveSessions
+    : s.onlyProjectsWithAgents;
   return (
     <>
       <IconButton
-        aria-label={s.onlyProjectsWithAgents}
+        aria-label={filterLabel}
         aria-pressed={onlyWithAgents}
-        title={s.onlyProjectsWithAgents}
+        title={filterLabel}
         disabled={filterDisabled}
         selected={onlyWithAgents}
         onClick={() => onOnlyWithAgentsChange(!onlyWithAgents)}
       >
         <ListFilter aria-hidden="true" />
       </IconButton>
-      <IconButton
-        aria-label={collapseLabel}
-        title={collapseLabel}
-        disabled={collapseDisabled}
-        onClick={onToggleCollapseAll}
-      >
-        {allCollapsed ? (
-          <ChevronsUpDown aria-hidden="true" />
-        ) : (
-          <ChevronsDownUp aria-hidden="true" />
-        )}
-      </IconButton>
+      <span className="agent-rail-separator" aria-hidden="true" />
+      <Menu.Root modal={false}>
+        <Menu.Trigger
+          render={
+            <IconButton aria-label={s.viewOptions} title={s.viewOptions}>
+              <SlidersHorizontal aria-hidden="true" />
+            </IconButton>
+          }
+        />
+        <Menu.Portal>
+          <Menu.Positioner
+            className="agent-menu-positioner"
+            sideOffset={4}
+            align="start"
+            collisionPadding={8}
+          >
+            <Menu.Popup
+              render={<MenuSurface className="agent-launcher-menu" />}
+            >
+              <ViewSubmenu label={s.grouping}>
+                <Menu.RadioGroup
+                  aria-label={s.grouping}
+                  value={grouping}
+                  onValueChange={(value) =>
+                    onStatusGroupingChange(value === "status")
+                  }
+                >
+                  {railGroupings.map(({ id, icon, label }) => (
+                    <Menu.RadioItem
+                      key={id}
+                      nativeButton
+                      value={id}
+                      render={
+                        <MenuItem
+                          leading={icon}
+                          trailing={<Check aria-hidden="true" />}
+                        />
+                      }
+                    >
+                      {s[label]}
+                    </Menu.RadioItem>
+                  ))}
+                </Menu.RadioGroup>
+              </ViewSubmenu>
+              <ViewSubmenu label={s.showInRail}>
+                {railDetails.map((detail) => {
+                  if ("grouping" in detail && detail.grouping !== grouping)
+                    return null;
+                  const { id, icon, label } = detail;
+                  const shown = !hiddenDetails.has(id);
+                  return (
+                    <Menu.CheckboxItem
+                      key={id}
+                      nativeButton
+                      checked={shown}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(hiddenDetails);
+                        if (checked) next.delete(id);
+                        else next.add(id);
+                        onHiddenDetailsChange(next);
+                      }}
+                      render={
+                        <MenuItem
+                          leading={icon}
+                          trailing={<Check aria-hidden="true" />}
+                        />
+                      }
+                    >
+                      {s[label]}
+                    </Menu.CheckboxItem>
+                  );
+                })}
+              </ViewSubmenu>
+              <Menu.Separator className="agent-menu-separator" />
+              <Menu.CheckboxItem
+                nativeButton
+                disabled={filterDisabled}
+                checked={onlyWithAgents}
+                onCheckedChange={onOnlyWithAgentsChange}
+                render={<MenuItem trailing={<Check aria-hidden="true" />} />}
+              >
+                {filterLabel}
+              </Menu.CheckboxItem>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+      {statusGrouping ? null : (
+        <IconButton
+          aria-label={collapseLabel}
+          title={collapseLabel}
+          disabled={collapseDisabled}
+          onClick={onToggleCollapseAll}
+        >
+          {allCollapsed ? (
+            <ChevronsUpDown aria-hidden="true" />
+          ) : (
+            <ChevronsDownUp aria-hidden="true" />
+          )}
+        </IconButton>
+      )}
     </>
   );
 }

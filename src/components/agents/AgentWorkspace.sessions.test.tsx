@@ -31,7 +31,30 @@ import * as attentionApi from "../../data/agentAttentionApi";
 import { getNotifications } from "../../notifications";
 import { projectSectionOrderKey } from "./agentWorkspaceStorage";
 
-it("filters projects without agents from the rail toggle and keeps the filter visible", async () => {
+/** Opens the rail's view menu, and the submenu when given, then returns the item. */
+async function viewOption(label: string, submenu?: string) {
+  if (!document.querySelector('[role="menu"]'))
+    await click("Options d’affichage");
+  if (submenu) {
+    const trigger = button(submenu, document.querySelector('[role="menu"]')!);
+    if (trigger.getAttribute("aria-expanded") !== "true")
+      await act(async () => trigger.click());
+  }
+  const menus = document.querySelectorAll('[role="menu"]');
+  const found = [
+    ...menus[submenu ? menus.length - 1 : 0].querySelectorAll<HTMLElement>(
+      '[role^="menuitem"]',
+    ),
+  ].find((element) => element.textContent === label);
+  if (!found) throw new Error(`Missing menu item: ${label}`);
+  return found;
+}
+async function chooseViewOption(label: string, submenu?: string) {
+  const item = await viewOption(label, submenu);
+  await act(async () => item.click());
+}
+
+it("filters projects without agents from the view menu and keeps the filter visible", async () => {
   data.projects.push({
     ...project,
     id: "p2",
@@ -39,31 +62,41 @@ it("filters projects without agents from the rail toggle and keeps the filter vi
     path: "/projects/empty",
   });
   await render();
-  const onlyWithAgents = () => button("Uniquement les projets avec agents");
+  const onlyWithAgents = "Uniquement les projets avec agents";
+  const details = () =>
+    container.querySelector(".agent-project-details")?.textContent;
 
   expect(projectNames()).toEqual(["Soreno", "Sans agent"]);
-  expect(onlyWithAgents().getAttribute("aria-pressed")).toBe("false");
-  await act(async () => onlyWithAgents().click());
+  expect((await viewOption(onlyWithAgents)).getAttribute("aria-checked")).toBe(
+    "false",
+  );
+  await chooseViewOption(onlyWithAgents);
   expect(projectNames()).toEqual(["Soreno"]);
   expect(
     container.querySelector(".agent-rail-filter-notice span")?.textContent,
   ).toBe("1 projet masqué");
+  expect(details()).toContain("Local");
+  await chooseViewOption("Hôte", "Afficher");
+  expect(details() ?? "").not.toContain("Local");
 
   await act(async () => root.render(null));
   await render();
   expect(projectNames()).toEqual(["Soreno"]);
-  expect(onlyWithAgents().getAttribute("aria-pressed")).toBe("true");
-  await act(async () => onlyWithAgents().click());
+  expect(details() ?? "").not.toContain("Local");
+  expect((await viewOption(onlyWithAgents)).getAttribute("aria-checked")).toBe(
+    "true",
+  );
+  await chooseViewOption(onlyWithAgents);
   expect(projectNames()).toEqual(["Soreno", "Sans agent"]);
   expect(container.querySelector(".agent-rail-filter-notice")).toBeNull();
 
-  await act(async () => onlyWithAgents().click());
+  await chooseViewOption(onlyWithAgents);
   await click("Tout afficher");
   expect(projectNames()).toEqual(["Soreno", "Sans agent"]);
   expect(container.querySelector(".agent-rail-filter-notice")).toBeNull();
 });
 
-it("ranks sessions from the priority toggle and remembers it", async () => {
+it("ranks sessions when grouped by status and remembers it", async () => {
   vi.useFakeTimers();
   data.sessions.push({ ...session, id: "s3", name: "Stopped" });
   data.statuses.push({ sessionId: "s3", state: "exited", exitCode: 0 });
@@ -73,10 +106,6 @@ it("ranks sessions from the priority toggle and remembers it", async () => {
   data.statuses[1].awaiting = true;
   await act(async () => vi.advanceTimersByTimeAsync(1000));
   await act(async () => vi.advanceTimersByTimeAsync(1000));
-  const toggle = () =>
-    container.querySelector<HTMLButtonElement>(
-      'button[aria-label^="Vue par priorités"]',
-    )!;
   const sections = () =>
     [...container.querySelectorAll(".agent-rail section")].map((section) => [
       section.querySelector("h3")?.textContent,
@@ -85,11 +114,23 @@ it("ranks sessions from the priority toggle and remembers it", async () => {
       ),
     ]);
 
-  expect(toggle().getAttribute("aria-label")).toBe(
-    "Vue par priorités · À traiter · 1",
-  );
-  expect(toggle().getAttribute("aria-pressed")).toBe("false");
-  await act(async () => toggle().click());
+  expect(
+    container
+      .querySelector(".agent-priority-toggle")
+      ?.getAttribute("aria-label"),
+  ).toBe("Vue par priorités · À traiter · 1");
+  await chooseViewOption("Statut", "Regroupement");
+  expect(
+    container
+      .querySelector(".agent-priority-toggle")
+      ?.getAttribute("aria-pressed"),
+  ).toBe("true");
+  expect(sections()).toEqual([
+    ["À traiter", ["Codex tests"]],
+    ["En cours · 1", ["Pi notes"]],
+    ["Inactives · 1", ["Stopped"]],
+  ]);
+  await chooseViewOption("Uniquement les sessions actives");
   expect(sections()).toEqual([
     ["À traiter", ["Codex tests"]],
     ["En cours · 1", ["Pi notes"]],
@@ -97,7 +138,9 @@ it("ranks sessions from the priority toggle and remembers it", async () => {
 
   await act(async () => root.render(null));
   await render();
-  expect(toggle().getAttribute("aria-pressed")).toBe("true");
+  expect(
+    (await viewOption("Statut", "Regroupement")).getAttribute("aria-checked"),
+  ).toBe("true");
 
   // A split tab whose parent exited stays live while its secondary pane works.
   data.statuses[1].awaiting = false;
@@ -142,17 +185,23 @@ it("lists priority sessions in the tree's section order with the group's rail pr
     JSON.stringify(["group:g1", "project:p1"]),
   );
   await render();
-  await click("Vue par priorités");
+  await chooseViewOption("Statut", "Regroupement");
 
   const cards = [...container.querySelectorAll(".agent-priority-session")];
   expect(
     cards.map(
       (card) => card.querySelector(".agent-priority-name")?.textContent,
     ),
-  ).toEqual(["Group agent", "Pi notes"]);
-  expect(
-    cards[0].querySelector(".agent-priority-context")?.textContent,
-  ).toContain("1 projet");
+  ).toEqual(["Group agent", "Pi notes", "Codex tests"]);
+  const context = () =>
+    container.querySelector(".agent-priority-context")?.textContent;
+  expect(context()).toContain("1 projet");
+  expect(context()).toMatch(/^Suite/);
+
+  await chooseViewOption("Projet", "Afficher");
+  expect(context()).toBe("Vue d’ensemble · Local · 1 projet");
+  await chooseViewOption("Résumé des groupes", "Afficher");
+  expect(context()).toBe("Local");
 });
 
 it("shows live work in tabs and the sidebar, including hidden sessions, without confusing it with process lifetime", async () => {

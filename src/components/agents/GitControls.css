@@ -368,6 +368,13 @@
   .app-menu-item:has(.app-menu-item-label:first-child + svg) {
   --menu-item-columns: minmax(0, 1fr) 16px;
 }
+/* The check keeps its slot when cleared, so toggling does not resize the menu. */
+.agent-launcher-menu .app-menu-item[aria-checked="false"] > svg:last-child {
+  visibility: hidden;
+}
+.agent-launcher-menu .app-menu-item[aria-checked] .app-menu-item-label {
+  padding-inline-end: 8px;
+}
 .agent-favorites-menu {
   width: min(400px, calc(100vw - 16px));
   max-width: var(--available-width);

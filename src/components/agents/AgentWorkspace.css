@@ -364,10 +364,19 @@
   margin: 0 8px;
   padding: 9px 2px 0 10px;
 }
+/* shortcut: at the 220px sidebar minimum the five header buttons squeeze the title until it overlaps, truncate the title or shrink the buttons if narrow sidebars are common. */
 .agent-rail-actions {
   display: flex;
   align-items: center;
   gap: 2px;
+}
+/* As the editor toolbar's `.toolbar-separator`. */
+.agent-rail-separator {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--border-muted);
 }
 .agent-add-project {
   --app-icon-button-icon-size: var(--icon-size-xl);
@@ -538,9 +547,12 @@
   min-width: 0;
   padding-right: 4px;
 }
+/* Top-aligned without min height, so a row without its details line keeps the same name and icon offsets. */
 .agent-project-select {
   flex: 1;
+  align-items: start;
   min-width: 0;
+  min-height: 0;
   padding-inline: 6px;
   font-size: 13px;
   font-weight: 700;
@@ -640,6 +652,7 @@
   font-size: 11px;
   font-weight: 450;
   line-height: 16px;
+  min-height: 16px;
 }
 .agent-project-details > span {
   overflow: hidden;
@@ -676,6 +689,11 @@
   background: var(--worktree-guide-color);
   content: "";
   pointer-events: none;
+}
+.agent-project.has-worktrees:not(:has(.agent-project-details))
+  .agent-worktree-list::before {
+  top: -11px;
+  height: 23px;
 }
 .agent-worktree,
 .agent-worktree-main {

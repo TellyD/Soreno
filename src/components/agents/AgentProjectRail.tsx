@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  Fragment,
   useRef,
   useState,
   type Dispatch,
@@ -61,7 +62,12 @@ import {
 import type { Confirmation } from "./agentConfirmation";
 import { useAgentStrings } from "./agentStrings";
 import { useGitStrings } from "./gitStrings";
-import { readPriorityView, writePriorityView } from "./agentWorkspaceStorage";
+import {
+  readHiddenRailDetails,
+  readPriorityView,
+  writeHiddenRailDetails,
+  writePriorityView,
+} from "./agentWorkspaceStorage";
 
 type AgentProjectRailForm = (
   | { kind: "project"; project?: AgentProject }
@@ -233,6 +239,7 @@ export function AgentProjectRail({
     y: number;
   } | null>(null);
   const [priorityView, setPriorityView] = useState(readPriorityView);
+  const [hiddenDetails, setHiddenDetails] = useState(readHiddenRailDetails);
   const busy = (id: string) => startingSessionId === id || isWorking(id);
   // A split tab is live while either pane is: the secondary pane can outlive the parent.
   const tabPanes = (id: string) =>
@@ -257,6 +264,10 @@ export function AgentProjectRail({
       ]),
     ])
       if (!railRank.has(id)) railRank.set(id, railRank.size);
+  const isLive = (id: string) =>
+    tabPanes(id).some(
+      (paneId) => busy(paneId) || statusOf(paneId)?.state === "running",
+    );
   const priority = agentPrioritySections(
     [...visibleSessions].sort(
       (a, b) =>
@@ -264,10 +275,7 @@ export function AgentProjectRail({
         (railRank.get(b.projectId) ?? railRank.size),
     ),
     attentionOf,
-    (id) =>
-      tabPanes(id).some(
-        (paneId) => busy(paneId) || statusOf(paneId)?.state === "running",
-      ),
+    isLive,
   );
   const appearanceItem =
     appearanceTarget?.kind === "group"
@@ -582,11 +590,15 @@ export function AgentProjectRail({
       );
     }
     const linkedWorktrees = !expanded && group ? group.worktrees.length - 1 : 0;
-    const separator = (
-      <span className="agent-project-separator" aria-hidden="true">
-        ·
-      </span>
-    );
+    const details = [
+      hiddenDetails.has("host") ? null : <span>{environment}</span>,
+      hiddenDetails.has("branch") ? null : branchStatus,
+      linkedWorktrees === 0 ? null : (
+        <span className="agent-project-worktree-count">
+          {s.worktreeCount(linkedWorktrees)}
+        </span>
+      ),
+    ].filter(Boolean);
     const worktreeLabel = (
       worktree: AgentProjectWorktree,
       branch: string | null | undefined,
@@ -755,19 +767,23 @@ export function AgentProjectRail({
                     <span className="agent-project-name">{project.name}</span>
                     {activity?.badge}
                   </span>
-                  <span className="agent-project-details">
-                    <span>{environment}</span>
-                    {branchStatus ? separator : null}
-                    {branchStatus}
-                    {linkedWorktrees > 0 ? (
-                      <>
-                        {separator}
-                        <span className="agent-project-worktree-count">
-                          {s.worktreeCount(linkedWorktrees)}
-                        </span>
-                      </>
-                    ) : null}
-                  </span>
+                  {details.length > 0 ? (
+                    <span className="agent-project-details">
+                      {details.map((detail, index) => (
+                        <Fragment key={index}>
+                          {index > 0 ? (
+                            <span
+                              className="agent-project-separator"
+                              aria-hidden="true"
+                            >
+                              ·
+                            </span>
+                          ) : null}
+                          {detail}
+                        </Fragment>
+                      ))}
+                    </span>
+                  ) : null}
                 </>
               }
               onSelect={() =>
@@ -901,11 +917,12 @@ export function AgentProjectRail({
           ? [groupProject.id]
           : [],
     );
+    const summary = !hiddenDetails.has("groupSummary");
     const details = [
-      hasOverview ? s.groupOverview : null,
-      environment,
-      s.groupProjectCount(count),
-      activeAgents > 0 ? s.groupActiveAgents(activeAgents) : null,
+      summary && hasOverview ? s.groupOverview : null,
+      hiddenDetails.has("host") ? null : environment,
+      summary ? s.groupProjectCount(count) : null,
+      summary && activeAgents > 0 ? s.groupActiveAgents(activeAgents) : null,
     ]
       .filter(Boolean)
       .join(" · ");
@@ -941,9 +958,11 @@ export function AgentProjectRail({
                     <span className="agent-project-name">{group.name}</span>
                     {activity?.badge}
                   </span>
-                  <span className="agent-project-details">
-                    <span>{details}</span>
-                  </span>
+                  {details ? (
+                    <span className="agent-project-details">
+                      <span>{details}</span>
+                    </span>
+                  ) : null}
                 </>
               }
               onSelect={() => toggleGroup(group)}
@@ -1005,7 +1024,10 @@ export function AgentProjectRail({
       (group) => group.groupProjectId === session.projectId,
     );
     const mark = attentionOf(session.id);
-    const branch = branches[session.projectId];
+    const branch = hiddenDetails.has("branch")
+      ? null
+      : branches[session.projectId];
+    const showProject = !hiddenDetails.has("project");
     return (
       <li key={session.id}>
         <button
@@ -1028,7 +1050,10 @@ export function AgentProjectRail({
               aria-hidden="true"
             />
           ) : (
-            <span className="agent-status-dot is-running" aria-hidden="true" />
+            <span
+              className={`agent-status-dot is-${isLive(session.id) ? "running" : (statusOf(session.id)?.state ?? "idle")}`}
+              aria-hidden="true"
+            />
           )}
           <AgentProviderIcon executable={session.executable} />
           <span className="agent-priority-name">{sessionName(session)}</span>
@@ -1046,15 +1071,18 @@ export function AgentProjectRail({
               : statusLabel(session.id)}
           </span>
           <span className="agent-priority-context">
-            <span>{project?.name}</span>
+            {showProject ? <span>{project?.name}</span> : null}
             <span>
               {[
-                overviewGroup ? s.groupOverview : null,
-                project &&
-                  (project.environment.kind === "ssh"
+                overviewGroup && !hiddenDetails.has("groupSummary")
+                  ? s.groupOverview
+                  : null,
+                project && !hiddenDetails.has("host")
+                  ? project.environment.kind === "ssh"
                     ? s.ssh
-                    : agentEnvironmentLabel(project.environment, s.local)),
-                overviewGroup
+                    : agentEnvironmentLabel(project.environment, s.local)
+                  : null,
+                overviewGroup && !hiddenDetails.has("groupSummary")
                   ? s.groupProjectCount(
                       railLayout.groupedRailProjects.find(
                         (item) => item.group.id === overviewGroup.id,
@@ -1064,7 +1092,10 @@ export function AgentProjectRail({
                 branch ? "" : null,
               ]
                 .filter((part) => part != null)
-                .map((part) => `· ${part}`.trim())
+                // Each part follows the project name, so the first one drops its separator without it.
+                .map((part, index) =>
+                  showProject || index > 0 ? `· ${part}`.trim() : part,
+                )
                 .join(" ")}
             </span>
             {branch ? (
@@ -1100,7 +1131,20 @@ export function AgentProjectRail({
           </ul>
         </section>
       ) : null}
-      {priority.toHandle.length + priority.live.length === 0 ? (
+      {!onlyWithAgents && priority.idle.length > 0 ? (
+        <section aria-labelledby="agent-priority-idle">
+          <h3 id="agent-priority-idle" className="agent-priority-heading">
+            {s.inactiveSessions(priority.idle.length)}
+          </h3>
+          <ul className="agent-priority-sessions">
+            {priority.idle.map(prioritySession)}
+          </ul>
+        </section>
+      ) : null}
+      {priority.toHandle.length +
+        priority.live.length +
+        (onlyWithAgents ? 0 : priority.idle.length) ===
+      0 ? (
         <p className="agent-priority-empty">{s.priorityEmpty}</p>
       ) : null}
     </div>
@@ -1109,6 +1153,10 @@ export function AgentProjectRail({
     priority.toHandle.length > 0
       ? `${s.priorityView} · ${s.toHandle} · ${priority.toHandle.length}`
       : s.priorityView;
+  const setStatusGrouping = (value: boolean) => {
+    setPriorityView(value);
+    writePriorityView(value);
+  };
   return (
     <aside
       className={`agent-rail${embedded ? " agent-rail-embedded" : ""}`}
@@ -1129,10 +1177,7 @@ export function AgentProjectRail({
             aria-pressed={priorityView}
             title={priorityLabel}
             selected={priorityView}
-            onClick={() => {
-              setPriorityView(!priorityView);
-              writePriorityView(!priorityView);
-            }}
+            onClick={() => setStatusGrouping(!priorityView)}
           >
             <Inbox aria-hidden="true" />
             {priority.toHandle.length > 0 ? (
@@ -1144,16 +1189,22 @@ export function AgentProjectRail({
               />
             ) : null}
           </IconButton>
-          {priorityView ||
-          (hasLoaded && orderedProjects.length === 0) ? null : (
+          {hasLoaded && orderedProjects.length === 0 ? null : (
             <ProjectViewControls
               filterDisabled={loading || orderedProjects.length === 0}
               collapseDisabled={
                 disabled || loading || orderedProjects.length === 0
               }
               allCollapsed={allProjectsCollapsed}
+              statusGrouping={priorityView}
+              onStatusGroupingChange={setStatusGrouping}
               onlyWithAgents={onlyWithAgents}
               onOnlyWithAgentsChange={onOnlyWithAgentsChange}
+              hiddenDetails={hiddenDetails}
+              onHiddenDetailsChange={(value) => {
+                setHiddenDetails(value);
+                writeHiddenRailDetails(value);
+              }}
               onToggleCollapseAll={() =>
                 setCollapsed(
                   new Set(
@@ -1192,7 +1243,7 @@ export function AgentProjectRail({
           />
         </div>
       </header>
-      {priorityView && hasLoaded ? (
+      {priorityView && hasLoaded && orderedProjects.length > 0 ? (
         priorityList
       ) : (
         <AgentProjectList
