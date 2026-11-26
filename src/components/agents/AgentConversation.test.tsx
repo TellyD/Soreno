@@ -883,7 +883,7 @@ it("answers an ask round, an ask form field and a whole form in the dock", async
     value: "Apple",
   });
 
-  // OMP 19.1.0 sends the whole form and fails the call on an answer it refuses: none leaves until valid.
+  // OMP 19.2.0 takes the whole form even when an answer breaks its rules: errors warn, never block.
   await act(async () =>
     emit({
       type: "extension_ui_request",
@@ -892,7 +892,7 @@ it("answers an ask round, an ask form field and a whole form in the dock", async
       html: `<form><fieldset><legend>Couleur</legend>
         <label><input type="radio" name="color" value="red" checked> Rouge</label>
         <label><input type="radio" name="color" value="blue"> Bleu</label>
-        </fieldset><label>Note <input name="note" required></label></form>`,
+        </fieldset><label>Note <input name="note" required pattern="[0-9]+"></label></form>`,
     }),
   );
   const form = container.querySelector(".agent-conversation-dock")!;
@@ -900,14 +900,11 @@ it("answers an ask round, an ask form field and a whole form in the dock", async
     [...form.querySelectorAll("button")].find(
       (candidate) => candidate.textContent === text,
     )!;
-  const pending = sent().length;
-  await act(async () => button(s.askSubmit).click());
-  expect(sent()).toHaveLength(pending);
-  const note = form.querySelector<HTMLInputElement>('[aria-invalid="true"]')!;
-  expect(document.activeElement).toBe(note);
-  expect(form.textContent).toContain(s.formError({ kind: "required" }));
+  const note = form.querySelector<HTMLInputElement>('input[type="text"]')!;
   await act(async () => button("Bleu").click());
   await act(async () => setInputValue(note, "salut"));
+  expect(note.getAttribute("aria-invalid")).toBe("true");
+  expect(form.textContent).toContain(s.formError({ kind: "pattern" }));
   await act(async () => button(s.askSubmit).click());
   expect(sent().pop()).toEqual({
     type: "extension_ui_response",

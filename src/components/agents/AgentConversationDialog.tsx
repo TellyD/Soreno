@@ -625,7 +625,7 @@ const INPUT_TYPES = new Set([
   "password",
 ]);
 
-/** OMP 19.1.0: an `ask` HTML form answered whole; OMP fails the call on data it refuses, so errors block sending. */
+/** An `ask` HTML form answered whole. OMP 19.2.0 takes answers that break the form's rules: they warn, never block (OMP 19.1 fails the call). */
 function FormDialog({
   dialog,
   titleId,
@@ -643,8 +643,8 @@ function FormDialog({
 }) {
   const { form } = dialog;
   const [inputs, setInputs] = useState(() => agentConversationFormInputs(form));
-  // Errors show once the user tries to send, then follow each change.
-  const [showErrors, setShowErrors] = useState(false);
+  // Like OMP, an empty field is flagged once focus has moved past it; other errors show as you type.
+  const [reached, setReached] = useState(0);
   const fields = useRef<HTMLDivElement>(null);
   const id = useId();
   useEffect(
@@ -654,24 +654,17 @@ function FormDialog({
       ),
     [dialog.id],
   );
-  const errors = form.fields.map((field, index) =>
-    agentConversationFormError(
+  const errors = form.fields.map((field, index) => {
+    const error = agentConversationFormError(
       field,
       agentConversationFormValue(field, inputs[index]),
-    ),
-  );
+    );
+    const blank = error?.kind === "required" || error?.kind === "selectOne";
+    return blank && index >= reached ? undefined : error;
+  });
 
   function submit() {
-    const invalid = errors.findIndex(Boolean);
-    if (invalid < 0) {
-      onAnswer({ data: agentConversationFormData(form, inputs) });
-      return;
-    }
-    setShowErrors(true);
-    fields.current
-      ?.querySelector(`[data-field="${invalid}"]`)
-      ?.querySelector<HTMLElement>(FOCUSABLE)
-      ?.focus();
+    onAnswer({ data: agentConversationFormData(form, inputs) });
   }
 
   return (
@@ -693,7 +686,20 @@ function FormDialog({
         </>
       }
     >
-      <div ref={fields} className="agent-conversation-form">
+      <div
+        ref={fields}
+        className="agent-conversation-form"
+        onFocus={(event) => {
+          // shortcut: focus in a Select popup (portal) counts for no field, so on WebKit a clicked Select defers earlier empty-field warnings; tie the popup to its field if users miss them.
+          const field = (event.target as HTMLElement).closest<HTMLElement>(
+            "[data-field]",
+          );
+          if (field)
+            setReached((current) =>
+              Math.max(current, Number(field.dataset.field)),
+            );
+        }}
+      >
         {form.blocks.map((block, key) => {
           switch (block.kind) {
             case "text":
@@ -758,7 +764,7 @@ function FormDialog({
                   id={`${id}-${index}`}
                   field={block.field}
                   input={inputs[index]}
-                  error={showErrors ? errors[index] : undefined}
+                  error={errors[index]}
                   onChange={(input) =>
                     setInputs((current) =>
                       current.map((value, position) =>
