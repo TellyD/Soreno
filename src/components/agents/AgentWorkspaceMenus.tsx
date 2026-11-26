@@ -12,6 +12,7 @@ import {
   Pencil,
   Plus,
   SquareSplitHorizontal,
+  SquareTerminal,
   Star,
   X,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import { useRef, useState, type ReactNode, type RefObject } from "react";
 import {
   agentPresets,
   visibleAgentPresets,
+  type AgentProject,
   type AgentSession,
 } from "../../domain/agentSessions";
 import { useAppSettings } from "../../settings";
@@ -148,7 +150,9 @@ export function NewProjectMenu({
   onOpen,
   onClone,
   onGroup,
-  hasProjects,
+  projects,
+  sessionDisabled,
+  onSession,
   returnFocusRef,
   triggerRef,
 }: {
@@ -156,11 +160,18 @@ export function NewProjectMenu({
   onOpen: () => void;
   onClone: () => void;
   onGroup: () => void;
-  hasProjects: boolean;
+  projects: AgentProject[];
+  sessionDisabled: (project: AgentProject) => boolean;
+  onSession: (
+    project: AgentProject,
+    preset: (typeof agentPresets)[number],
+  ) => void;
   returnFocusRef: RefObject<HTMLElement | null>;
   triggerRef: RefObject<HTMLButtonElement | null>;
 }) {
   const s = useAgentStrings();
+  const { settings } = useAppSettings();
+  const presets = visibleAgentPresets(settings.hiddenAgentPresets);
   return (
     <Menu.Root
       disabled={disabled}
@@ -193,9 +204,74 @@ export function NewProjectMenu({
             render={<MenuSurface className="agent-launcher-menu" />}
             finalFocus={() => !document.querySelector('[aria-modal="true"]')}
           >
+            <Menu.SubmenuRoot disabled={projects.length === 0}>
+              <Menu.SubmenuTrigger
+                nativeButton
+                render={
+                  <MenuItem
+                    leading={<SquareTerminal />}
+                    trailing={<ChevronRight />}
+                  />
+                }
+              >
+                {s.newSession}
+              </Menu.SubmenuTrigger>
+              <Menu.Portal>
+                <Menu.Positioner
+                  className="agent-menu-positioner"
+                  alignOffset={-4}
+                  collisionPadding={8}
+                >
+                  <Menu.Popup
+                    render={<MenuSurface className="agent-launcher-menu" />}
+                  >
+                    {projects.map((project) => (
+                      <Menu.SubmenuRoot
+                        key={project.id}
+                        // Base UI does not pass the root `disabled` to submenus.
+                        // shortcut: disabling also turns off Escape/outside-press dismissal while a reload runs, close the menu on lock if it bothers users.
+                        disabled={disabled || sessionDisabled(project)}
+                      >
+                        <Menu.SubmenuTrigger
+                          nativeButton
+                          render={<MenuItem trailing={<ChevronRight />} />}
+                        >
+                          {project.name}
+                        </Menu.SubmenuTrigger>
+                        <Menu.Portal>
+                          <Menu.Positioner
+                            className="agent-menu-positioner"
+                            alignOffset={-4}
+                            collisionPadding={8}
+                          >
+                            <Menu.Popup
+                              render={
+                                <MenuSurface className="agent-launcher-menu" />
+                              }
+                            >
+                              {presets.map((preset) => (
+                                <Menu.Item
+                                  nativeButton
+                                  key={preset.executable}
+                                  render={<MenuItem />}
+                                  onClick={() => onSession(project, preset)}
+                                >
+                                  {preset.name}
+                                </Menu.Item>
+                              ))}
+                            </Menu.Popup>
+                          </Menu.Positioner>
+                        </Menu.Portal>
+                      </Menu.SubmenuRoot>
+                    ))}
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.SubmenuRoot>
+            <Menu.Separator className="agent-menu-separator" />
             <Menu.Item
               nativeButton
-              disabled={!hasProjects}
+              disabled={projects.length === 0}
               render={<MenuItem leading={<FolderPlus />} />}
               onClick={onGroup}
             >

@@ -1172,7 +1172,11 @@ export function AgentProjectRail({
           )}
           <NewProjectMenu
             disabled={disabled || loading}
-            hasProjects={railProjects.length > 0}
+            projects={railProjects}
+            sessionDisabled={(project) =>
+              sessionLaunchBlocked(workspace, project.id)
+            }
+            onSession={(project, preset) => void createSession(project, preset)}
             returnFocusRef={returnFocusRef}
             triggerRef={addProjectRef}
             onOpen={() => openForm({ kind: "project", fromMenu: true })}

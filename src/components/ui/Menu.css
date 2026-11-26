@@ -33,7 +33,14 @@
   text-align: left;
 }
 
-.app-menu-surface .app-menu-item + .app-menu-item {
+.app-menu-surface .app-menu-item + .app-menu-item,
+/* An open submenu inserts hidden focus guards after its trigger. */
+.app-menu-surface
+  .app-menu-item
+  + [data-base-ui-focus-guard]
+  + [aria-owns]
+  + [data-base-ui-focus-guard]
+  + .app-menu-item {
   margin-top: 2px;
 }
 

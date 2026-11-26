@@ -364,6 +364,10 @@
 .agent-launcher-menu .app-menu-item:has(svg + .app-menu-item-label + svg) {
   --menu-item-columns: 16px minmax(0, 1fr) 16px;
 }
+.agent-launcher-menu
+  .app-menu-item:has(.app-menu-item-label:first-child + svg) {
+  --menu-item-columns: minmax(0, 1fr) 16px;
+}
 .agent-favorites-menu {
   width: min(400px, calc(100vw - 16px));
   max-width: var(--available-width);
