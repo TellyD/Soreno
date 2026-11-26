@@ -1,5 +1,5 @@
-// OMP 19.1.0 sends the `ask` tool's HTML form whole (`form` request). OMP rejects the whole call on any
-// answer its own parser would refuse, so this follows `pi-tui/html-form` (MIT) for fields, values and checks.
+// OMP 19.1.0 sends the `ask` tool's HTML form whole (`form` request). This follows `pi-tui/html-form` (MIT)
+// for fields, values and checks; OMP 19.1 rejects an answer failing them, 19.2.0 only flags it.
 
 export type AgentConversationFormChoice = {
   kind: "choice";
@@ -523,7 +523,7 @@ function compilePattern(pattern: string) {
   }
 }
 
-/** Why OMP would refuse `value` for `field`, or undefined when it accepts it. */
+/** Why `value` breaks `field`'s rules, or undefined when it keeps them. */
 export function agentConversationFormError(
   field: AgentConversationFormField,
   value: AgentConversationFormValue | undefined,
