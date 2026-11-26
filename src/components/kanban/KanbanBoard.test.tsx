@@ -744,6 +744,34 @@ it("renames the issue on Enter and cancels the edit on Escape without leaving th
   expect(api.updateKanbanIssue).toHaveBeenCalledTimes(1);
 });
 
+it("copies the renamed issue's branch name after saving its title", async () => {
+  vi.mocked(api.updateKanbanIssue).mockImplementation(async () => {
+    storedIssue = {
+      ...storedIssue,
+      title: "Ship the editor",
+      branchName: "acm-1-ship-the-editor",
+    };
+    return issueUpdate({ title: "Ship the editor" });
+  });
+  await tapCard();
+  await vi.waitFor(() =>
+    expect(
+      detailView()!.querySelector(
+        'button[aria-label="Copy git branch name (acm-1-ship-the-detail-view)"]',
+      ),
+    ).not.toBeNull(),
+  );
+
+  await pressKey(await editTitle("Ship the editor"), "Enter");
+  await vi.waitFor(() =>
+    expect(
+      detailView()!.querySelector(
+        'button[aria-label="Copy git branch name (acm-1-ship-the-editor)"]',
+      ),
+    ).not.toBeNull(),
+  );
+});
+
 it("reports a renamed issue only while a session is linked to it", async () => {
   vi.mocked(api.updateKanbanIssue).mockResolvedValue(
     issueUpdate({ title: "Ship the editor" }),

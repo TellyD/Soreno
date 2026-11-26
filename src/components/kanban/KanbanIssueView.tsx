@@ -1,5 +1,6 @@
 import {
   ExternalLink,
+  GitBranch,
   Maximize2,
   Minimize2,
   Send,
@@ -20,7 +21,8 @@ import {
 import type { KanbanController } from "../../hooks/useKanbanController";
 import { useKanbanIssue } from "../../hooks/useKanbanIssue";
 import { useI18n } from "../../i18n";
-import { notifyError } from "../../notifications";
+import { writeClipboardText } from "../../data/clipboard";
+import { notifyError, notifyInfo } from "../../notifications";
 import { Button } from "../ui/Button";
 import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { EmptyState } from "../ui/EmptyState";
@@ -80,7 +82,7 @@ export function KanbanIssueView({
     reload,
     updateDescription,
   } = useKanbanIssue(selection);
-  // Another view saved this issue: reload it. Its own saves already refreshed it.
+  // Another view saved this issue, or a local rename changed its branch: reload it. Its own content saves already refreshed it.
   const revision = kanban.issueRevisions.get(selection.id) ?? 0;
   const seenRevisionRef = useRef({ id: selection.id, revision });
   useEffect(() => {
@@ -243,9 +245,32 @@ export function KanbanIssueView({
   }
 
   const identifier = detail?.identifier ?? selection.identifier;
+  async function copyBranchName(branch: string) {
+    try {
+      await writeClipboardText(branch);
+      notifyInfo(t("kanban.issue.branchCopied", { branch }), {
+        key: "kanban-branch:copied",
+      });
+    } catch (copyError) {
+      notifyError(formatError(copyError));
+    }
+  }
+  const copyBranchLabel = detail?.branchName
+    ? t("kanban.issue.copyBranch", { branch: detail.branchName })
+    : "";
   const actions =
-    boardIssue || detail?.url ? (
+    boardIssue || detail ? (
       <>
+        {detail?.branchName ? (
+          <IconButton
+            aria-label={copyBranchLabel}
+            onClick={() => void copyBranchName(detail.branchName)}
+            size="small"
+            title={copyBranchLabel}
+          >
+            <GitBranch size={14} />
+          </IconButton>
+        ) : null}
         {detail?.url ? (
           <IconButton
             aria-label={t("kanban.linear.open")}
