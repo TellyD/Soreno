@@ -111,24 +111,31 @@ export function visibleAgentSessions({
     );
 }
 
-/** Rail priority view: waits then unread turns, then the other live sessions; the rest stays in the tree. */
+/** Rail priority view: waits then unread turns, then working then other live sessions; the rest stays in the tree. */
 export function agentPrioritySections(
   sessions: readonly AgentSession[],
   attentionOf: (id: string) => AgentSessionAttention | null,
+  isWorking: (id: string) => boolean,
   isLive: (id: string) => boolean,
 ) {
   const awaiting: AgentSession[] = [];
   const unread: AgentSession[] = [];
+  const working: AgentSession[] = [];
   const live: AgentSession[] = [];
   const idle: AgentSession[] = [];
   for (const session of sessions) {
     const mark = attentionOf(session.id);
     if (mark === "awaiting") awaiting.push(session);
     else if (mark === "unread") unread.push(session);
+    else if (isWorking(session.id)) working.push(session);
     else if (isLive(session.id)) live.push(session);
     else idle.push(session);
   }
-  return { toHandle: [...awaiting, ...unread], live, idle };
+  return {
+    toHandle: [...awaiting, ...unread],
+    live: [...working, ...live],
+    idle,
+  };
 }
 
 /** Service sessions missing from the manifest stay listed but cannot be launched again. */

@@ -17,10 +17,14 @@ const en = {
   grouping: "Grouping",
   groupByProject: "Project",
   groupByStatus: "Status",
+  sorting: "Sort",
+  sortByProject: "Project",
+  sortByNewest: "Newest",
   railHost: "Host",
   railBranch: "Branch",
   railProject: "Project",
   railGroupSummary: "Group summary",
+  railTerminals: "Terminals",
   hiddenProjects: (count: number) =>
     count === 0
       ? "No hidden projects"
@@ -510,10 +514,14 @@ const fr: typeof en = {
   grouping: "Regroupement",
   groupByProject: "Projet",
   groupByStatus: "Statut",
+  sorting: "Tri",
+  sortByProject: "Projet",
+  sortByNewest: "Plus récentes",
   railHost: "Hôte",
   railBranch: "Branche",
   railProject: "Projet",
   railGroupSummary: "Résumé des groupes",
+  railTerminals: "Terminaux",
   hiddenProjects: (count: number) =>
     count === 0
       ? "Aucun projet masqué"

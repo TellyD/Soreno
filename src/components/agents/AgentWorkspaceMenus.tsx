@@ -5,6 +5,7 @@ import {
   Check,
   CircleDashed,
   ChevronRight,
+  Clock,
   ChevronsDownUp,
   ChevronsUpDown,
   Folder,
@@ -116,11 +117,17 @@ const railDetails = [
   { id: "branch", icon: <GitBranch />, label: "railBranch" },
   { id: "project", icon: <Folder />, label: "railProject", grouping: "status" },
   { id: "groupSummary", icon: <Folders />, label: "railGroupSummary" },
+  { id: "terminals", icon: <SquareTerminal />, label: "railTerminals" },
 ] as const;
 
 const railGroupings = [
   { id: "project", icon: <Folder />, label: "groupByProject" },
   { id: "status", icon: <CircleDashed />, label: "groupByStatus" },
+] as const;
+
+const railSorts = [
+  { id: "project", icon: <Folder />, label: "sortByProject" },
+  { id: "newest", icon: <Clock />, label: "sortByNewest" },
 ] as const;
 
 function ViewSubmenu({
@@ -159,6 +166,8 @@ export function ProjectViewControls({
   allCollapsed,
   statusGrouping,
   onStatusGroupingChange,
+  newestFirst,
+  onNewestFirstChange,
   onlyWithAgents,
   onOnlyWithAgentsChange,
   hiddenDetails,
@@ -170,6 +179,8 @@ export function ProjectViewControls({
   allCollapsed: boolean;
   statusGrouping: boolean;
   onStatusGroupingChange: (value: boolean) => void;
+  newestFirst: boolean;
+  onNewestFirstChange: (value: boolean) => void;
   onlyWithAgents: boolean;
   onOnlyWithAgentsChange: (value: boolean) => void;
   hiddenDetails: ReadonlySet<string>;
@@ -240,6 +251,33 @@ export function ProjectViewControls({
                   ))}
                 </Menu.RadioGroup>
               </ViewSubmenu>
+              {statusGrouping ? (
+                <ViewSubmenu label={s.sorting}>
+                  <Menu.RadioGroup
+                    aria-label={s.sorting}
+                    value={newestFirst ? "newest" : "project"}
+                    onValueChange={(value) =>
+                      onNewestFirstChange(value === "newest")
+                    }
+                  >
+                    {railSorts.map(({ id, icon, label }) => (
+                      <Menu.RadioItem
+                        key={id}
+                        nativeButton
+                        value={id}
+                        render={
+                          <MenuItem
+                            leading={icon}
+                            trailing={<Check aria-hidden="true" />}
+                          />
+                        }
+                      >
+                        {s[label]}
+                      </Menu.RadioItem>
+                    ))}
+                  </Menu.RadioGroup>
+                </ViewSubmenu>
+              ) : null}
               <ViewSubmenu label={s.showInRail}>
                 {railDetails.map((detail) => {
                   if ("grouping" in detail && detail.grouping !== grouping)

@@ -125,7 +125,7 @@ it("orders tabs per project with pins first and hides split children", () => {
   ).toEqual(["b1", "a2", "a3"]);
 });
 
-it("ranks waits before unread turns, then live sessions, then the rest", () => {
+it("ranks waits before unread turns, then working and live sessions, then the rest", () => {
   const marks: Record<string, "awaiting" | "unread"> = {
     unread: "unread",
     awaiting: "awaiting",
@@ -138,8 +138,10 @@ it("ranks waits before unread turns, then live sessions, then the rest", () => {
       session("live", "b"),
       session("awaiting", "b"),
       session("liveAwaiting", "a"),
+      session("working", "c"),
     ],
     (id) => marks[id] ?? null,
+    (id) => id === "working",
     (id) => id.startsWith("live"),
   );
 
@@ -148,7 +150,7 @@ it("ranks waits before unread turns, then live sessions, then the rest", () => {
     "liveAwaiting",
     "unread",
   ]);
-  expect(sections.live.map(({ id }) => id)).toEqual(["live"]);
+  expect(sections.live.map(({ id }) => id)).toEqual(["working", "live"]);
   expect(sections.idle.map(({ id }) => id)).toEqual(["stopped"]);
 });
 

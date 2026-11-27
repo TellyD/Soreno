@@ -27,6 +27,7 @@ import {
   agentProjectNameFromPath,
   agentEnvironmentLabel,
   agentProviderLabel,
+  agentProviderOf,
   groupCollapseKey,
   sessionLaunchBlocked,
   type agentPresets,
@@ -64,8 +65,10 @@ import { useAgentStrings } from "./agentStrings";
 import { useGitStrings } from "./gitStrings";
 import {
   readHiddenRailDetails,
+  readNewestSessionsFirst,
   readPriorityView,
   writeHiddenRailDetails,
+  writeNewestSessionsFirst,
   writePriorityView,
 } from "./agentWorkspaceStorage";
 
@@ -174,7 +177,7 @@ export function AgentProjectRail({
   railProjects,
   sectionOrder,
   hiddenProjectCount,
-  visibleSessions,
+  visibleSessions: allVisibleSessions,
   activeSessionId,
   selectedProjectId: railSelectedProjectId,
   branches,
@@ -240,6 +243,12 @@ export function AgentProjectRail({
   } | null>(null);
   const [priorityView, setPriorityView] = useState(readPriorityView);
   const [hiddenDetails, setHiddenDetails] = useState(readHiddenRailDetails);
+  const [newestFirst, setNewestFirst] = useState(readNewestSessionsFirst);
+  const visibleSessions = hiddenDetails.has("terminals")
+    ? allVisibleSessions.filter(
+        (session) => agentProviderOf(session.executable) !== null,
+      )
+    : allVisibleSessions;
   const busy = (id: string) => startingSessionId === id || isWorking(id);
   // A split tab is live while either pane is: the secondary pane can outlive the parent.
   const tabPanes = (id: string) =>
@@ -269,12 +278,14 @@ export function AgentProjectRail({
       (paneId) => busy(paneId) || statusOf(paneId)?.state === "running",
     );
   const priority = agentPrioritySections(
-    [...visibleSessions].sort(
-      (a, b) =>
-        (railRank.get(a.projectId) ?? railRank.size) -
-        (railRank.get(b.projectId) ?? railRank.size),
+    [...visibleSessions].sort((a, b) =>
+      newestFirst
+        ? Date.parse(b.createdAt) - Date.parse(a.createdAt)
+        : (railRank.get(a.projectId) ?? railRank.size) -
+          (railRank.get(b.projectId) ?? railRank.size),
     ),
     attentionOf,
+    (id) => tabPanes(id).some(busy),
     isLive,
   );
   const appearanceItem =
@@ -1197,6 +1208,11 @@ export function AgentProjectRail({
               allCollapsed={allProjectsCollapsed}
               statusGrouping={priorityView}
               onStatusGroupingChange={setStatusGrouping}
+              newestFirst={newestFirst}
+              onNewestFirstChange={(value) => {
+                setNewestFirst(value);
+                writeNewestSessionsFirst(value);
+              }}
               onlyWithAgents={onlyWithAgents}
               onOnlyWithAgentsChange={onOnlyWithAgentsChange}
               hiddenDetails={hiddenDetails}

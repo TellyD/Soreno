@@ -21,6 +21,7 @@ export const hideProjectsWithoutAgentsKey =
   "soreno.agents.hide-projects-without-agents.v1";
 const priorityViewKey = "soreno.agents.priority-view.v1";
 const hiddenRailDetailsKey = "soreno.agents.hidden-rail-details.v1";
+const newestSessionsFirstKey = "soreno.agents.newest-sessions-first.v1";
 export const serviceViewsKey = "soreno.agents.service-views.v1";
 export const servicesPanelHeightKey = "soreno.agents.services-panel-height.v1";
 const kanbanSelectedKey = "soreno.agents.kanban.v1";
@@ -177,6 +178,12 @@ export const readPriorityView = () => readStoredFlag(priorityViewKey);
 
 export const writePriorityView = (value: boolean) =>
   writeStoredJson(priorityViewKey, value);
+
+export const readNewestSessionsFirst = () =>
+  readStoredFlag(newestSessionsFirstKey);
+
+export const writeNewestSessionsFirst = (value: boolean) =>
+  writeStoredJson(newestSessionsFirstKey, value);
 
 export const readHiddenRailDetails = () =>
   new Set(readStoredIds(hiddenRailDetailsKey));
